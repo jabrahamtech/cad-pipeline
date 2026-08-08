@@ -1,0 +1,14 @@
+# FreeCAD backup/autosave files
+*.FCStd1
+*.FCBak
+*.fcstd1
+*.fcbak
+*~
+
+# macOS
+.DS_Store
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
