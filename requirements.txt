@@ -1,3 +1,10 @@
-bd-warehouse==0.3.0
-build123d==0.11.1
-pytest==9.1.1
+# Fusion-only pipeline: geometry runs inside Fusion via the MCP add-in.
+# These deps cover the headless side only (script lint + mesh tooling).
+# Floors, not pins — the repo runs on any Python >= 3.11, so a fresh
+# `python3 -m venv .venv` works whatever the system interpreter is.
+pytest>=8.0
+# mesh paint tooling (lib/mesh_paint.py) — only tests/test_mesh_paint.py
+# needs these; the Fusion script lint runs on pytest alone.
+numpy>=1.26
+scipy>=1.11
+pillow>=10.0

@@ -1,0 +1,7 @@
+# Frozen deps for the pre-Fusion build123d pipeline. Reference only.
+bd-warehouse==0.3.0
+build123d==0.11.1
+pytest==9.1.1
+numpy==2.5.1
+scipy==1.18.0
+pillow==12.3.0

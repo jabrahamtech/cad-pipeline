@@ -26,23 +26,29 @@ from lib.design_rules import (
     MIN_WALL_MM,
 )
 
-MODELS_DIR = Path(__file__).resolve().parent.parent / "models"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+# private/models mirrors models/ but is gitignored (personal projects);
+# parts there still get invariant coverage on this machine.
+MODELS_DIRS = [REPO_ROOT / "models", REPO_ROOT / "private" / "models"]
 
 
 def discover_parts():
-    for py in sorted(MODELS_DIR.rglob("*.py")):
-        if py.name.startswith("_"):
+    for models_dir in MODELS_DIRS:
+        if not models_dir.is_dir():
             continue
-        spec = importlib_util.spec_from_file_location(py.stem, py)
-        assert spec and spec.loader
-        mod = importlib_util.module_from_spec(spec)
-        sys.modules[py.stem] = mod
-        spec.loader.exec_module(mod)
-        build = getattr(mod, "build", None)
-        if build is None:
-            continue
-        meta = getattr(mod, "PART_METADATA", {})
-        yield pytest.param((build, meta), id=str(py.relative_to(MODELS_DIR)))
+        for py in sorted(models_dir.rglob("*.py")):
+            if py.name.startswith("_"):
+                continue
+            spec = importlib_util.spec_from_file_location(py.stem, py)
+            assert spec and spec.loader
+            mod = importlib_util.module_from_spec(spec)
+            sys.modules[py.stem] = mod
+            spec.loader.exec_module(mod)
+            build = getattr(mod, "build", None)
+            if build is None:
+                continue
+            meta = getattr(mod, "PART_METADATA", {})
+            yield pytest.param((build, meta), id=str(py.relative_to(models_dir)))
 
 
 PARTS = list(discover_parts())
@@ -93,10 +99,19 @@ def test_default_wall_params_meet_minimum(built):
     """Wall/thickness parameter DEFAULTS in build()'s signature must respect
     the minimum wall. Catches a parametric default drifting too thin; full
     geometric thin-wall analysis is deliberately out of scope here.
+
+    Names carrying "clear", "inset", "gap" or "offset" are skipped: those are
+    positions and clearances, not material, and zero is a legitimate value
+    for them. The forearm's web_far_clear_r is exactly that — with a ROLL
+    wrist nothing sweeps at the far end, so the web has nothing to keep away
+    from and runs right up to the flange.
     """
     build, _, _ = built
+    skip = ("clear", "inset", "gap", "offset", "clearance")
     for name, p in inspect.signature(build).parameters.items():
         if not isinstance(p.default, (int, float)):
+            continue
+        if any(k in name.lower() for k in skip):
             continue
         if any(k in name.lower() for k in ("wall", "thickness", "web")):
             assert p.default >= MIN_WALL_MM, (

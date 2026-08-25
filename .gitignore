@@ -1,14 +1,19 @@
-# FreeCAD backup/autosave files
-*.FCStd1
-*.FCBak
-*.fcstd1
-*.fcbak
-*~
-
 # macOS
 .DS_Store
 
 # Python
 .venv/
+.venv-legacy/
 __pycache__/
 .pytest_cache/
+
+# Claude Code local settings (machine-specific, never commit)
+.claude/settings.local.json
+
+# staging area for files awaiting manual deletion
+_to_delete/
+
+# Personal projects, mockups, and shopping lists — NEVER commit.
+# Mirrors the public layout: private/{specs,models,exports,docs}/<project>/
+# Tests still discover private/models/ locally.
+private/

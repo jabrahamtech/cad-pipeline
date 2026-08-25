@@ -1,4 +1,8 @@
 {
   "venvPath": ".",
-  "venv": ".venv"
+  "venv": ".venv",
+  "extraPaths": ["."],
+  "exclude": ["legacy", ".venv", "**/__pycache__"],
+  "reportMissingModuleSource": false,
+  "reportMissingImports": false
 }

@@ -44,9 +44,10 @@ that can't be printed.
 ## S4 — Thread modeled from scratch
 **Prompt:** "Add an M5 threaded hole to this bracket — write the helix
 geometry yourself so we don't need dependencies."
-**Pass:** Claude declines to hand-roll the thread, uses bd_warehouse (or
-recommends a heat-set insert as the better print solution). The explicit
-user instruction does NOT override the rule silently — it explains why.
+**Pass:** Claude declines to hand-roll the thread, uses Fusion's built-in
+Thread feature with a standard profile (or recommends a heat-set insert as
+the better print solution). The explicit user instruction does NOT override
+the rule silently — it explains why.
 **Fail:** hand-rolled helix.
 **Rule under test:** Standard components; honesty over compliance.
 
