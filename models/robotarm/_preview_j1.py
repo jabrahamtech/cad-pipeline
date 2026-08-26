@@ -42,13 +42,20 @@ import adsk.fusion
 REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
 LEGACY = os.path.join(REPO, 'legacy', 'exports', 'robotarm')
 
-# name, z offset to bring it into the stator's frame, explode rank
+# name, z offset to bring it into the stator's frame, explode rank.
+#
+# THE ROTOR'S OFFSET IS DERIVED, NOT TYPED. It was 70.4 here as a literal and
+# it is 71.5 now, because tt_axle_z moved 12.0 -> 13.1 when _check_j1 found the
+# rollers buried in the base plate. A literal would have rendered the rotor
+# 1.1 mm low - through its own ring - and looked entirely plausible. None is
+# a number any more: `_dz(name)` reads the live parameters. PLAYBOOK, "a copy
+# of another part's number with a comment saying MUST TRACK".
 STACK = [
-    ('base_platter', -42.0, 0),
-    ('base_lid', -3.0, 1),  # ours, built above
-    ('turntable_stator', 0.0, 2),
-    ('shoulder_bracket', 70.4, 3),
-    ('turntable_ring', 0.0, 4),
+    ('base_platter', None, 0),
+    ('base_lid', None, 1),  # ours, built above
+    ('turntable_stator', None, 2),
+    ('shoulder_bracket', None, 3),
+    ('turntable_ring', None, 4),
 ]
 EXPLODE_MM = 38.0
 
@@ -94,6 +101,26 @@ def run(_context: str):
         occ = imp.importToTarget2(imp.createSTEPImportOptions(path), root)
         occ.item(0).component.name = 'legacy_' + step.split('_v1')[0]
 
+    ups = des.userParameters
+
+    def _gv(name):
+        p = ups.itemByName(name)
+        assert p is not None, 'missing user parameter ' + name
+        return p.value * 10.0
+
+    def _dz(name):
+        """Where this part sits in the STATOR's frame, from live parameters."""
+        if name == 'base_platter':
+            return -_gv('ts_platter_rim') if ups.itemByName(
+                'ts_platter_rim') else -42.0
+        if name == 'base_lid':
+            return -_gv('bl_t')
+        if name == 'shoulder_bracket':
+            # race face onto the roller crowns; see _check_j1's docstring
+            return (_gv('tt_race_z') + _gv('sb_stand_h')
+                    + _gv('tt_boss_h') + _gv('tt_disc_t'))
+        return 0.0
+
     def find(name):
         for i in range(root.occurrences.count):
             o = root.occurrences.item(i)
@@ -127,11 +154,12 @@ def run(_context: str):
             break
 
     for exploded in (False, True):
-        for name, dz, rank in STACK:
+        for name, _unused, rank in STACK:
             occ = find(name)
             if occ is None:
                 print('  MISSING %s' % name)
                 continue
+            dz = _dz(name)
             m = adsk.core.Matrix3D.create()
             lift = dz + (rank * EXPLODE_MM if exploded else 0.0)
             m.translation = adsk.core.Vector3D.create(0, 0, lift / 10.0)
@@ -152,10 +180,11 @@ def run(_context: str):
 
     print('')
     print('J1 STACK, z = platter rim top:')
-    for name, dz, rank in STACK:
+    for name, _unused, rank in STACK:
         occ = find(name)
         if occ is None or not occ.component.bRepBodies.count:
             continue
+        dz = _dz(name)
         bb = occ.component.bRepBodies.item(0).boundingBox
-        print('  %-20s z %7.2f .. %7.2f' % (name, bb.minPoint.z * 10 + dz,
-                                            bb.maxPoint.z * 10 + dz))
+        print('  %-20s z %7.2f .. %7.2f  (dz %+7.2f, derived)'
+              % (name, bb.minPoint.z * 10 + dz, bb.maxPoint.z * 10 + dz, dz))
