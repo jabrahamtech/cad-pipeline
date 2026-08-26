@@ -96,6 +96,76 @@ comp = occ.component
 comp.name = 'robotarm_wrist_yoke'
 ```
 
+**Gotcha (2026-08-25, robotarm gripper): deleting an occurrence does not
+release its component's NAME.** If the component is recreated in the same
+script run, Fusion silently names it `robotarm_gripper_rack_jaw (1)` and
+every later lookup by name misses it - the part looks built, and the
+assembly checker reports the piece as absent. Rename the outgoing component
+before deleting it, then assert the new one got the name:
+
+```python
+for occ in list(root.occurrences):
+    if occ.component.name == COMPONENT or occ.component.name.startswith(COMPONENT + ' ('):
+        occ.deleteMe()
+for i in range(design.allComponents.count):      # components outlive occurrences
+    c = design.allComponents.item(i)
+    if c.name == COMPONENT or c.name.startswith(COMPONENT + ' ('):
+        c.name = COMPONENT + '_stale_' + str(i)
+occ = root.occurrences.addNewComponent(adsk.core.Matrix3D.create())
+comp = occ.component
+comp.name = COMPONENT
+assert comp.name == COMPONENT, 'stale component still holds the name: ' + comp.name
+```
+
+**Gotcha (2026-08-25): setting `occurrence.transform2` more than once in a
+parametric design CORRUPTS the assembly-context body proxies.** Each
+assignment adds a Move feature; a stack of them leaves bodies whose
+`boundingBox` collapses to a single point and whose
+`measureMinimumDistance` to everything returns 0.000. Nothing errors - a
+sweep just quietly reports that every part touches every other part. Build
+each pose from fresh occurrences instead, handing the transform to
+`addExistingComponent(component, matrix)`, measure, then delete them; and
+assert the bbox is non-degenerate before trusting any measurement.
+
+**Gotcha (2026-08-25), the worst one: an extrude CUT with no
+`participantBodies` eats every other component in the document.** Feature
+operations default to taking part with everything they intersect, across
+component boundaries. In a shared assembly document - which is exactly what
+this pipeline builds - one part's pocket silently hollows out its
+neighbours. In the robotarm gripper the shell's rack channel and pinion
+recess took the pinion from 1630 mm3 to 88 and the rack from 6362 to **0**,
+with `isValid` still True and no error raised. Worse, the fit check then
+reported ZERO INTERFERENCE, because the parts had been carved to fit each
+other. Scope every non-NewBody operation:
+
+```python
+if op != NEW:
+    inp.participantBodies = [comp.bRepBodies.item(i)
+                             for i in range(comp.bRepBodies.count)]
+```
+
+The tell is a diagnostics block that looked right when the part was built
+alone and wrong once a later script ran. Print volume per part in check
+scripts and compare against what the part script itself reported.
+
+**Gotcha (2026-08-25): a rolled-back timeline marker makes bodies measure
+as HALF-BUILT, silently.** Deleting occurrences or features can leave the
+marker part-way down the history; `boundingBox` then reports the body as it
+was at the marker. Seen in the robotarm gripper: the pinion measured with
+half its teeth cut, and a rack collapsed to a single point at (5, 5, 5) mm
+while `isValid` stayed True. Call `design.timeline.moveToEnd()` before any
+measurement in a check script, and assert the bounding box is non-degenerate
+before trusting a number. A hidden occurrence (`isLightBulbOn = False`) also
+reports an empty box - hide things only after measuring.
+
+**Gotcha: a timeline group needs at least 2 features.** `timelineGroups.add`
+raises `Create Group Feature Error: At least 2 features needed for a group`
+on a one-feature phase. Guard with `if design.timeline.count - start > 1`.
+
+**Gotcha: `userParameter.deleteMe()` fails silently while another parameter's
+expression still references it.** Delete derived parameters before the ones
+they are derived from, and re-check rather than trusting the call.
+
 Place the part in the assembly by giving `addNewComponent` a transform (or
 set `occ.transform2` with a row-major 4×4 in cm). For imported occurrences
 with denormalized transforms, SET `transform2` to the world transform
