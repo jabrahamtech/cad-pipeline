@@ -154,7 +154,7 @@ def run(_context: str):
     turret('roller_w', '7.0 mm', '608ZZ width. The axle is RADIAL, so this lies radially.')
     turret('roller_r', '27.0 mm', 'roller pitch radius - SHARED, see turntable_stator.py')
     turret('race_margin', '0.5 mm', 'overrun each side of the rollers on the race band')
-    turret('axle_z', '12.0 mm',
+    turret('axle_z', '13.1 mm',
            'roller axle height. Set so the bearing clears the platter top by 1.0.')
     turret('race_z', TURRET + 'axle_z + ' + TURRET + 'roller_od / 2',
            'derived: where this part\'s underside sits. NEVER type this.')

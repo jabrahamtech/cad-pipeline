@@ -109,9 +109,14 @@ def run(_context: str):
            'roller pitch radius. Boxed in: the servo hub reaches r 21 inside it and\n'
            '           the mounting posts sit at r 45 outside, and the cheeks have to\n'
            '           fit between the two.')
-    turret('axle_z', '12.0 mm',
-           'roller axle height. Set so the bearing clears the platter top by 1.0 -\n'
-           '           any lower and a 608 fouls the lid.')
+    turret('axle_z', '13.1 mm',
+           'roller axle height. = ts_relief_floor + ts_relief_clear + roller_od/2,\n'
+           '           so a 608 sitting on its axle clears a MIN_WALL floor of base\n'
+           '           plate with ts_relief_clear of daylight. WAS 12.0, set to clear\n'
+           '           the PLATTER top at z 0 - which ignored this part\'s OWN 4.0 mm\n'
+           '           base plate sitting on it. The bearing bottomed at z 1.00 inside\n'
+           '           a plate spanning z 0..4 and could not be fitted at all.\n'
+           '           _check_j1 found it 2026-08-26; asserted below now.')
     turret('race_z', TURRET + 'axle_z + ' + TURRET + 'roller_od / 2',
            'derived: where the rotor\'s underside sits. NEVER type this.')
     turret('disc_d', '76.0 mm',
@@ -123,7 +128,13 @@ def run(_context: str):
            '           ring\'s bore, and it is what locates the arm radially. A big\n'
            '           diameter running slowly is the one plain bearing that is\n'
            '           genuinely better than a rolling one here.')
-    turret('boss_h', '4.0 mm', 'how far that boss stands above the rotor rim')
+    turret('boss_h', '4.4 mm',
+           'how far that boss stands above the rim. = ring_lift + ring_t, so the\n'
+           '           ring finishes FLUSH with the boss top and the plane the fork\n'
+           '           stands on is one continuous face. WAS 4.0 HERE and 4.4 in\n'
+           '           shoulder_bracket.py - one shared parameter with two values,\n'
+           '           which only ever worked because the bracket happens to build\n'
+           '           last. Found by _check_j1 2026-08-26.')
     turret('ring_t', '4.0 mm',
            'retainer thickness. NOT 3.0: an M3 head counterbore is 2.4 and design\n'
            '           _rules wants a wall under it, so 4.0 is the floor if the screws\n'
@@ -196,6 +207,17 @@ def run(_context: str):
     param('cable_deg', '70.0 deg', 'arc swept. At a 16.5 mean radius that is 20 mm\n'
                                    '           of slot, 7 mm wide - 140 mm2 for a loom that needs 45', 'deg')
     param('post_d', '11.0 mm', 'mounting post diameter - 3.8 of wall round an M3 clearance')
+    param('relief_floor', '1.6 mm',
+          'what is LEFT of the base plate under each roller - design_rules\n'
+          '           MIN_WALL_MM exactly, and it is the floor that sets tt_axle_z.')
+    param('relief_clear', '0.5 mm',
+          'daylight between the bearing and that floor. Not a fit - nothing\n'
+          '           bears here; it is there so a stringy first layer cannot touch\n'
+          '           the roller and add drag to a joint with no torque to spare.')
+    param('relief_margin', '1.0 mm',
+          'how far the relief overruns the bearing footprint, radially and\n'
+          '           tangentially. The relief stops AT cheek_ir, so the cheeks keep\n'
+          '           their full footing and only the plate between them is cut.')
     param('cheek_t', '4.0 mm', 'roller cheek thickness, radially')
     param('cheek_w', '18.0 mm', 'roller cheek width, tangentially')
     param('cheek_over', '6.0 mm', 'material above the axle centre')
@@ -218,8 +240,16 @@ def run(_context: str):
           '           washer - which must land on the race, never on the axle end.')
     param('axle_pilot', '2.5 mm', 'M3 self-tapper up the middle of the stub')
     param('axle_screw_z', '7.0 mm', 'how deep that pilot goes')
-    param('hub_x', '9.0 mm', 'servo pad half width')
-    param('hub_y', '19.0 mm', 'servo pad half length - covers the 32.4 tab span')
+    param('hub_x', '9.0 mm', 'servo pad half width, and the radius its outboard\n'
+                             '           end is rounded to')
+    param('hub_y', '16.4 mm',
+          'servo pad half length. WAS 19.0, which with the +5.20 shaft offset\n'
+          '           put the pad\'s far CORNER at r 25.82 - inside the roller band,\n'
+          '           which starts at r 23.50. The relief under the az-90 roller\n'
+          '           would have undercut the pad it stands on. 16.4 still clears\n'
+          '           both pilots by 2.5, and the outboard end is ROUNDED to hub_x so\n'
+          '           the pad\'s furthest reach is on the axis at r 21.60, not at a\n'
+          '           corner. _check_j1 found the corner 2026-08-26.')
     param('window_ir', '22.0 mm', 'lightening windows, inner radius')
     param('window_or', '37.0 mm',
           'lightening windows, outer radius. Bounded by the posts: at 40 the\n'
@@ -374,7 +404,19 @@ def run(_context: str):
     blade_bottom = horn_top - val('horn_blade_t')
     case_bottom = deck_z - (val('case_h') - val('tab_below_top') - val('tab_thk'))
     cheek_top = tval('axle_z') + val('cheek_over')
-    hub_r = math.hypot(val('hub_x'), val('hub_y'))
+    # the relief footprint: the bearing's own shadow plus relief_margin, and
+    # never past cheek_ir, which is where the cheeks stand.
+    relief_ir = roll_r - tval('roller_w') / 2 - val('relief_margin')
+    relief_half = math.asin(
+        (tval('roller_od') / 2 + val('relief_margin')) / roll_r)
+    # THE PAD IS NOT CENTRED, so its reach is not hypot(half_x, half_y). That
+    # is what this was, and it reported r 21.02 for a pad that reached 25.82.
+    # With the end rounded to hub_x the furthest point is on the axis, so the
+    # reach is simply the far edge - but the assertion below is written against
+    # the CORNER too, because a future un-rounding must not pass silently.
+    pad_far = val('shaft_off') + val('hub_y')
+    hub_r = pad_far
+    hub_r_square = math.hypot(val('hub_x'), pad_far)
     ROLL_AZ = (90.0, 210.0, 330.0)
     POST_AZ = (120.0, 180.0, 240.0)
     WIN_AZ = (30.0, 150.0, 270.0)
@@ -382,9 +424,19 @@ def run(_context: str):
     # ---- sanity, before any geometry ----------------------------------------
     assert abs(race_z - (tval('axle_z') + tval('roller_od') / 2)) < 1e-9, (
         'tt_race_z is meant to be derived from the axle height and the 608 OD')
-    assert tval('axle_z') - tval('roller_od') / 2 >= 0.1 - 1e-9, (
-        'the rollers reach z %.2f and the platter top is z 0 - a 608 would foul '
-        'the lid' % ((tval('axle_z') - tval('roller_od') / 2) * 10))
+    # THE BEARING RUNS OVER THIS PART'S OWN BASE PLATE, not over the platter.
+    # This compared the roller against z 0 and called it "the lid", and so never
+    # saw the 4.0 mm plate in between. Three 608 were 3.00 mm inside it.
+    _roll_bottom = tval('axle_z') - tval('roller_od') / 2
+    assert _roll_bottom >= val('relief_floor') + val('relief_clear') - 1e-9, (
+        'the rollers reach z %.2f and the relieved plate floor is z %.2f with '
+        '%.2f of daylight wanted - raise tt_axle_z to at least %.2f'
+        % (_roll_bottom * 10, val('relief_floor') * 10, val('relief_clear') * 10,
+           (val('relief_floor') + val('relief_clear')
+            + tval('roller_od') / 2) * 10))
+    assert val('relief_floor') >= val('wall') - 1e-9, (
+        'the relief leaves %.2f of plate under each roller against a %.2f '
+        'minimum wall' % (val('relief_floor') * 10, val('wall') * 10))
     assert cheek_top < race_z - val('free') - 1e-9, (
         'the roller cheeks reach z %.2f and the rotor rides at %.2f - only the '
         'BEARING may touch it' % (cheek_top * 10, race_z * 10))
@@ -432,11 +484,18 @@ def run(_context: str):
     t0 = design.timeline.count
     xy_ring('base_plate', val('plate_or'), val('plate_ir'), '0.0 mm',
             PREFIX + 'plate_t', NEW)
-    # The servo pad: a raised rectangle the tabs bear on, standing on the plate.
+    # The servo pad: a raised slab the tabs bear on, standing on the plate.
+    # Its OUTBOARD end is a semicircle of radius hub_x, not a square corner.
+    # With the +5.20 shaft offset a square corner reaches r 25.82, inside the
+    # roller band at r 23.50, and the relief cut below would undercut the very
+    # pad it stands on. Rounded, the furthest point is on the axis at r 21.60.
     _soff = val('shaft_off')
+    _pad_flat = _soff + val('hub_y') - val('hub_x')
     xy_rect('servo_pad', -val('hub_x'), val('hub_x'),
-            _soff - val('hub_y'), _soff + val('hub_y'),
+            _soff - val('hub_y'), _pad_flat,
             mm(plate_t - 0.1), mm(deck_z - plate_t + 0.1), JOIN)
+    xy_circle('servo_pad_end', 0.0, _pad_flat, val('hub_x') * 2,
+              mm(plate_t - 0.1), mm(deck_z - plate_t + 0.1), JOIN)
     for i, az in enumerate(POST_AZ):
         a = math.radians(az)
         xy_circle('post_%d' % i, tval('post_r') * math.cos(a),
@@ -467,6 +526,19 @@ def run(_context: str):
         radial_cyl('collar_%d' % i, a, cheek_ir, seat_r, val('collar_d'), JOIN)
         radial_cyl('axle_pilot_%d' % i, a, stub_ir,
                    stub_ir + val('axle_screw_z'), val('axle_pilot'), CUT)
+    # THE RELIEF. Each 608 hangs into the base plate; this floors the plate to
+    # MIN_WALL under it and no further. It stops AT cheek_ir, so the cheeks
+    # keep their whole footing and only the span between them is thinned.
+    _vol_before = comp.bRepBodies.item(0).volume
+    for i, az in enumerate(ROLL_AZ):
+        xy_arc('roller_relief_%d' % i, relief_ir, cheek_ir, math.radians(az),
+               relief_half, mm(val('relief_floor')),
+               mm(plate_t - val('relief_floor') + 1.0), CUT)
+    # PLAYBOOK: when a CUT changes nothing, the cut is in the wrong place.
+    _vol_after = comp.bRepBodies.item(0).volume
+    assert _vol_before - _vol_after > 1e-4, (
+        'the three roller reliefs removed %.3f mm3 - the cut is in the wrong '
+        'place or at the wrong scale' % ((_vol_before - _vol_after) * 1000))
     group(t1, PH_ROLLERS)
 
     # ---- phase 3: yaw servo -----------------------------------------------------

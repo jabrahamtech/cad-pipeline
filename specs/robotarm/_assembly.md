@@ -563,3 +563,57 @@ The SG90 horn hub is modelled at **Ø6.30** because no parameter in this
 project carries it, and it is what decides whether the hub clears
 `tt_screw_bore` Ø6.00. The 3.02 mm³ `horn ^ rotor` reading is that guess, not
 a finding. **Jonathan has SG90s in hand — caliper the hub.**
+
+
+## J1 GATE: FIXED, AND NOW BLOCKED ON ONE CALIPER READING — 2026-08-26
+
+All four faults closed. Worst interference **857.01 → 0.000 mm³**, both gate
+lines PASS. What remains is 3.017 mm³ on a dimension I invented, which is a
+different thing from a failure and is reported on its own line.
+
+| | change | effect |
+|---|---|---|
+| `tt_axle_z` | 12.0 → **13.1** in all three files that declare it | roller bottom z 1.00 → 2.10, clear of a MIN_WALL floor with 0.50 daylight |
+| `ts_relief_floor/clear/margin` | **new**, 1.6 / 0.5 / 1.0 | three arc pockets floor the plate to MIN_WALL under each roller and stop at `cheek_ir`, so the cheeks keep their whole footing |
+| `ts_hub_y` | 19.0 → **16.4**, end rounded to `hub_x` | pad's furthest reach 25.82 (a corner) → 21.60 (on the axis), out of the roller band |
+| `bl_open_y` / `bl_open_off_y` | 26.0 centred → **31.0 at +2.00** | contains the void union AND reaches 0.50 past the loom slot |
+| `tt_boss_h` | 4.0 → **4.4** in stator and ring | one shared parameter, one value |
+
+`tt_race_z` moves 23.00 → **24.10**, so the whole turret rises 1.1 mm. Stator
+37457 → 35297 mm³ (−2160, the relief). Lid 61203 → 60901 mm³.
+
+### The two assertions that had let it through
+
+Both were the right idea aimed at the wrong thing.
+
+```python
+# turntable_stator: checked the bearing against the PLATTER top, z 0 ...
+assert tval('axle_z') - tval('roller_od') / 2 >= 0.1
+#   ... and called it "the lid", so this part's OWN 4 mm base plate,
+#   sitting on that platter, was never in the comparison at all.
+
+# base_lid: compared LENGTHS where it meant INTERVALS
+assert oy_mm >= STATOR_WELL_Y + 1.0
+#   26.0 >= 23.8, comfortably true, and the opening was centred while the
+#   well sat at +5.20. A length cannot see an offset.
+```
+
+Both now compare the thing they meant to. `hub_r` was the third: it read
+`hypot(hub_x, hub_y)` for a pad that is not centred, reporting r 21.02 for a
+pad reaching 25.82.
+
+### What the fix cost that nobody chose
+
+Offsetting the lid opening dropped a **48 mm³ sliver** out of the lid — 1.8 mm
+wide, between the opening's astern edge and the loom slot's inner radius. The
+loom slot is an **arc**: its inner edge is r 13.0 on the centreline but only
+y −10.65 at its angular ends, so a straight opening edge between those two
+values frees the strip at the ends and leaves it standing in the middle. **A
+1.8 mm rib would have passed a MIN_WALL check** — the rib was never the
+problem, it was attached to nothing. A body count caught it; no dimension
+would have. The rule is now a real overlap, never a wall.
+
+### Blocked on
+
+The SG90 horn hub, modelled at Ø6.30, against `tt_screw_bore` Ø6.00. **Caliper
+a hub and re-run.** Nothing else in J1 is unmeasured geometry.

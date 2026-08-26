@@ -101,7 +101,7 @@ def run(_context: str):
            'M3 clearance. One screw per post runs the whole stack - through the\n'
            '           ring, down the post, into the platter insert. About 40 long.')
     turret('roller_od', '22.0 mm', '608ZZ outer diameter - DRAWING-CONFIRMED')
-    turret('axle_z', '12.0 mm',
+    turret('axle_z', '13.1 mm',
            'roller axle height. Set so the bearing clears the platter top by 1.0 -\n'
            '           any lower and a 608 fouls the lid.')
     turret('race_z', TURRET + 'axle_z + ' + TURRET + 'roller_od / 2',
@@ -113,7 +113,13 @@ def run(_context: str):
     turret('boss_d', '68.0 mm',
            'the rotor\'s raised centre. This is the JOURNAL - it turns inside this\n'
            '           ring\'s bore, and it is what locates the arm radially.')
-    turret('boss_h', '4.0 mm', 'how far that boss stands above the rotor rim')
+    turret('boss_h', '4.4 mm',
+           'how far that boss stands above the rim. = ring_lift + ring_t, so the\n'
+           '           ring finishes FLUSH with the boss top and the plane the fork\n'
+           '           stands on is one continuous face. WAS 4.0 HERE and 4.4 in\n'
+           '           shoulder_bracket.py - one shared parameter with two values,\n'
+           '           which only ever worked because the bracket happens to build\n'
+           '           last. Found by _check_j1 2026-08-26.')
     turret('ring_t', '4.0 mm',
            'retainer thickness. NOT 3.0: an M3 head counterbore is 2.4 and design\n'
            '           _rules wants a wall under it, so 4.0 is the floor if the screws\n'

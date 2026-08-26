@@ -57,9 +57,17 @@ VENT_N = 12
 
 # MEASURED off the built turntable_stator, 2026-08-26. The lid's opening must
 # contain all of this or the two parts fight over the same servo.
+#
+# AND CONTAIN IS AN INTERVAL, NOT A LENGTH. These were measured as sizes and
+# checked as sizes - open_y 26.0 >= well_y 22.8 + 1.0, comfortably true - while
+# the opening was cut about the origin and the well sits at y +5.20, because
+# ts_shaft_off moved it there on 2026-08-26 and this file was never told. The
+# lid masked 3.60 of the well and the SG90 case fouled the lid by 3.50.
+# _check_j1 found it. Every comparison below is now lo/hi, not length.
 STATOR_VOID_R = 10.00        # the circular part
 STATOR_WELL_X = 12.80        # the rectangular part
 STATOR_WELL_Y = 22.80
+STATOR_WELL_OFF_Y = 5.20     # ts_shaft_off - the well's centre, off the axis
 STATOR_PLATE_IR = 10.00      # stator base plate lands on the lid from here...
 STATOR_PLATE_OR = 50.00      # ...to here. Nothing may vent under it.
 SG90_CASE_W = 12.60
@@ -109,7 +117,17 @@ def run(_context: str):
           'servo + cable opening, across the flats of the SG90. Must contain\n'
           '           the STATOR\'S void (a 20.0 circle unioned with a 12.80 x 22.80\n'
           '           rectangle), not merely the servo - the two parts share this hole.')
-    param('open_y', '26.00 mm', 'the long way. Same rule.')
+    param('open_y', '31.00 mm',
+          'the long way. WAS 26.00 and centred, which masked the servo well.\n'
+          '           Three things set it now: the stator\'s Ø20 void ON the axis,\n'
+          '           its 12.80 x 22.80 well at y +5.20, and the loom slot\'s inner\n'
+          '           radius at 13.0, which this opening has to reach PAST rather\n'
+          '           than stop short of - see the merge note below.')
+    param('open_off_y', '2.00 mm',
+          'the opening\'s centre, off the J1 axis. NOT a style choice and NOT\n'
+          '           ts_shaft_off either. The void union runs y -10.00..+16.60 and\n'
+          '           the loom slot wants the astern edge at or past -13.00, so the\n'
+          '           opening runs -13.50..+17.50. All three asserted below.')
     param('open_r', '3.00 mm', 'corner radius on the opening')
     param('vent_r', '62.00 mm', 'MEASURED off the old lid - and it has to stay\n'
                                 '           outside the stator\'s 50.0 footprint anyway')
@@ -185,15 +203,21 @@ def run(_context: str):
         sk.sketchCurves.sketchCircles.addByCenterRadius(pt(sk, x, y), d / 20.0)
         return extrude(one(sk), op, z0, dz, name, targets)
 
-    def rounded_rect(name, hx, hy, r, z0, dz, op, targets=None):
-        """Rounded rectangle centred on the origin, built from 4 arcs and 4
-        lines. addTwoPointRectangle plus a fillet would need edge picks on a
-        sketch that has not been extruded yet."""
+    def rounded_rect(name, hx, hy, r, z0, dz, op, targets=None, off_y=0.0):
+        """Rounded rectangle from 4 arcs and 4 lines, centred on (0, off_y).
+        addTwoPointRectangle plus a fillet would need edge picks on a sketch
+        that has not been extruded yet.
+
+        off_y is not decoration. The servo opening this cuts is shared with
+        turntable_stator's well, which sits ts_shaft_off off the axis so the
+        SG90's SHAFT lands on it. Centred on the origin, this hole masked the
+        far end of that well - see the header."""
         sk = sketch(name)
         lines = sk.sketchCurves.sketchLines
         arcs = sk.sketchCurves.sketchArcs
-        corners = [(hx - r, hy - r, 0.0), (-(hx - r), hy - r, 90.0),
-                   (-(hx - r), -(hy - r), 180.0), (hx - r, -(hy - r), 270.0)]
+        cy_hi, cy_lo = off_y + hy - r, off_y - (hy - r)
+        corners = [(hx - r, cy_hi, 0.0), (-(hx - r), cy_hi, 90.0),
+                   (-(hx - r), cy_lo, 180.0), (hx - r, cy_lo, 270.0)]
         pts = []
         for cx, cy, a0 in corners:
             for a in (a0, a0 + 90.0):
@@ -243,13 +267,28 @@ def run(_context: str):
     band_i_mm, band_o_mm = val('band_i') * 10, val('band_o') * 10
     WALL_MM = 1.6
 
-    assert ox_mm / 2 >= STATOR_VOID_R + 0.5 and oy_mm / 2 >= STATOR_VOID_R + 0.5, (
-        'the opening is %.1f x %.1f and the stator\'s circular void alone is '
-        'Ø%.1f - the lid would mask it' % (ox_mm, oy_mm, STATOR_VOID_R * 2))
-    assert ox_mm >= STATOR_WELL_X + 1.0 and oy_mm >= STATOR_WELL_Y + 1.0, (
-        'the opening is %.1f x %.1f against the stator\'s %.1f x %.1f well - '
-        'the lid pinches the servo pocket'
-        % (ox_mm, oy_mm, STATOR_WELL_X, STATOR_WELL_Y))
+    # INTERVALS, both sides, every time. A length comparison cannot see an
+    # offset, and offsets are exactly what gets added late.
+    off_mm = val('open_off_y') * 10
+    op_lo, op_hi = off_mm - oy_mm / 2, off_mm + oy_mm / 2
+    # what the opening has to contain, as ONE interval: the circular void sits
+    # on the axis, the well sits at STATOR_WELL_OFF_Y, and neither one's centre
+    # is the answer.
+    need_lo = min(-STATOR_VOID_R, STATOR_WELL_OFF_Y - STATOR_WELL_Y / 2) - 0.5
+    need_hi = max(STATOR_VOID_R, STATOR_WELL_OFF_Y + STATOR_WELL_Y / 2) + 0.5
+    assert op_lo <= need_lo and op_hi >= need_hi, (
+        'the opening runs y %.2f..%.2f and the stator\'s void runs %.2f..%.2f '
+        '- it wants open_y %.2f centred at %.2f'
+        % (op_lo, op_hi, need_lo, need_hi, need_hi - need_lo,
+           (need_hi + need_lo) / 2))
+    well_lo = STATOR_WELL_OFF_Y - STATOR_WELL_Y / 2
+    well_hi = STATOR_WELL_OFF_Y + STATOR_WELL_Y / 2
+    assert ox_mm / 2 >= STATOR_VOID_R + 0.5, (
+        'the opening is %.1f across and the stator\'s circular void alone is '
+        'Ø%.1f - the lid would mask it' % (ox_mm, STATOR_VOID_R * 2))
+    assert ox_mm >= STATOR_WELL_X + 1.0, (
+        'the opening is %.1f across against the stator\'s %.1f well - the lid '
+        'pinches the servo pocket' % (ox_mm, STATOR_WELL_X))
     cable_gap = (ox_mm - SG90_CASE_W) / 2
     assert cable_gap >= 3.0, (
         'only %.1f mm each side of the SG90 case for the loom - it crosses J1 '
@@ -281,7 +320,7 @@ def run(_context: str):
     # at +-90 on loom twist rather than on anything mechanical.
     t1 = design.timeline.count
     rounded_rect('servo_open', ox_mm / 2, oy_mm / 2, val('open_r') * 10,
-                 -1.0, t_mm + 2.0, CUT, [body])
+                 -1.0, t_mm + 2.0, CUT, [body], off_y=off_mm)
     for sx in (-1, 1):
         sk = sketch('tie_%d' % (sx > 0))
         x = sx * val('tie_r') * 10
@@ -302,16 +341,27 @@ def run(_context: str):
     assert c_or_mm < STATOR_PLATE_OR, (
         'the cable slot reaches r %.1f, past the stator plate at r %.1f'
         % (c_or_mm, STATOR_PLATE_OR))
-    # THESE TWO OPENINGS DELIBERATELY MERGE. The servo opening reaches r 13.0
-    # astern and the loom slot starts at 13.0, so a 'keep them apart' rule
-    # would leave a ~1 mm rib in a 3 mm lid - fragile, and pointless, because
-    # the lid is a cover and carries no load here. They cut into one D-shaped
-    # hole instead. The STATOR still separates them: its well only reaches
-    # 11.40, it is 4 mm thick, and it keeps a real 1.6 mm wall.
-    assert c_ir_mm <= oy_mm / 2 + WALL_MM, (
-        'the loom slot starts at r %.1f and the servo opening ends at %.1f - '
-        'they no longer meet, leaving a rib this lid does not intend'
-        % (c_ir_mm, oy_mm / 2))
+    # THESE TWO OPENINGS MUST MERGE, AND "OR LEAVE A FULL WALL" IS NOT THE
+    # ALTERNATIVE IT LOOKS LIKE. The loom slot is an ARC: its inner edge is at
+    # r 13.0 on the centreline but only y -10.65 at its angular ends, so a
+    # straight opening edge anywhere between those two values cuts the strip
+    # BETWEEN them free at the ends while leaving it standing in the middle.
+    # Offsetting the opening to +3.30 did exactly that and dropped a 48 mm3
+    # sliver, 1.8 mm wide, out of the lid - and a 1.8 mm rib would have passed
+    # a MIN_WALL check, because the rib was never the problem. It was attached
+    # to nothing.
+    #
+    # So the rule is a real overlap, not a wall: the opening reaches at least
+    # 0.5 past r 13.0 and the two become one D-shaped hole, which is what this
+    # part always intended. The STATOR still separates servo from loom: its
+    # well reaches 11.40, it is 4 mm thick, and it keeps a real 1.6 mm wall.
+    #
+    # A body count is what caught this, not a dimension. Keep asserting it.
+    merge = -op_lo - c_ir_mm
+    assert merge >= 0.5, (
+        'the servo opening ends at y %.2f and the loom slot starts at r %.2f, '
+        'so they overlap by %.2f - the opening must reach at least 0.5 PAST the '
+        'slot\'s inner radius' % (op_lo, c_ir_mm, merge))
     # MILLIMETRES. xy_arc feeds pt(), and pt() is the one that divides by ten.
     # Handing it centimetres built the slot at r 1.3 and it cut nothing at all -
     # the tell was the volume coming back byte-identical. fusion/PLAYBOOK.md.

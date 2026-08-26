@@ -111,6 +111,14 @@ SG90_HUB_D_MM = 6.30        # ASSUMED, and it is the only invented number in
                             # (6.0). Jonathan has SG90s in hand: CALIPER IT.
                             # Until then the horn^rotor line is not evidence.
 
+# Two bodies in rolling contact meet on a LINE, and a printed collar meets an
+# inner race on an annulus. Both are exact in the maths and neither is exact in
+# a faceted kernel, so a correct assembly reports a few hundredths of a cubic
+# millimetre at every such contact. 0.05 mm3 is a cube 0.37 mm on a side - far
+# under a layer height, and two orders below the 3.02 that turned out to be a
+# real guess. Anything above this floor is reported and judged.
+NOISE_FLOOR_MM3 = 0.05
+
 ROLLER_ENV = 'robotarm_608ZZ_rollers'
 MG995_ENV = 'robotarm_MG995_j1_envelope'
 SG90_ENV = 'robotarm_SG90_case_envelope'
@@ -504,14 +512,25 @@ def run(_context: str):
         inp = design.createInterferenceInput(col)
         inp.areCoincidentFacesIncluded = False
         res = design.analyzeInterference(inp)
-        total, pairs = 0.0, []
+        total, pairs, assumed, noise = 0.0, [], 0.0, 0.0
         for i in range(res.count):
             r = res.item(i)
             vol = r.interferenceBody.volume * 1000
+            names = (label(r.entityOne), label(r.entityTwo))
+            tag = '%s^%s %.2f mm3' % (names[0], names[1], vol)
+            if vol < NOISE_FLOOR_MM3:
+                noise += vol
+                continue
+            # The horn hub is the one INVENTED dimension in this file. It is
+            # not evidence either way, so it cannot pass the gate and it must
+            # not fail it either - it is reported on its own line.
+            if 'SG90_horn' in names:
+                assumed += vol
+                pairs.append('ASSUMED ' + tag)
+                continue
             total += vol
-            pairs.append('%s^%s %.2f mm3' % (label(r.entityOne),
-                                             label(r.entityTwo), vol))
-        return total, pairs
+            pairs.append(tag)
+        return total, pairs, assumed, noise
 
     want_journal = rot_fit_mm / 2.0          # radial half of the diametral fit
     want_lift = ring_lift_mm
@@ -540,7 +559,7 @@ def run(_context: str):
     rows = []
     for deg in YAW_DEG[lo:hi]:
         p = pose(deg)
-        total, pairs = interference(list(p.values()))
+        total, pairs, assumed, noise = interference(list(p.values()))
         d_rr = clearance(p['rotor'], p['rollers'])
         d_rb = clearance(p['ring'], p['rotor'])
         d_mr = clearance(p['mg995'], p['ring'])
@@ -555,7 +574,8 @@ def run(_context: str):
                      'mg995_ring': d_mr, 'rotor_stator': d_rs,
                      'mg995_stator': d_ms, 'mg995_lid': d_ml,
                      'horn_rotor': d_hr, 'sg90_rotor': d_sr,
-                     'interference': total, 'pairs': pairs})
+                     'interference': total, 'pairs': pairs,
+                     'assumed': assumed, 'noise': noise})
         for o in p.values():
             o.deleteMe()
 
@@ -620,12 +640,24 @@ def run(_context: str):
             ('horn_rotor', 'horn^rotor', 'in the cross pocket')):
         vals = [r[key] for r in have]
         print('%-16s %9.3f %9.3f   %s' % (name, min(vals), max(vals), want))
+    worst_assumed = max(r.get('assumed', 0.0) for r in have)
+    worst_noise = max(r.get('noise', 0.0) for r in have)
     print('')
     print('GATE J1 interference : worst %.3f mm3 - %s'
           % (worst_int, 'PASS' if worst_int < 1.0 else 'FAIL'))
     print('GATE J1 clearances   : %s' % ('PASS' if not fails else 'FAIL'))
     for f in fails:
         print('   %s' % f)
+    print('  contact noise below the %.2f floor: %.3f mm3 at worst - three'
+          % (NOISE_FLOOR_MM3, worst_noise))
+    print('  rolling contacts and three collar faces, all of them meant to touch.')
+    if worst_assumed > 0.0:
+        print('')
+        print('GATE J1 OVERALL      : BLOCKED, not failed.')
+        print('  The measured geometry passes. %.3f mm3 sits on ONE INVENTED'
+              % worst_assumed)
+        print('  DIMENSION - the SG90 horn hub - and a guess cannot clear a gate')
+        print('  any more than it can fail one. Caliper the hub and re-run.')
     print('')
     print('ASSUMED, AND SO NOT EVIDENCE:')
     print('  the SG90 horn hub at Ø%.2f is a guess - no parameter in this'

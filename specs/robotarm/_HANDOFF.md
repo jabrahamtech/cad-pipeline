@@ -12,6 +12,14 @@ the index to it.
 Run order for the whole-project gate: `models/robotarm/_check_ledger.py`
 with `mod.BATCH = 0,1,2,3` in sequence. Batch 3 prints the table.
 
+## READ THIS BEFORE TRUSTING ANY PRE-2026-08-26 Z NUMBER
+
+`tt_axle_z` moved 12.0 → 13.1 and `tt_race_z` 23.00 → **24.10** when the J1
+roller fault was fixed. Every z in the turret above the base plate rose 1.1 mm
+with it. The gauge plate is unaffected — it tests bores, hexes and seats, none
+of which reference the turret datum — but any z you remember from an earlier
+session is 1.1 mm low.
+
 ## THE IMMEDIATE THING: the gauge print
 
 `exports/robotarm/gauge_slim_v2.3mf` — 4 pieces, 171 × 150 mm, 77,281 mm³,
@@ -61,8 +69,18 @@ likely misconfiguration if they fall outside it. Read that before section 2.
    roller also fouls the servo pad; `base_lid`'s opening is centred while the
    servo well is offset +5.20; and `tt_boss_h` is declared 4.0 in two files
    and 4.4 in a third. Full write-up and the four options for the roller in
-   `_assembly.md`, "J1 HAS A GATE NOW, AND IT FAILS". **The base cannot be
-   assembled until the roller-vs-plate call is made — it is Jonathan's.**
+   `_assembly.md`, "J1 HAS A GATE NOW, AND IT FAILS".
+
+   **ALL FOUR FIXED the same day**, 857.01 → 0.000 mm³, both gate lines PASS.
+   `tt_axle_z` 12.0 → 13.1 with a MIN_WALL relief under each roller, the servo
+   pad shortened to 16.4 and its end rounded, `bl_open_y` 31.0 at +2.00, and
+   `tt_boss_h` 4.4 everywhere. `tt_race_z` 23.00 → 24.10 — **the turret is
+   1.1 mm taller than anything printed before today.** Write-up in
+   `_assembly.md`, "J1 GATE: FIXED, AND NOW BLOCKED ON ONE CALIPER READING".
+
+   **The one thing left is a caliper reading**: the SG90 horn's hub diameter,
+   modelled at Ø6.30 against `tt_screw_bore` Ø6.00. The gate reports BLOCKED
+   rather than PASS until that is measured. Five minutes with a servo in hand.
 5. **`_check_loads.py` still does not exist.** `_assembly.md` has promised it
    since it was written. `lib/arm_budget.py` is a parametric stand-in whose
    link masses are now measured but whose cluster offsets are assumed rigid.
