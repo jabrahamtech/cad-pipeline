@@ -53,10 +53,16 @@ likely misconfiguration if they fall outside it. Read that before section 2.
 3. **`forearm_cover` and `upper_arm_cover` do not exist.** Both links are
    box beams with an open cable duct and nothing closes them. They were
    always in `_assembly.md`'s part table and were never built.
-4. **There is no J1 gate.** The turntable has never been swept in Fusion the
-   way `_check_shoulder.py` sweeps J2. Every J1 clearance in this repo is
-   arithmetic. Given what the shaft-offset bug turned out to be, this is the
-   highest-value missing check in the project.
+4. ~~There is no J1 gate.~~ **DONE 2026-08-26 — and it FAILS.**
+   `models/robotarm/_check_j1.py` sweeps −90°…+90° in 15° steps. Four faults,
+   all of them in the FIXED half and all yaw-independent, which is why
+   turning the model never showed them: **the three 608ZZ foul the stator's
+   own 4 mm base plate by 218 mm³ each and cannot be fitted**; the az-90
+   roller also fouls the servo pad; `base_lid`'s opening is centred while the
+   servo well is offset +5.20; and `tt_boss_h` is declared 4.0 in two files
+   and 4.4 in a third. Full write-up and the four options for the roller in
+   `_assembly.md`, "J1 HAS A GATE NOW, AND IT FAILS". **The base cannot be
+   assembled until the roller-vs-plate call is made — it is Jonathan's.**
 5. **`_check_loads.py` still does not exist.** `_assembly.md` has promised it
    since it was written. `lib/arm_budget.py` is a parametric stand-in whose
    link masses are now measured but whose cluster offsets are assumed rigid.
@@ -70,6 +76,10 @@ likely misconfiguration if they fall outside it. Read that before section 2.
 - **The platter's servo column, 12.45 × 23.05, is UNVERIFIED** and an SG90 is
   12.60 wide — 0.15 of interference. `base_platter_measured.md` says measure
   it. Still not measured. **Caliper this before printing the turntable.**
+- **The SG90 horn's hub diameter is not in the project at all.** `_check_j1`
+  models it at Ø6.30 as the only invented number in that file, and it is what
+  decides whether the hub clears `tt_screw_bore` Ø6.00. Caliper it off a
+  servo in hand; until then that gate's `horn ^ rotor` line proves nothing.
 - **MG995 dimensions are DATASHEET**, never measured, and two vendor drawings
   disagree.
 - **The ~50 N stem cutting force is unvalidated.** Kitchen scissors on a
@@ -92,9 +102,21 @@ likely misconfiguration if they fall outside it. Read that before section 2.
 
 ## Housekeeping
 
-**139 uncommitted files.** I cannot `git commit` from the bridge — no
-identity configured. This wants doing on the Mac before anything else is
-built on top of it.
+~~139 uncommitted files.~~ **Committed 2026-08-26** in four batches on
+`fusion-only-pipeline`: the legacy freeze, the Fusion-only instructions and
+lint, the part scripts and specs, and the renders and exports. Identity is
+now set locally on the repo. Working tree clean.
+
+**`.venv` is broken** — it points at a `python3.11` that is no longer on the
+Mac, so `.venv/bin/pytest` dies with a bad-interpreter error. `.venv-lint/`
+was made with the system python3 to run the lint; it has pytest but not
+numpy, so `tests/test_mesh_paint.py` cannot collect there. Rebuild `.venv`
+properly from `requirements.txt` when convenient.
+
+**The lint has 19 pre-existing failures**, none of them new: mostly
+`test_no_magic_numbers_in_geometry` across the robotarm parts, plus a
+try/except in `_preview_j1.py` and three unused-parameter hits.
+`_check_j1.py` passes clean.
 
 Fusion documents: `Default Project / robotarm / ` holds
 `robotarm_gauge_plates`, `robotarm_assembly_preview`, `robotarm_turntable_j1`.

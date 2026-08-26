@@ -481,3 +481,85 @@ drum's far cap before the horn screw is driven.
 | Date | Piece versions | Result |
 |---|---|---|
 | 2026-08-25 | gripper_pinion, gripper_rack_jaw, gripper_shell — all pre-export | `_check_fit.py` PASS: zero interference at 0/10/20/30/40 mm opening; jaws meet at 0.000 and clear at 0.400; rack rides on 0.125 each side; mesh 0.063–0.068 |
+
+## J1 HAS A GATE NOW, AND IT FAILS — 2026-08-26
+
+`models/robotarm/_check_j1.py`. Five parts plus three 608ZZ, an MG995 and an
+SG90 as envelopes, swept −90° … +90° in 15° steps. Run `REBUILD = True`
+first, then `BATCH = 0,1,2,3`; results accumulate in `_j1_sweep.json` and
+batch 3 judges the whole sweep.
+
+**Every fault it found is yaw-independent.** All four sit in the fixed half
+and read identically at all thirteen poses. That is precisely why turning the
+model in the viewport never showed them and why the arithmetic in the part
+scripts could not: each script checked its own numbers against its own
+neighbours, and no file ever held the bearing and the base plate at once.
+
+### FAIL — the three 608ZZ foul the stator's own base plate. 218 mm³ each
+
+`tt_axle_z` 12.0 with a Ø22 bearing puts the roller's lowest point at
+**z 1.00**. `ts_plate_t` is 4.0 and the base plate spans **z 0…4**, solid
+from r 10 to r 50. The lightening windows are at az 30/150/270; the rollers
+are at az 90/210/330, over full plate. **The bearings cannot be fitted.**
+
+The parameter's own comment is the tell: *"Set so the bearing clears the
+platter top by 1.0 — any lower and a 608 fouls the lid."* It reasons about
+the platter (z 0) and the lid (z −3…0) and never mentions the 4 mm plate the
+axle is cantilevered off, which is the one thing actually in the way.
+
+Four ways out, none free, and this is Jonathan's call:
+
+| | change | cost |
+|---|---|---|
+| a | relief pocket under each roller | 3.0 deep in a 4.0 plate leaves 1.0 — under `MIN_WALL` 1.6. **Not viable as-is.** |
+| b | raise `tt_axle_z` to ≥ 15.6 | bearing bottom 4.6. Moves `tt_race_z` to 26.6 and **re-datums the rotor, the ring and `sb_stand_h`**. |
+| c | thin the plate to 1.6 under the roller band | keeps the datum; 1.6 of plate under a cantilevered axle carrying the whole arm. |
+| d | move the windows to 90/210/330 | rollers drop through their own windows — but the cheeks stand at r 31…35, inside the window's r 22…37, so the window needs a shaped footing first. |
+
+### FAIL — the az-90 roller also fouls the servo pad. +68 mm³
+
+`ts_hub_y` 19.0 centred at y +5.20 puts the pad's far edge at **y +24.20**;
+the az-90 roller spans r 23.5…30.5 on +Y. The stator asserts the *stub axle*
+clears the pad corner and never checks the *bearing*.
+
+### FAIL — `base_lid`'s opening is centred; the servo well is not. 132 mm³
+
+`bl_open_y` 26.0 is cut about the origin, y **−13.0…+13.0**. `ts_shaft_off`
+moved the well +5.20 on 2026-08-26, so the well now runs y **−6.20…+16.60**.
+The lid masks it by 3.60 and the SG90 case fouls the lid by 3.50.
+
+base_lid asserts `oy_mm >= STATOR_WELL_Y + 1.0` — the opening's **size**
+against the well's **size**, never its **position**. The third part caught by
+the same shaft-offset bug, and the first one a size-only assertion let past.
+
+### FAIL — `tt_boss_h` is one shared parameter with two values
+
+**4.0 mm** in `turntable_stator.py` and `turntable_ring.py`; **4.4 mm** in
+`shoulder_bracket.py`, where it must equal `ring_lift + ring_t` or the ring
+does not finish flush with the boss top. Nothing has ever errored because
+every script that builds this stack happens to build the bracket **last**.
+Rebuild the ring on its own after an edit and the rotor drops 0.4, the ring
+clamps it, and J1 stops turning. PLAYBOOK, *"Redefining a SHARED user
+parameter reshapes every part already built."*
+
+### PASS — and these were worth the trip
+
+| pair | measured | contract |
+|---|---|---|
+| rotor ^ roller | **0.000** at all 13 poses | it SITS on them — the crown maths is right |
+| ring ^ rotor journal | **0.175** | `tr_rot` 0.35 diametral |
+| MG995 ^ ring | **1.622** min | first geometric proof of `sb_stand_h`'s lower bound |
+| rotor ^ stator | **1.500** | > 0 |
+| MG995 ^ stator | 10.281 … 21.262 | > 0 |
+| SG90 ^ rotor | 6.200 | > 0 |
+
+**J1's full 180° is mechanically clear.** Nothing caps rotation and nothing
+comes close to touching as it turns. That claim was arithmetic in three files
+and is now measured. The ±90° limit stands on loom twist alone.
+
+### ASSUMED, and so not evidence
+
+The SG90 horn hub is modelled at **Ø6.30** because no parameter in this
+project carries it, and it is what decides whether the hub clears
+`tt_screw_bore` Ø6.00. The 3.02 mm³ `horn ^ rotor` reading is that guess, not
+a finding. **Jonathan has SG90s in hand — caliper the hub.**

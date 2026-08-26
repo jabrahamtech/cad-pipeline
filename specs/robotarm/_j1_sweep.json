@@ -1,0 +1,249 @@
+[
+ {
+  "yaw": -90.0,
+  "rotor_roller": 4.440892098500626e-15,
+  "ring_rotor": 0.1750000000000007,
+  "mg995_ring": 1.6221065538715862,
+  "rotor_stator": 1.4999999999999925,
+  "mg995_stator": 10.280967707798323,
+  "mg995_lid": 34.00000000000001,
+  "horn_rotor": 3.0411297243e-313,
+  "sg90_rotor": 6.2000000000000055,
+  "interference": 857.0072495149695,
+  "pairs": [
+   "base_lid^SG90_case_envelope 132.30 mm3",
+   "turntable_stator^608ZZ_rollers 285.84 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "shoulder_bracket^SG90_horn 3.02 mm3"
+  ]
+ },
+ {
+  "yaw": -75.0,
+  "rotor_roller": 4.440892098500626e-15,
+  "ring_rotor": 0.1750000000000007,
+  "mg995_ring": 1.6221065538715855,
+  "rotor_stator": 1.4999999999999925,
+  "mg995_stator": 17.01421745716498,
+  "mg995_lid": 34.00000000000001,
+  "horn_rotor": 3.0411297243e-313,
+  "sg90_rotor": 6.2000000000000055,
+  "interference": 857.0072495149695,
+  "pairs": [
+   "base_lid^SG90_case_envelope 132.30 mm3",
+   "turntable_stator^608ZZ_rollers 285.84 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "shoulder_bracket^SG90_horn 3.02 mm3"
+  ]
+ },
+ {
+  "yaw": -60.0,
+  "rotor_roller": 4.440892098500626e-15,
+  "ring_rotor": 0.1750000000000007,
+  "mg995_ring": 1.6221065538715855,
+  "rotor_stator": 1.4999999999999925,
+  "mg995_stator": 16.000000000000007,
+  "mg995_lid": 34.00000000000001,
+  "horn_rotor": 3.0411297243e-313,
+  "sg90_rotor": 6.2000000000000055,
+  "interference": 857.0072495149695,
+  "pairs": [
+   "base_lid^SG90_case_envelope 132.30 mm3",
+   "turntable_stator^608ZZ_rollers 285.84 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "shoulder_bracket^SG90_horn 3.02 mm3"
+  ]
+ },
+ {
+  "yaw": -45.0,
+  "rotor_roller": 4.440892098500626e-15,
+  "ring_rotor": 0.1750000000000007,
+  "mg995_ring": 1.6221065538715864,
+  "rotor_stator": 1.4999999999999925,
+  "mg995_stator": 16.000000000000007,
+  "mg995_lid": 34.00000000000001,
+  "horn_rotor": 3.0411297243e-313,
+  "sg90_rotor": 6.2000000000000055,
+  "interference": 857.0072495149695,
+  "pairs": [
+   "base_lid^SG90_case_envelope 132.30 mm3",
+   "turntable_stator^608ZZ_rollers 285.84 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "shoulder_bracket^SG90_horn 3.02 mm3"
+  ]
+ },
+ {
+  "yaw": -30.0,
+  "rotor_roller": 4.440892098500626e-15,
+  "ring_rotor": 0.1750000000000007,
+  "mg995_ring": 1.6221065538715855,
+  "rotor_stator": 1.4999999999999925,
+  "mg995_stator": 16.000000000000007,
+  "mg995_lid": 34.00000000000001,
+  "horn_rotor": 3.0411297243e-313,
+  "sg90_rotor": 6.2000000000000055,
+  "interference": 857.0072495149695,
+  "pairs": [
+   "base_lid^SG90_case_envelope 132.30 mm3",
+   "turntable_stator^608ZZ_rollers 285.84 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "shoulder_bracket^SG90_horn 3.02 mm3"
+  ]
+ },
+ {
+  "yaw": -15.0,
+  "rotor_roller": 4.440892098500626e-15,
+  "ring_rotor": 0.1750000000000007,
+  "mg995_ring": 1.622106553871586,
+  "rotor_stator": 1.4999999999999925,
+  "mg995_stator": 16.000000000000007,
+  "mg995_lid": 34.00000000000001,
+  "horn_rotor": 3.0411297243e-313,
+  "sg90_rotor": 6.2000000000000055,
+  "interference": 857.0072495149695,
+  "pairs": [
+   "base_lid^SG90_case_envelope 132.30 mm3",
+   "turntable_stator^608ZZ_rollers 285.84 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "shoulder_bracket^SG90_horn 3.02 mm3"
+  ]
+ },
+ {
+  "yaw": 0.0,
+  "rotor_roller": 4.440892098500626e-15,
+  "ring_rotor": 0.1750000000000007,
+  "mg995_ring": 1.6221065538715869,
+  "rotor_stator": 1.4999999999999925,
+  "mg995_stator": 16.000000000000007,
+  "mg995_lid": 34.00000000000001,
+  "horn_rotor": 3.0411297243e-313,
+  "sg90_rotor": 6.2000000000000055,
+  "interference": 857.0072495149695,
+  "pairs": [
+   "base_lid^SG90_case_envelope 132.30 mm3",
+   "turntable_stator^608ZZ_rollers 285.84 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "shoulder_bracket^SG90_horn 3.02 mm3"
+  ]
+ },
+ {
+  "yaw": 15.0,
+  "rotor_roller": 4.440892098500626e-15,
+  "ring_rotor": 0.1750000000000007,
+  "mg995_ring": 1.6221065538715855,
+  "rotor_stator": 1.4999999999999925,
+  "mg995_stator": 17.01421745716499,
+  "mg995_lid": 34.00000000000001,
+  "horn_rotor": 3.0411297243e-313,
+  "sg90_rotor": 6.2000000000000055,
+  "interference": 857.0072495149695,
+  "pairs": [
+   "base_lid^SG90_case_envelope 132.30 mm3",
+   "turntable_stator^608ZZ_rollers 285.84 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "shoulder_bracket^SG90_horn 3.02 mm3"
+  ]
+ },
+ {
+  "yaw": 30.0,
+  "rotor_roller": 4.440892098500626e-15,
+  "ring_rotor": 0.1750000000000007,
+  "mg995_ring": 1.6221065538715855,
+  "rotor_stator": 1.4999999999999925,
+  "mg995_stator": 21.262158341449332,
+  "mg995_lid": 34.00000000000001,
+  "horn_rotor": 3.0411297243e-313,
+  "sg90_rotor": 6.2000000000000055,
+  "interference": 857.0072495149695,
+  "pairs": [
+   "base_lid^SG90_case_envelope 132.30 mm3",
+   "turntable_stator^608ZZ_rollers 285.84 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "shoulder_bracket^SG90_horn 3.02 mm3"
+  ]
+ },
+ {
+  "yaw": 45.0,
+  "rotor_roller": 4.440892098500626e-15,
+  "ring_rotor": 0.1750000000000007,
+  "mg995_ring": 1.622106553871587,
+  "rotor_stator": 1.4999999999999925,
+  "mg995_stator": 17.014217457164982,
+  "mg995_lid": 34.00000000000001,
+  "horn_rotor": 3.0411297243e-313,
+  "sg90_rotor": 6.2000000000000055,
+  "interference": 857.0072495149695,
+  "pairs": [
+   "base_lid^SG90_case_envelope 132.30 mm3",
+   "turntable_stator^608ZZ_rollers 285.84 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "shoulder_bracket^SG90_horn 3.02 mm3"
+  ]
+ },
+ {
+  "yaw": 60.0,
+  "rotor_roller": 4.440892098500626e-15,
+  "ring_rotor": 0.1750000000000007,
+  "mg995_ring": 1.6221065538715846,
+  "rotor_stator": 1.4999999999999947,
+  "mg995_stator": 16.000000000000007,
+  "mg995_lid": 34.00000000000001,
+  "horn_rotor": 3.0411297243e-313,
+  "sg90_rotor": 6.2000000000000055,
+  "interference": 857.0072495149695,
+  "pairs": [
+   "base_lid^SG90_case_envelope 132.30 mm3",
+   "turntable_stator^608ZZ_rollers 285.84 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "shoulder_bracket^SG90_horn 3.02 mm3"
+  ]
+ },
+ {
+  "yaw": 75.0,
+  "rotor_roller": 4.440892098500626e-15,
+  "ring_rotor": 0.1750000000000007,
+  "mg995_ring": 1.622106553871586,
+  "rotor_stator": 1.4999999999999925,
+  "mg995_stator": 16.000000000000007,
+  "mg995_lid": 34.00000000000001,
+  "horn_rotor": 3.0411297243e-313,
+  "sg90_rotor": 6.2000000000000055,
+  "interference": 857.0072495149695,
+  "pairs": [
+   "base_lid^SG90_case_envelope 132.30 mm3",
+   "turntable_stator^608ZZ_rollers 285.84 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "shoulder_bracket^SG90_horn 3.02 mm3"
+  ]
+ },
+ {
+  "yaw": 90.0,
+  "rotor_roller": 4.440892098500626e-15,
+  "ring_rotor": 0.1750000000000007,
+  "mg995_ring": 1.6221065538715862,
+  "rotor_stator": 1.4999999999999925,
+  "mg995_stator": 10.280967707798307,
+  "mg995_lid": 34.00000000000001,
+  "horn_rotor": 3.0411297243e-313,
+  "sg90_rotor": 6.2000000000000055,
+  "interference": 857.0072495149695,
+  "pairs": [
+   "base_lid^SG90_case_envelope 132.30 mm3",
+   "turntable_stator^608ZZ_rollers 285.84 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "turntable_stator^608ZZ_rollers 217.93 mm3",
+   "shoulder_bracket^SG90_horn 3.02 mm3"
+  ]
+ }
+]

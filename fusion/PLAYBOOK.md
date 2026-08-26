@@ -414,3 +414,48 @@ it and a number on the right, it is wrong until proven otherwise.
 
 A comment saying "these are centimetres" has now failed to prevent this four
 times. The naming convention is the mechanism.
+
+## A fault that does not move under a sweep is in the FIXED half
+
+`_check_j1` found four things and every one of them read **identically at all
+thirteen yaw poses**. The instinct built up on `_check_shoulder` is the
+opposite — there, a constant interference across a sweep was the tell that the
+*placement* was wrong (the 49 mm³ that turned out to be a static horn, the
+9.7 mm³ that turned out to be a square boss). Both readings are available from
+the same number, and the way to tell them apart is cheap:
+
+- **constant, and between two parts that both rotate** → suspect the placement
+- **constant, and between two parts that are both fixed** → it is real, and
+  the sweep is not what found it; the sweep is what finally put the two bodies
+  in one document
+
+The J1 rollers foul the stator's own base plate at every angle because the
+base plate does not turn. No amount of sweeping was going to make that number
+move, and no amount of staring at the viewport was going to show it either —
+the bearing is a bought part that appears in no model file, so until a gate
+built it as an envelope there was nothing there to collide with.
+
+**A bought part that no script models is a hole in every check you have.**
+The MG995 at J2, the 608ZZ at J1, the SG90 horn — each one had to be built as
+a scratch envelope before any gate could see it. If a joint's load path runs
+through something the repo does not model, that joint has not been checked.
+
+## An assertion on SIZE is not an assertion on POSITION
+
+`base_lid` asserts its opening against the stator's servo well:
+
+```python
+assert ox_mm >= STATOR_WELL_X + 1.0 and oy_mm >= STATOR_WELL_Y + 1.0
+```
+
+Both sides are **extents**. The opening is 26.0 long, the well is 22.8 long,
+the assertion passes with 3.2 to spare — and the opening is cut about the
+origin while the well sits at y +5.20, so the lid masks 3.60 of it. The
+constants were even honestly labelled *"MEASURED off the built
+turntable_stator"*: they measured how big it is and not where it is.
+
+This is the shaft-offset bug's third victim, and the first one a size-only
+check let through. **Where a feature clears another part, assert on the
+INTERVAL — `lo <= other_lo and hi >= other_hi` — not on the length.** A
+length comparison cannot see an offset, and offsets are exactly what gets
+added late.
