@@ -38,6 +38,23 @@ MODELS_DIRS = [REPO_ROOT / "models", REPO_ROOT / "private" / "models"]
 
 FORBIDDEN_IMPORTS = ("build123d", "bd_warehouse", "legacy", "lib.cots")
 
+# Numbers allowed to appear bare in a part script: 0/1 identities, 2 and 3
+# for halves and axis counts, and the cm->mm / cm3->mm3 unit factors in the
+# diagnostics block. Anything else is a dimension and belongs in a user
+# parameter (knowledge/fusion_modeling_craft.md §3).
+ALLOWED_NUMBERS = {0, 1, 2, 3, 10, 100, 1000}
+
+# Scripts that still carry hand-derived coordinate literals. This list is a
+# ratchet: entries come OFF as scripts are reworked, and nothing new goes on
+# without a note saying why. Empty is the goal.
+MAGIC_NUMBER_DEBT = {
+    # v3 clamshell pair, authored before the craft rules: shell arcs are
+    # 5-degree faceted polygons and every sketch coordinate is a raw cm
+    # literal, so their user parameters do not drive the geometry.
+    "gripper_base.py",
+    "gripper_jaws.py",
+}
+
 
 def discover_scripts():
     for models_dir in MODELS_DIRS:
@@ -167,6 +184,117 @@ def test_part_script_contract(script):
     assert any(s.startswith(f"{project}_") for s in strings), (
         f"{path.name}: no '{project}_<part>' component name found — scripts "
         f"must target a named component for idempotent rebuild"
+    )
+
+
+def _is_driver(tree):
+    """Placement/reference drivers (imported meshes, measured transforms)
+    declare themselves in the docstring; their literals are measured data,
+    not authored dimensions."""
+    return "driver" in (ast.get_docstring(tree) or "").lower()
+
+
+def _param_names(tree):
+    """Names passed as the first arg of param('name', 'expr', ...)."""
+    names, exprs = {}, []
+    for n in ast.walk(tree):
+        if (isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+                and n.func.id == "param" and n.args
+                and isinstance(n.args[0], ast.Constant)):
+            names[n.args[0].value] = n.lineno
+            if len(n.args) > 1 and isinstance(n.args[1], ast.Constant):
+                exprs.append(str(n.args[1].value))
+    return names, exprs
+
+
+def test_no_magic_numbers_in_geometry(script):
+    """Sketch coordinates must derive from user parameters, not from
+    hand-computed centimetre literals — otherwise editing the parameter in
+    the Fusion UI moves nothing. knowledge/fusion_modeling_craft.md §3."""
+    path, _, tree = script
+    if path.name.startswith("_") or _is_mesh_driver(tree) or _is_driver(tree):
+        pytest.skip("driver/helper — literals may be measured data")
+    if path.name in MAGIC_NUMBER_DEBT:
+        pytest.xfail(f"{path.name}: known magic-number debt, awaiting rework")
+
+    runs = [n for n in tree.body
+            if isinstance(n, ast.FunctionDef) and n.name == "run"]
+    if not runs:
+        pytest.skip("no run() — other tests report that")
+
+    # counts, not dimensions: expected=<n> profile assertions
+    exempt = {
+        id(kw.value) for n in ast.walk(runs[0]) if isinstance(n, ast.Call)
+        for kw in n.keywords if kw.arg == "expected"
+    }
+    offenders = []
+    for n in ast.walk(runs[0]):
+        if isinstance(n, ast.Constant) and isinstance(n.value, (int, float)) \
+                and not isinstance(n.value, bool) \
+                and n.value not in ALLOWED_NUMBERS \
+                and id(n) not in exempt:
+            offenders.append((n.lineno, n.value))
+    assert not offenders, (
+        f"{path.name}: bare numeric literal(s) in geometry {offenders[:6]} — "
+        f"every dimension comes from a user parameter (val('...'))"
+    )
+
+
+def test_no_unused_parameters(script):
+    """A declared-but-unused parameter advertises an edit point that does
+    nothing. It must be read via val()/used in another parameter's
+    expression, or removed."""
+    path, source, tree = script
+    if path.name.startswith("_") or _is_mesh_driver(tree):
+        pytest.skip("driver/helper")
+    names, exprs = _param_names(tree)
+    if not names:
+        pytest.skip("script declares no parameters")
+
+    used = set()
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Constant) and isinstance(n.value, str):
+            for name in names:
+                if name in n.value:
+                    used.add(name)
+    for expr in exprs:
+        for name in names:
+            if name in expr:
+                used.add(name)
+    # a name only ever seen in its own param() declaration is unused
+    declared_only = {
+        name for name in names
+        if sum(1 for n in ast.walk(tree)
+               if isinstance(n, ast.Constant) and isinstance(n.value, str)
+               and name in n.value) <= 1
+    }
+    assert not declared_only, (
+        f"{path.name}: parameter(s) declared but never used "
+        f"{sorted(declared_only)} — wire them into the geometry or delete them"
+    )
+
+
+def test_entities_are_named(script):
+    """Bodies, sketches and features get real names, and the timeline is
+    grouped by build phase. knowledge/fusion_modeling_craft.md §1-2."""
+    path, source, tree = script
+    if path.name.startswith("_") or _is_mesh_driver(tree) or _is_driver(tree):
+        pytest.skip("driver/helper")
+    if path.name in MAGIC_NUMBER_DEBT:
+        pytest.xfail(f"{path.name}: pre-craft-rules script, awaiting rework")
+
+    name_assigns = [
+        n for n in ast.walk(tree)
+        if isinstance(n, ast.Assign)
+        and any(isinstance(t, ast.Attribute) and t.attr == "name" for t in n.targets)
+    ]
+    assert len(name_assigns) >= 3, (
+        f"{path.name}: only {len(name_assigns)} `.name =` assignment(s) — name "
+        f"the component, the body, and every sketch/feature the script creates"
+    )
+    assert "timelineGroups" in source, (
+        f"{path.name}: no timeline groups — group the timeline by build phase "
+        f"so the history is readable"
     )
 
 

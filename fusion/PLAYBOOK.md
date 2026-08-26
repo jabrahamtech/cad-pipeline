@@ -158,6 +158,12 @@ measurement in a check script, and assert the bounding box is non-degenerate
 before trusting a number. A hidden occurrence (`isLightBulbOn = False`) also
 reports an empty box - hide things only after measuring.
 
+**Gotcha: two joined volumes that TOUCH exactly are non-manifold.** A block
+whose face lands precisely on another block's face unions into a body that
+shares an edge, and any later fillet or chamfer fails with
+`ASM_BL_NON_MAN_EDVERT`. Make joined volumes overlap by a wall thickness -
+never butt them. (robotarm wrist_fork, 2026-08-25.)
+
 **Gotcha: a timeline group needs at least 2 features.** `timelineGroups.add`
 raises `Create Group Feature Error: At least 2 features needed for a group`
 on a one-feature phase. Guard with `if design.timeline.count - start > 1`.
@@ -227,3 +233,184 @@ never overwrite a version that may have been printed.
 - Plus the live tool schemas of the installed add-in (execute / read /
   update / electronics_read) and this repo's own session history
   (`models/robotarm/*.py`).
+
+## Rename the outgoing component BEFORE deleting its occurrences
+
+The delete-then-rename order works right up until the occurrence you delete
+is the component's **last** one. At that moment the component is orphaned:
+it drops straight out of `design.allComponents` while still reserving its
+name, so the rename loop that follows cannot reach it, and `addNewComponent`
+is handed `robotarm_x (1)`. Every later lookup by name misses.
+
+It hides well, because a part script run on its own always has a keeper
+occurrence left by the previous run. It only fires after a check script has
+placed extra occurrences and then cleaned them up — i.e. on the second run
+of an assembly gate, never on the first.
+
+```python
+STALE = COMPONENT + '_stale_'
+for i in range(design.allComponents.count):      # rename while still reachable
+    c = design.allComponents.item(i)
+    if c.name == COMPONENT or c.name.startswith(COMPONENT + ' ('):
+        c.name = STALE + str(i)
+for occ in list(root.occurrences):               # then drop the occurrences
+    if occ.component.name.startswith(STALE):
+        occ.deleteMe()
+```
+
+Keep the `assert comp.name == COMPONENT` after `addNewComponent` regardless.
+It is the only thing that turns this from a silent wrong answer into a stop.
+
+## analyzeInterference returns Occurrences OR BRepBodies
+
+`InterferenceResult.entityOne` is an `Occurrence` when each component has a
+single occurrence and a `BRepBody` when it has several — same call, same
+inputs, different type. Reaching straight for `.component` works until the
+day you place a part twice, then throws `AttributeError` in the middle of a
+sweep. Resolve the name defensively:
+
+```python
+comp = getattr(entity, 'component', None) or getattr(entity, 'parentComponent', None)
+```
+
+## A clearance disc is not enough where the neighbour continues through
+
+Subtracting a cylinder about a joint axis is the right way to guarantee
+swing clearance — it cannot go stale the way a drawn outline can. But it
+only models a neighbour that **swings**. A neighbour that swings AND
+continues past the joint (a link's far end, an upper arm at an elbow) needs
+the disc plus the half-space behind it. Cutting only the disc leaves the
+fork webbed shut, and it looks entirely plausible in the diagnostics: right
+volume, one body, every assertion green. Nothing but a render caught it.
+
+If a part has an opening that must stay open, assert it: measure the
+material on the axis between the prongs and require it to be zero.
+
+## Fusion keeps ONE Python session, so `sys.modules` is stale by default
+
+Every script run shares one interpreter. A part script that imports shared
+repo code — a solver in `lib/`, a catalogue, anything — gets whatever was
+imported the FIRST time that session, no matter how many times the file has
+been edited since.
+
+Today's symptom was an honest `ImportError: cannot import name ARM_CLEAR_MM`,
+because the constant was new. That is the lucky case. The normal case is that
+the constant already existed and merely changed value: the rebuild then runs
+against yesterday's numbers, every assertion passes, every diagnostic line
+prints a plausible figure, and the CAD and the solver have silently diverged.
+
+Purge before importing, in the part script itself so it cannot be forgotten:
+
+```python
+for _stale in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.')]:
+    del sys.modules[_stale]
+from lib.something import CONSTANT
+```
+
+`importlib.reload` is not enough on its own — it does not re-run the parent
+package or pick up a module that was imported under a different name.
+
+## val() is centimetres, createByString() is millimetres
+
+`userParameter.value` returns Fusion's INTERNAL unit — centimetres — while
+`ValueInput.createByString` parses a bare number in the DOCUMENT's unit,
+which for these models is millimetres. Compute something in Python from
+`val()` and hand it straight back as `'%.4f' % x` and the feature is built
+**ten times too small**, at a tenth of the intended offset.
+
+There is no error. The script runs, the body is valid, the diagnostics print
+numbers that look plausible because they are printed from the same wrong
+value. The pruner's drive tie came out 0.35 mm thick instead of 3.5, sitting
+on the pitch line rather than above the tooth roots, and ate 8.6 mm³ out of
+the pinion. It took a profile-by-profile comparison against a known-good
+part to find, because every obvious suspect — phase angle, tooth geometry,
+transform — was provably identical.
+
+Either keep every extent as a parameter EXPRESSION (`'gr_rack_back'`,
+`'pr_pin_y + pr_pin_d'`), which is preferable anyway because it stays
+parametric, or funnel Python-computed lengths through one helper:
+
+```python
+def mm(cm):
+    return '%.4f mm' % (cm * 10.0)
+```
+
+and assert no bare numeric format string survives in the file.
+
+## Redefining a SHARED user parameter reshapes every part already built
+
+`turntable_clip.py` is a small part, so it set the shared silhouette radius to
+something sensible for a small part:
+
+```python
+style('radius', '3.0 mm', "clip corner radius - smaller than the arm's 6.0")
+```
+
+`sty_radius` is shared. A `FilletFeature` created with
+`addConstantRadiusEdgeSet(col, ValueInput.createByString('sty_radius'), True)`
+stores a **live reference** to that parameter, not the number it had at the
+time. Changing it re-cut every fillet in every part already in the document:
+
+| part | before | after | delta |
+|---|---|---|---|
+| `pruner_shell` | 13937 | 15289 | **+1352** |
+| `forearm` | 22226 | 22435 | +209 |
+| `shoulder_bracket` | 24497 | 24717 | +220 |
+
+Nothing errored. Every body still reported `isValid True`. Every part's own
+script still printed its own correct volume, because each one prints
+immediately after building, *before* the next script moves the parameter. The
+damage is only visible if you re-read an earlier part after a later one runs —
+which is exactly what nothing was doing.
+
+Note the direction: the volumes went **UP**. A rogue CUT makes parts smaller
+and is easy to suspect; a rogue *parameter* made them bigger, which reads like
+a missing cut and sends you hunting in the wrong file.
+
+**Rule: a file may define a shared parameter only with the value every other
+file gives it.** If this part needs a different number, it is not that shared
+parameter — give it a local one under the file's own prefix:
+
+```python
+style('radius', '6.0 mm', '... SHARED, do not change it here ...')
+param('radius', '3.0 mm', "THIS part's corner radius, deliberately local")
+...
+f_inp.addConstantRadiusEdgeSet(col, V(PREFIX + 'radius'), True)
+```
+
+This applies to every shared block — `wr_`, `tt_`, `sty_` — and to any value a
+feature references by NAME rather than by number.
+
+The general defence is a ledger: rebuild every part from its committed script
+into one fresh document and compare all the volumes at the END, not as you go.
+`models/robotarm/_check_ledger.py` does that. It is the only gate that can see
+a part being changed by a file that does not mention it.
+
+## Units in ASSERTIONS - the bug that keeps coming back
+
+**Five times now.** `val()` and `tval()` return Fusion's internal
+CENTIMETRES. Every dimension a human writes in these scripts is MILLIMETRES.
+An assertion that compares one against the other does not fail loudly - it
+fails on geometry that is perfectly good, which sends you looking for a
+modelling fault that is not there.
+
+The four:
+
+- `upper_arm`: `overlap >= 1.5` fired on a good 3.8 mm overlap
+- `forearm`: `disc_r - journal_r >= 1.5` fired on a good 4.0 mm wall
+- `arm_budget.py`: g.cm compared against kg.cm - reported the arm at 873 % of
+  duty and then refused to find any link section that fitted
+- `turntable_ring`: `reach_in > boss_d / 2 + 1.6` treated the 1.6 mm wall as
+  16 mm and rejected a 47 mm scallop over a 34 mm bore
+- `base_lid`: passed CENTIMETRES to an `xy_arc` helper that feeds `pt()`, and
+  `pt()` is the one that divides by ten. The slot was built at r 1.3 mm and
+  cut nothing. **It threw no error** - the tell was the body volume coming
+  back byte-identical to the run before the feature was added. When a CUT
+  changes nothing, the cut is in the wrong place; assert on the volume drop.
+
+**The rule: convert once, at the top of the block, into `_mm` names. Never
+compare a `val()` against a bare literal.** If a comparison has no `_mm` in
+it and a number on the right, it is wrong until proven otherwise.
+
+A comment saying "these are centimetres" has now failed to prevent this four
+times. The naming convention is the mechanism.

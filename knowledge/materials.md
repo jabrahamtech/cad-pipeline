@@ -18,6 +18,65 @@ traps. All values HANDBOOK unless a calibration/ entry says otherwise.
 | Chamber needed | no (≤ 40 plate ok) | no | YES 50–65 °C | YES + dry | no |
 | Fit shift vs PLA cal. | baseline | ≈ same | holes ~0.1 tighter | tighter + swell | n/a |
 
+## Expected dimensional bias — the PRIOR
+
+Read when: about to gauge a printer, or a fit came out wrong and you need to
+know whether the machine or the design is at fault.
+
+These are **community-reported figures for Bambu X-series, PETG, 0.4 nozzle,
+0.2 mm layers** (sources at the end of this section). They are NOT a
+substitute for a gauge print — they are the number you should EXPECT the
+gauge to produce. Their value is the failure case: a reading far outside
+this band is not "my machine is different", it is a signal that something
+is misconfigured, and chasing it in CAD will bury the problem instead of
+fixing it.
+
+| Feature | Expected bias | Confidence |
+|---|---|---|
+| outside, 20–40 mm | −0.20 … +0.10 | LOW — see below |
+| outside, 100 mm | −0.40 … −0.20 | shrinkage dominates at length |
+| bore Ø20 | −0.15 … 0.00 | MEDIUM |
+| bore Ø8 | −0.25 … −0.05 | MEDIUM |
+| bore Ø4 | −0.40 … −0.15 | LOW, but the TREND is solid |
+
+**Why the outside band is so wide and both-signed.** Two effects compete.
+Extrusion width and elephant foot push outside features OVER nominal;
+material shrinkage pulls them UNDER. Which wins depends on the profile, and
+Bambu's PETG HF profiles have been reported running consistently under —
+20 mm measuring 19.9, 40 mm measuring 39.8, 100 mm measuring 99.6. Classic
+FDM guidance says the opposite. Do not assume a sign; measure it.
+
+**Holes always run small, and the error grows as they shrink.** This is the
+part of the prior worth trusting. One PLA test, with shrinkage compensation
+already applied, produced: Ø5 → 4.85, Ø2 → 1.70, Ø1 → 0.50. That is 3 %,
+15 % and 50 % of the nominal lost. The absolute numbers are material- and
+profile-specific; the SHAPE of that curve is not.
+
+**The consequence for this project.** JOINT_FIT_MM's tightest entries are
+0.05 (bearing_pocket) and 0.15 (press). A bias of 0.1–0.4 mm is two to
+eight times the whole clearance budget. Until a gauge has been run on the
+actual spool, no fit in this repo tagged HANDBOOK should be treated as
+better than a starting guess — and `_gauge_slim`'s truth row exists at three
+bore diameters, not one, precisely because of the curve above.
+
+**Two slicer traps worth knowing before you compensate anything.**
+
+- Bambu Studio's **X-Y hole compensation is a RADIUS**, not a diameter. A
+  0.10 mm diameter error needs 0.05 entered. Reported overcorrections are
+  usually this.
+- Hole compensation **ignores open holes** — slots, channels, anything not
+  a closed circle. `_gauge_slim`'s slide slot and every cable channel in the
+  arm are in that category and have to be correct in CAD.
+
+Prefer fixing bias in CAD (or in `lib/design_rules.py`) over fixing it in
+the slicer: a slicer setting travels with the print job, not with the model,
+and the next person to slice the file will not have it.
+
+Sources (community-reported, not vendor spec — recheck if it matters):
+Bambu Lab forum, ["Adjusting the hole diameter"](https://forum.bambulab.com/t/adjusting-the-hole-diameter/69468)
+and ["Improving dimensional accuracy on Bambu Lab H2D with PETG HF"](https://forum.bambulab.com/t/improving-dimensional-accuracy-on-bambu-lab-h2d-with-petg-hf/159931).
+Insert hole charts: [Accu](https://accu-components.com/us/p/488-threaded-insert-hole-size-charts-for-3d-printing-pla-petg-resin).
+
 ## The traps, per material
 
 - **PLA:** creeps under sustained load in days (loads_strength.md) and

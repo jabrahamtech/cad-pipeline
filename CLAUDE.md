@@ -91,6 +91,7 @@ matching feature — these encode the failures already paid for:
 | alignment across 3+ dims/pieces | knowledge/tolerance_stackup.md |
 | print > 3 h, mass/finish targets | knowledge/dfm_optimization.md |
 | a printed part broke or degraded | knowledge/failure_analysis.md |
+| **writing any Fusion script, always** | knowledge/fusion_modeling_craft.md |
 | every export, always | knowledge/design_review.md |
 
 ## Fusion MCP rules (calibrated on real sessions)
@@ -98,10 +99,16 @@ matching feature — these encode the failures already paid for:
   `fusion_mcp_execute` with `def run(_context: str)`. No exception catching —
   the traceback is the debugging signal.
 - **Parametric or it didn't happen.** Every dimension a script uses comes
-  from Fusion user parameters created by that script, so parts stay editable
-  in the Fusion UI and magic numbers stay out of feature dialogs.
+  from Fusion user parameters created by that script — including every
+  **sketch coordinate**, which derives from `val('<param>')` and never from
+  a hand-computed centimetre literal. A parameter that doesn't drive
+  geometry is a lie about the model; the lint fails on unused parameters
+  and on bare numbers in `run()`.
 - **One part per component, named like the repo** (`<project>_<part>`),
-  never bodies dumped in the root component.
+  never bodies dumped in the root component. **Name every entity** the
+  script creates — body, sketches, features — and group the timeline by
+  build phase. Assign the body's material so mass is real.
+  knowledge/fusion_modeling_craft.md is the standard; the lint enforces it.
 - **Idempotent scripts:** delete-and-rebuild their own component by name so
   re-runs don't stack duplicates.
 - **Recover with undo** (`fusion_mcp_update` undo), not corrective follow-up

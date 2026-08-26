@@ -31,16 +31,20 @@ Each step has a gate — do not start a step until the previous gate holds.
    *Gate: orientation stated; gauge decision made.*
 
 4. **Script phase-by-phase** — from `fusion/templates/part_scaffold.py`,
-   per `fusion/PLAYBOOK.md`: apiDocumentation lookups first; user
-   parameters with provenance comments; idempotent component
-   `<project>_<part>`; one `fusion_mcp_execute` per phase; after each
-   phase check printed bbox/volume/bodies/isValid against expectation.
-   Half-worked phase → undo, fix, re-run.
-   *Gate per phase: diagnostics match expectation before the next phase.*
+   per `fusion/PLAYBOOK.md` and `knowledge/fusion_modeling_craft.md`:
+   apiDocumentation lookups first; user parameters with provenance
+   comments driving EVERY coordinate; named body/sketches/features;
+   timeline grouped per phase; idempotent component `<project>_<part>`;
+   one `fusion_mcp_execute` per phase; after each phase check printed
+   bbox/volume/bodies/isValid against expectation. Half-worked phase →
+   undo, fix, re-run.
+   *Gate per phase: diagnostics match expectation; no default-named
+   entities left behind; no bare numbers added to the script.*
 
 5. **Finish pass** — fillets at loaded junctions (≥ MIN_FILLET_LOADED_MM),
    chamfers on mating edges + bottom edges (elephant foot), lead-ins,
-   cosmetic faces (dfm_optimization.md).
+   cosmetic faces (dfm_optimization.md). Its own timeline group; select
+   edges by geometry, never by blind index.
    *Gate: diagnostics still valid; volume delta explained.*
 
 6. **Design review** — run `knowledge/design_review.md` line by line;

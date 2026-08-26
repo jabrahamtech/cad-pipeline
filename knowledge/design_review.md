@@ -47,6 +47,17 @@ assemblies, run it per piece plus the assembly items. It exists so the
       clearance measured present
 - [ ] Shared dimensions are shared user parameters, not copied numbers
 
+## Model craft (knowledge/fusion_modeling_craft.md)
+- [ ] Component, body, every sketch and feature carry real names —
+      no `Body1` / `Sketch7` / `Extrude3` survivors
+- [ ] Timeline grouped by build phase
+- [ ] Every sketch coordinate derives from a user parameter; no parameter
+      declared that doesn't drive geometry
+- [ ] Profiles/edges selected deterministically (asserted count or
+      geometric filter), not blind indexing
+- [ ] Material assigned; mass reported
+- [ ] No faceted stand-ins left in place of real arcs
+
 ## Close-out
 - [ ] Diagnostics printed (bbox/volume/bodies/isValid) and sane vs spec
 - [ ] `pytest tests/ -q` passes; script committed with the spec
