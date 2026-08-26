@@ -26,6 +26,9 @@ BODY_NAME = 'gripper_pinion'
 PREFIX = 'gp_'
 SHARED = 'gr_'      # gear contract shared with gripper_rack_jaw.py
 MATERIAL_NAME = 'PET Plastic'
+# _style.md rule 5: two-tone by PART. The pinion is a joint, so it is dark.
+APPEARANCE_HINTS = [('plastic', 'black'), ('paint', 'black'), ('black',),
+                    ('plastic',)]
 PHASES = ['gear teeth', 'horn interface', 'finish']
 
 
@@ -89,15 +92,19 @@ def run(_context: str):
     # Fusion silently hand the new component "<name> (1)" - and every later
     # lookup by name misses it. Rename the outgoing component out of the way
     # first, then assert the new one actually got the name it asked for.
-    for occ in list(root.occurrences):
-        if occ.component.name == COMPONENT or occ.component.name.startswith(COMPONENT + ' ('):
-            occ.deleteMe()
-    # Components outlive their last occurrence until the document is saved, so
-    # clear the name across the WHOLE design, not just what is placed.
+    # RENAME FIRST, THEN DELETE. Deleting a component's LAST occurrence orphans
+    # it: it drops straight out of allComponents while still holding its name,
+    # so a rename afterwards cannot reach it. Components also outlive their last
+    # occurrence until the document is saved, so clear the name across the WHOLE
+    # design, not just what is placed.
+    STALE = COMPONENT + '_stale_'
     for i in range(design.allComponents.count):
         c = design.allComponents.item(i)
         if c.name == COMPONENT or c.name.startswith(COMPONENT + ' ('):
-            c.name = COMPONENT + '_stale_' + str(i)
+            c.name = STALE + str(i)
+    for occ in list(root.occurrences):
+        if occ.component.name.startswith(STALE):
+            occ.deleteMe()
     occ = root.occurrences.addNewComponent(adsk.core.Matrix3D.create())
     comp = occ.component
     comp.name = COMPONENT
@@ -246,9 +253,24 @@ def run(_context: str):
         if m:
             body.material = m
             break
+    used_appearance = 'none'
+    for want in APPEARANCE_HINTS:
+        for i in range(app.materialLibraries.count):
+            apps = app.materialLibraries.item(i).appearances
+            for j in range(apps.count):
+                a = apps.item(j)
+                if all(w.lower() in a.name.lower() for w in want):
+                    body.appearance = a
+                    used_appearance = a.name
+                    break
+            if used_appearance != 'none':
+                break
+        if used_appearance != 'none':
+            break
 
     bb = body.boundingBox
-    print('body: %r | material: %s' % (body.name, body.material.name))
+    print('body: %r | material: %s | appearance: %s' % (
+        body.name, body.material.name, used_appearance))
     print('teeth %d  module %.2f mm  face %.2f mm' % (teeth, sval('module') * 10, sval('face') * 10))
     print('r base/pitch/tip/root mm: %.3f %.3f %.3f %.3f' % (
         r_base * 10, r_pitch * 10, r_tip * 10, r_root * 10))

@@ -1,35 +1,49 @@
 """robotarm/gripper_shell - Fusion MCP generating script.
 
-Rebuilds `robotarm_gripper_shell` (idempotent). Spec:
-specs/robotarm/gripper_shell.md.
+Rebuilds `robotarm_gripper_shell` (idempotent). Specs:
+specs/robotarm/gripper_shell.md, styled per specs/robotarm/_style.md.
 
 Local frame IS the gripper assembly frame, with this half occupying z >= 0:
   x  jaw opening direction, 0 on the centre plane
   y  forward along the arm; the pinion axis and the SG90 shaft lie on it
   z  the clamshell split axis; z = 0 is the split face
 
-ONE printed design, TWO copies. The second goes on TURNED OVER - rotated
-180 deg about Y, (x, y, z) -> (-x, y, -z). Everything here is therefore
-symmetric in x, INCLUDING the servo mount, which the SG90 itself is not:
-its shaft sits 6.1 mm from one end of a 22.6 mm case, so its tabs land at
--11.0..-6.1 and +16.5..+21.4 about the shaft. The pocket is cut to the
-UNION of that layout and its mirror - four tab slots, of which the fitted
-servo uses two. The two spare slots are empty voids and cost nothing; two
-mirror-image shell designs would have cost a whole second part.
+ONE printed design, TWO copies, the second TURNED OVER - rotated 180 deg
+about Y, (x, y, z) -> (-x, y, -z). Everything is therefore symmetric in x,
+INCLUDING the servo mount, which the SG90 itself is not: its shaft sits
+6.1 mm from one end of a 22.6 mm case, so about the shaft its tabs land at
+-11.0..-6.1 and +16.5..+21.4. The case pocket is cut to the SYMMETRIC
+half-width 16.5 mm - the union of that layout and its mirror - and only the
+far tab is slotted, on both sides. The servo goes in either way round, the
+near tab lands in open pocket, and one design serves both halves.
 
-The servo takes NO screws. Its tabs are trapped in x and y by their slots
-and in z by the two halves closing, which is stiffer than two self-tappers
-into printed bosses and removes a fastener from the build.
+The servo takes NO screws: its far tab is trapped in x and y by the slot and
+in z by the two halves closing.
 
-Print orientation: SPLIT FACE (z = 0) ON THE BED, built in +z. The rack
-channel's floor bridges 8.25 mm, the pinion recess is a self-supporting
-arch narrowing as it rises, and the servo cavity's roof bridges 19.9 mm -
-all inside MAX_BRIDGE_MM. No support.
+FORM (specs/robotarm/_style.md). The outer shape is built FIRST, as one
+shaped solid - plan polygon, R4 on every vertical corner, a 4 mm 45 deg
+facet round the top - and the mechanism is cut into it afterwards. Doing it
+the other way round chamfers every pocket edge and yields a slab with round
+holes. The split face is the widest line of the form and both halves bevel
+away from it, so the assembled hand reads as one faceted volume with a crisp
+centre line. The tall front block steps down to a narrower, shorter tail
+that tapers into the wrist.
+
+THE FRONT IS AN OPEN MOUTH, and that is forced, not chosen. A front wall
+over the rack channel would have to live between y = 4.125 and 4.4 - 0.275
+mm - because the jaw arm sweeps everything forward of the channel across the
+shell's whole height. The rack is held down by the top plate, back by the
+channel's rear wall, and in mesh by the pinion; nothing pushes it forward
+but its own weight. The reference image's hand is an open mouth too.
+
+Print orientation: SPLIT FACE (z = 0) ON THE BED, built in +z. No support.
 
 The SHARED gr_* block is defined identically in gripper_pinion.py and
-gripper_rack_jaw.py. Servo dimensions are DATASHEET (lib/servo.py) and are
-the first suspects if the SG90 will not seat: gauge the tab plate first.
+gripper_rack_jaw.py; sty_* comes from _style.md. Servo dimensions are
+DATASHEET (lib/servo.py) - gauge the tab plate before printing this.
 """
+
+import math
 
 import adsk.core
 import adsk.fusion
@@ -38,13 +52,21 @@ COMPONENT = 'robotarm_gripper_shell'
 BODY_NAME = 'gripper_shell'
 PREFIX = 'gs_'
 SHARED = 'gr_'
-PH_BLOCK = 'shell block'
-PH_CHANNEL = 'rack channel and pinion'
+WRIST = 'wr_'       # J4 clevis contract - shared with wrist_hub / wrist_fork
+STYLE = 'sty_'
+PH_FORM = 'outer form'
+PH_MOUTH = 'mouth, rack channel and pinion'
 PH_SERVO = 'servo bay'
 PH_FASTEN = 'fasteners'
 PH_FINISH = 'finish'
-PHASES = [PH_BLOCK, PH_CHANNEL, PH_SERVO, PH_FASTEN, PH_FINISH]
+PH_EFFECTOR = 'effector bolts'
+PHASES = [PH_FORM, PH_MOUTH, PH_SERVO, PH_FASTEN, PH_FINISH, PH_EFFECTOR]
 MATERIAL_NAME = 'PET Plastic'
+# _style.md rule 5: two-tone by PART. The shell is a body, so it is light.
+# Matched as sets of substrings, best first, against every appearance in
+# every loaded library.
+APPEARANCE_HINTS = [('plastic', 'yellow'), ('paint', 'yellow'), ('yellow',),
+                    ('plastic', 'opaque'), ('plastic',)]
 
 
 def run(_context: str):
@@ -69,13 +91,22 @@ def run(_context: str):
     def shared(name, expr, comment='', units='mm'):
         _set(SHARED + name, expr, comment, units)
 
+    def style(name, expr, comment='', units='mm'):
+        _set(STYLE + name, expr, comment, units)
+
+    def wrist(name, expr, comment='', units='mm'):
+        _set(WRIST + name, expr, comment, units)
+
     def val(name):
         return ups.itemByName(PREFIX + name).value
 
     def sval(name):
         return ups.itemByName(SHARED + name).value
 
-    # --- SHARED contract: identical to gripper_pinion / gripper_rack_jaw ---
+    def tval(name):
+        return ups.itemByName(STYLE + name).value
+
+    # --- SHARED gear contract: identical to the other two gripper scripts --
     shared('module', '1.5 mm', 'gear module - design_rules GEAR_PREFERRED_MODULE_MM')
     shared('teeth', '12', 'pinion tooth count - gears_drives.md floor at 20 deg PA', '')
     shared('ded_f', '1.25', 'dedendum factor, standard full-depth tooth', '')
@@ -88,9 +119,13 @@ def run(_context: str):
     shared('rack_web', '3.5 mm', 'rack back thickness above the tooth root')
     shared('rack_back', SHARED + 'module * ' + SHARED + 'ded_f + ' + SHARED + 'rack_web',
            'derived rack back, above the pitch line - the channel floor rides on this')
-    shared('arm_thk', '6.0 mm', 'jaw arm and blade thickness in x - this shell slots for it')
-    shared('blade_half', '8.0 mm',
-           'how far a blade reaches PAST the gripper centre plane - so it also says\n            how far the OTHER half\'s arm intrudes into this one')
+    shared('blade_half', '8.0 mm', 'how far a blade reaches PAST the gripper centre plane')
+
+    # --- STYLE: specs/robotarm/_style.md, shared by every part -------------
+    style('facet', '4.0 mm', '45 deg chamfer on outer edges - _style.md rule 1')
+    style('radius', '6.0 mm',
+          'plan-view corner radius - _style.md rule 2. MUST exceed sty_facet: a\n           chamfer equal to the radius it runs into fails outright')
+    style('ef', '0.4 mm', 'elephant-foot chamfer, functional faces - design_rules')
 
     # --- fits ---------------------------------------------------------------
     param('wall', '1.6 mm', 'minimum wall - design_rules MIN_WALL_MM')
@@ -98,23 +133,18 @@ def run(_context: str):
     param('free', '0.4 mm', 'free fit, must never bind - design_rules')
     param('loc', '0.2 mm', 'locational fit - design_rules')
 
-    # --- shell envelope ------------------------------------------------------
-    param('x', '24.0 mm', 'half width; also the rack channel guide length / 2')
-    param('front_y', '6.0 mm', 'front face, forward of the rack channel')
-    param('mid_y', '-12.0 mm', 'boundary between the channel block and the servo bay')
+    # --- outer form ---------------------------------------------------------
+    param('x', '24.0 mm', 'half width at the hand; also half the channel guide length')
+    param('rear_x', '20.0 mm', 'half width where the tail meets the wrist - _style.md rule 3')
+    param('front_y', '8.0 mm', 'front face: a brow over the jaws')
+    param('mid_y', '-12.0 mm', 'where the hand steps down to the tail')
+    param('back_y', '-34.5 mm', 'back face, 2.6 mm behind the servo')
     param('chan_z', SHARED + 'offset + ' + SHARED + 'rack_back + ' + PREFIX + 'slide / 2',
           'derived channel floor: where the rack back rides')
     param('half_z', PREFIX + 'chan_z + ' + PREFIX + 'wall', 'derived shell half height')
     param('chan_y', SHARED + 'face / 2 + ' + PREFIX + 'slide / 2', 'derived channel half width')
     param('pin_r', SHARED + 'r_tip + ' + PREFIX + 'free', 'derived pinion recess radius')
     param('pin_y', SHARED + 'face / 2 + ' + PREFIX + 'free', 'derived pinion recess half width')
-
-    # --- the slot the jaw arm sweeps through --------------------------------
-    param('arm_lo', '-1.0 mm', 'arm slot starts just inboard of the closed jaw')
-    param('arm_hi', SHARED + 'stroke + ' + SHARED + 'arm_thk + ' + PREFIX + 'free',
-          'derived: the arm at FULL OPEN, plus a free fit')
-    param('other_arm_z', SHARED + 'blade_half + ' + PREFIX + 'free',
-          'derived: how far the OTHER half\'s arm reaches into this one')
 
     # --- SG90, DATASHEET (lib/servo.py) --------------------------------------
     param('case_l', '22.6 mm', 'SG90 case length - DATASHEET')
@@ -133,30 +163,49 @@ def run(_context: str):
           'derived: how far one tab stands out past the case')
     param('tab_lo', PREFIX + 'case_bot + ' + PREFIX + 'tab_plane', 'derived tab underside')
     param('lead_slot', '5.0 mm', 'notch in the back wall for the servo lead - cable_management')
+    param('srv_roof', PREFIX + 'case_w / 2 + ' + PREFIX + 'loc / 2 + ' + PREFIX + 'wall',
+          'derived: floor of the tail cavity, one wall above the servo')
+    param('pocket_inset', '2.5 mm',
+          'wall left around the tail cavity - _style.md: the styling may not cost\n           payload, so the facets and the thicker jaws are paid for here')
+
+    # --- J5 wrist ROLL: the gripper bolts FLAT to the rotator ---------------
+    # Four attempts at this interface, and 6 DOF is what settles it. With a
+    # ROLL joint between the pitch fork and the hand, the fork straddles a
+    # narrow roll housing instead of this 48 mm hand - so the gripper needs no
+    # ears, no trunnions and no barrel. It bolts to the rotator's face and
+    # turns with it.
+    #
+    # Each shell carries TWO of the four bolts, at +z; turned over it supplies
+    # the other two at -z.
+    param('eff_bolt_x', '11.0 mm',
+          'effector bolt pattern - asm_eff_bolt_x. Small, because the pattern\n           has to fit a rotator that SPINS: every mm of pattern is 2 mm of\n           swept diameter. The load is trivial - 1 N per bolt.')
+    param('eff_bolt_z', '9.0 mm', 'effector bolt pattern - asm_eff_bolt_z')
+    param('back_wall', '2.6 mm', 'back wall the effector bolts pass through')
 
     # --- fasteners -----------------------------------------------------------
     param('bolt_d', '3.4 mm', 'M3 clearance - design_rules FASTENER_MM')
     param('bolt_x', '19.0 mm', 'clamshell bolts, +/- this in x')
-    param('bolt_y1', '-8.0 mm', 'front clamshell bolt: clear of the channel, clear of the arm')
-    param('bolt_y2', '-24.0 mm', 'rear clamshell bolt, through the servo bay walls')
-    param('flange_t', '2.6 mm', 'wrist mounting flange thickness')
-    param('flange_bolt_x', '16.0 mm', 'effector bolt pattern - asm_eff_bolt_x')
-    param('flange_bolt_z', '12.0 mm', 'effector bolt pattern - asm_eff_bolt_z')
-
-    # --- lightening ----------------------------------------------------------
-    param('pocket_x', '20.0 mm', 'lightening pocket in the rear rail, +/- this')
-    param('max_bridge', '40.0 mm', 'longest clean unsupported bridge - design_rules MAX_BRIDGE_MM')
-    param('ef', '0.4 mm', 'elephant-foot chamfer - design_rules')
+    param('bolt_y1', '-8.0 mm', 'front clamshell bolt: clear of the channel and the arm')
+    param('bolt_y2', '-24.0 mm',
+          'rear clamshell bolt - ALSO the wrist interface: the bracket ears clamp '
+          'the tail on these two, so an effector swap needs no extra fastener')
+    param('pocket_x', '21.0 mm', 'lightening pocket in the rear rail, +/- this')
+    param('max_bridge', '40.0 mm', 'longest clean unsupported bridge - design_rules')
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
 
     # ---- idempotent rebuild ------------------------------------------------
-    for occ in list(root.occurrences):
-        if occ.component.name == COMPONENT or occ.component.name.startswith(COMPONENT + ' ('):
-            occ.deleteMe()
+    # RENAME FIRST, THEN DELETE. Deleting a component's LAST occurrence orphans
+    # the component: it drops straight out of allComponents while still holding
+    # its name, so a rename afterwards cannot reach it and the rebuild is handed
+    # 'robotarm_x (1)'. Every lookup by name then misses. See fusion/PLAYBOOK.md.
+    STALE = COMPONENT + '_stale_'
     for i in range(design.allComponents.count):
         c = design.allComponents.item(i)
         if c.name == COMPONENT or c.name.startswith(COMPONENT + ' ('):
-            c.name = COMPONENT + '_stale_' + str(i)
+            c.name = STALE + str(i)
+    for occ in list(root.occurrences):
+        if occ.component.name.startswith(STALE):
+            occ.deleteMe()
     occ = root.occurrences.addNewComponent(adsk.core.Matrix3D.create())
     comp = occ.component
     comp.name = COMPONENT
@@ -164,6 +213,7 @@ def run(_context: str):
         'component came back as %r - a stale component still holds the name' % comp.name)
     ext = comp.features.extrudeFeatures
     chf = comp.features.chamferFeatures
+    fil = comp.features.filletFeatures
 
     NEW = adsk.fusion.FeatureOperations.NewBodyFeatureOperation
     JOIN = adsk.fusion.FeatureOperations.JoinFeatureOperation
@@ -188,14 +238,9 @@ def run(_context: str):
         inp.startExtent = adsk.fusion.OffsetStartDefinition.create(V(start_expr))
         inp.setDistanceExtent(False, V(dist_expr))
         if op != NEW:
-            # WITHOUT THIS, A CUT EATS EVERY OTHER COMPONENT IN THE DOCUMENT.
-            # An extrude with no participantBodies takes part with everything
-            # it intersects, across component boundaries, and reports nothing.
-            # In a shared assembly document that means one part's pocket
-            # quietly hollows out its neighbours - measured here as a pinion
-            # losing 95 % of its volume and a rack going to zero while
-            # isValid stayed True. Scope every non-NEW operation to this
-            # component's own bodies.
+            # Without this a CUT eats every other component in the document -
+            # feature operations take part with everything they intersect,
+            # across component boundaries. See fusion/PLAYBOOK.md.
             inp.participantBodies = [comp.bRepBodies.item(i)
                                      for i in range(comp.bRepBodies.count)]
         f = ext.add(inp)
@@ -210,12 +255,17 @@ def run(_context: str):
     def mpt(sk, x_cm, y_cm, z_cm):
         return sk.modelToSketchSpace(P3(x_cm, y_cm, z_cm))
 
-    def box(name, x0, x1, y0, y1, z0_expr, dz_expr, op):
-        """Axis-aligned block: XY rectangle in cm, Z from parameter expressions."""
+    def polygon(name, pts, z0_expr, dz_expr, op):
+        """Closed plan polygon in the XY plane, extruded along Z."""
         sk = sketch(comp.xYConstructionPlane, 'sk_' + name)
-        sk.sketchCurves.sketchLines.addTwoPointRectangle(
-            mpt(sk, x0, y0, 0), mpt(sk, x1, y1, 0))
+        lines = sk.sketchCurves.sketchLines
+        for i in range(len(pts)):
+            a, b = pts[i], pts[(i + 1) % len(pts)]
+            lines.addByTwoPoints(mpt(sk, a[0], a[1], 0), mpt(sk, b[0], b[1], 0))
         return extrude(profiles(sk, expected=1), op, z0_expr, dz_expr, name)
+
+    def box(name, x0, x1, y0, y1, z0_expr, dz_expr, op):
+        return polygon(name, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], z0_expr, dz_expr, op)
 
     def bore(name, x_cm, y_cm, r_cm, z0_expr, dz_expr, op):
         sk = sketch(comp.xYConstructionPlane, 'sk_' + name)
@@ -223,16 +273,40 @@ def run(_context: str):
         return extrude(profiles(sk, expected=1), op, z0_expr, dz_expr, name)
 
     def bore_y(name, x_cm, z_cm, r_cm, y0_expr, dy_expr, op):
-        """A hole along Y - the wrist flange bolts pull along the arm's axis,
-        not across the clamshell split."""
+        """A hole along Y - the effector bolts pull along the arm's axis."""
         sk = sketch(comp.xZConstructionPlane, 'sk_' + name)
         sk.sketchCurves.sketchCircles.addByCenterRadius(mpt(sk, x_cm, 0, z_cm), r_cm)
         return extrude(profiles(sk, expected=1), op, y0_expr, dy_expr, name)
 
+    def edges_in_plane_z(z_pick):
+        tol = val('tol')
+        col = adsk.core.ObjectCollection.create()
+        for e in comp.bRepBodies.item(0).edges:
+            eb = e.boundingBox
+            if abs(eb.minPoint.z - z_pick) < tol and abs(eb.maxPoint.z - z_pick) < tol:
+                col.add(e)
+        return col
+
+    def vertical_edges():
+        """Every straight edge running along Z - on a plain prism these are
+        exactly the plan-view corners. Geometric selection, so it survives a
+        parameter change reordering the B-rep."""
+        tol = val('tol')
+        col = adsk.core.ObjectCollection.create()
+        for e in comp.bRepBodies.item(0).edges:
+            p1 = e.startVertex.geometry
+            p2 = e.endVertex.geometry
+            if (abs(p1.x - p2.x) < tol and abs(p1.y - p2.y) < tol
+                    and abs(p1.z - p2.z) > tol):
+                col.add(e)
+        return col
+
     # ---- values in cm -------------------------------------------------------
     x_half = val('x')
+    rear_x = val('rear_x')
     front_y = val('front_y')
     mid_y = val('mid_y')
+    back_y = val('back_y')
     chan_y = val('chan_y')
     pin_r = val('pin_r')
     pin_y = val('pin_y')
@@ -242,7 +316,7 @@ def run(_context: str):
     tab_over = val('tab_over')
     tab_lo = val('tab_lo')
     loc = val('loc')
-    srv_z = val('case_w') / 2 + loc / 2
+    facet = tval('facet')
     pocket_x = val('pocket_x')
     bolt_r = val('bolt_d') / 2
     bolt_x = val('bolt_x')
@@ -250,56 +324,66 @@ def run(_context: str):
     assert chan_y < pin_y, 'the pinion recess must be at least as wide as the rack channel'
     assert case_far + tab_over < x_half, 'the servo tabs stick out past the shell'
 
-    # ---- phase 1: shell block ----------------------------------------------
+    # ---- phase 1: outer form (BEFORE any internal cut) ----------------------
     t0 = design.timeline.count
-    box('channel_block', -x_half, x_half, mid_y, front_y, '0.0 mm', PREFIX + 'half_z', NEW)
-    box('servo_block', -x_half, x_half, case_bot, mid_y,
-        '0.0 mm', PREFIX + 'case_w / 2 + ' + PREFIX + 'loc / 2 + ' + PREFIX + 'wall', JOIN)
-    box('wrist_flange', -x_half, x_half, case_bot - val('flange_t'), case_bot,
-        '0.0 mm', PREFIX + 'half_z', JOIN)
-    group(t0, PH_BLOCK)
+    polygon('hand_block',
+            [(x_half, front_y), (x_half, mid_y), (-x_half, mid_y), (-x_half, front_y)],
+            '0.0 mm', PREFIX + 'half_z', NEW)
+    # Full height, not a stepped-down block. A short tail beside a tall hand
+    # leaves the tail's top edge running into the hand's side wall, and a
+    # chamfer there will not compute - ASM_BL_UNFIN_SHEET, every size. One
+    # continuous volume tapering in PLAN only takes a single clean facet, is
+    # closer to the reference arm's wrist, and comes out lighter once the
+    # cavity over the servo is cut (phase 3).
+    polygon('wrist_tail',
+            [(x_half, mid_y), (rear_x, back_y), (-rear_x, back_y), (-x_half, mid_y)],
+            '0.0 mm', PREFIX + 'half_z', JOIN)
 
-    # ---- phase 2: rack channel and pinion recess ---------------------------
-    # The channel runs the full width and is OPEN at both ends: the rack is
-    # longer than the shell and has to slide out past it at full open.
+    f_inp = fil.createInput()
+    f_inp.addConstantRadiusEdgeSet(vertical_edges(), V(STYLE + 'radius'), True)
+    fil.add(f_inp).name = 'corner_radii'
+
+    c_inp = chf.createInput2()
+    c_inp.chamferEdgeSets.addEqualDistanceChamferEdgeSet(
+        edges_in_plane_z(val('half_z')), V(STYLE + 'facet'), False)
+    chf.add(c_inp).name = 'top_facet'
+    group(t0, PH_FORM)
+
+    # ---- phase 2: the mouth, the rack channel and the pinion ----------------
     t1 = design.timeline.count
-    box('rack_channel', -x_half, x_half, -chan_y, chan_y, '0.0 mm', PREFIX + 'chan_z', CUT)
-    bore('pinion_recess', 0, 0, pin_r, '-' + PREFIX + 'pin_y',
-         PREFIX + 'pin_y * 2', CUT)
-    # The jaw arm sweeps through the front rail. Cutting only this half's
-    # sweep is what keeps the front rail intact over the other half's range
-    # once the pair is turned over and closed.
-    box('arm_sweep_slot', val('arm_lo'), val('arm_hi'), chan_y, front_y,
+    # Everything forward of the channel comes out below the top plate: that is
+    # the mouth the jaws reach through, and the reason there is no front wall.
+    box('mouth', -x_half - val('wall'), x_half + val('wall'),
+        chan_y, front_y + val('wall'), '0.0 mm', PREFIX + 'chan_z', CUT)
+    # The channel runs the FULL width and is open at both ends - the rack is
+    # longer than the shell and slides out past it at full open.
+    box('rack_channel', -x_half - val('wall'), x_half + val('wall'), -chan_y, chan_y,
         '0.0 mm', PREFIX + 'chan_z', CUT)
-    # ... and the OTHER half's arm crosses the split plane into this one. Its
-    # blade reaches gr_blade_half past centre, so it intrudes exactly that far
-    # and sweeps the mirrored x range. Missing this is a collision the fit
-    # check finds only once both shells are placed.
-    box('other_arm_slot', -val('arm_hi'), -val('arm_lo'), chan_y, front_y,
-        '0.0 mm', PREFIX + 'other_arm_z', CUT)
-    group(t1, PH_CHANNEL)
+    bore('pinion_recess', 0, 0, pin_r, '-' + PREFIX + 'pin_y', PREFIX + 'pin_y * 2', CUT)
+    group(t1, PH_MOUTH)
 
     # ---- phase 3: servo bay -------------------------------------------------
     t2 = design.timeline.count
-    # The case pocket is cut to the SYMMETRIC half-width case_far, not to the
-    # real case outline, so the servo drops in either way round and one shell
-    # design serves both halves. It leaves the case 10.4 mm of slack in x -
-    # the tabs, not the case, are the datum (lib/servo.py).
+    # Cut to the SYMMETRIC half-width case_far, not the real case outline, so
+    # the servo drops in either way round and one shell serves both halves.
+    # The tabs, not the case, are the datum (lib/servo.py).
     box('servo_case_pocket', -(case_far + loc / 2), case_far + loc / 2,
         case_bot, case_top + loc / 2, '0.0 mm',
         PREFIX + 'case_w / 2 + ' + PREFIX + 'loc / 2', CUT)
-    # Only the OUTER tab pair needs slotting. A symmetric pocket of half-width
-    # case_far already swallows whichever tab ends up on the near side (it
-    # reaches only shaft_end + tab_over = 11.0 mm), so cutting there would find
-    # no material at all. The far tab is what locates the servo in x and y;
-    # both halves closing locate it in z, and it takes no screws.
-    for lo, hi in ((case_far, case_far + tab_over),
-                   (-(case_far + tab_over), -case_far)):
+    # Only the OUTER tab pair needs slotting: a symmetric pocket of half-width
+    # case_far already swallows whichever tab lands on the near side.
+    for lo, hi in ((case_far, case_far + tab_over), (-(case_far + tab_over), -case_far)):
         box('tab_slot_%d' % int(round(lo * 100)), lo - loc / 2, hi + loc / 2,
             tab_lo - loc / 2, tab_lo + val('tab_thk') + loc / 2,
             '0.0 mm', PREFIX + 'case_w / 2 + ' + PREFIX + 'loc / 2', CUT)
+    # Hollow the tail above the servo: this is what pays for the full-height
+    # form, and it is a 1.6 mm capped cavity rather than an open one so the
+    # outer surface stays unbroken.
+    box('tail_cavity', -(rear_x - val('pocket_inset')), rear_x - val('pocket_inset'),
+        back_y + val('pocket_inset'), mid_y - val('wall'),
+        PREFIX + 'srv_roof', PREFIX + 'half_z - ' + PREFIX + 'srv_roof - ' + PREFIX + 'wall', CUT)
     box('lead_notch', -val('lead_slot') / 2, val('lead_slot') / 2,
-        case_bot - val('flange_t'), case_bot + val('wall'),
+        back_y - val('wall'), case_bot + val('wall'),
         '0.0 mm', PREFIX + 'case_w / 2 + ' + PREFIX + 'loc / 2', CUT)
     group(t2, PH_SERVO)
 
@@ -309,10 +393,7 @@ def run(_context: str):
         bore('clamp_bolt_front_%d' % sx, sx * bolt_x, val('bolt_y1'), bolt_r,
              '0.0 mm', PREFIX + 'half_z', CUT)
         bore('clamp_bolt_rear_%d' % sx, sx * bolt_x, val('bolt_y2'), bolt_r,
-             '0.0 mm', PREFIX + 'case_w / 2 + ' + PREFIX + 'loc / 2 + ' + PREFIX + 'wall', CUT)
-        bore_y('wrist_bolt_%d' % sx, sx * val('flange_bolt_x'), val('flange_bolt_z'),
-               bolt_r, PREFIX + 'case_bot - ' + PREFIX + 'flange_t',
-               PREFIX + 'flange_t', CUT)
+             '0.0 mm', PREFIX + 'half_z', CUT)
     box('rear_rail_pocket', -pocket_x, pocket_x,
         mid_y + val('wall'), -chan_y - val('wall'),
         '0.0 mm', PREFIX + 'chan_z - ' + PREFIX + 'wall', CUT)
@@ -320,18 +401,20 @@ def run(_context: str):
 
     # ---- phase 5: finish -----------------------------------------------------
     t4 = design.timeline.count
-    tol = val('tol')
-    for z_pick, dist, nm in ((0, 'ef', 'split_face_chamfer'),
-                             (val('half_z'), 'ef', 'top_face_chamfer')):
-        edges = adsk.core.ObjectCollection.create()
-        for e in comp.bRepBodies.item(0).edges:
-            eb = e.boundingBox
-            if abs(eb.minPoint.z - z_pick) < tol and abs(eb.maxPoint.z - z_pick) < tol:
-                edges.add(e)
-        inp = chf.createInput2()
-        inp.chamferEdgeSets.addEqualDistanceChamferEdgeSet(edges, V(PREFIX + dist), False)
-        chf.add(inp).name = nm
+    c_inp = chf.createInput2()
+    c_inp.chamferEdgeSets.addEqualDistanceChamferEdgeSet(
+        edges_in_plane_z(0), V(STYLE + 'ef'), False)
+    chf.add(c_inp).name = 'split_face_chamfer'
     group(t4, PH_FINISH)
+
+
+    # ---- phase 6: effector bolts --------------------------------------------
+    t5 = design.timeline.count
+    for sx in (-1, 1):
+        bore_y('eff_bolt_%d' % sx, sx * val('eff_bolt_x'), val('eff_bolt_z'),
+               val('bolt_d') / 2, PREFIX + 'back_y',
+               PREFIX + 'back_wall + ' + PREFIX + 'wall', CUT)
+    group(t5, PH_EFFECTOR)
 
     # ---- identity + diagnostics ---------------------------------------------
     assert comp.bRepBodies.count == 1, 'expected 1 body, got ' + str(comp.bRepBodies.count)
@@ -342,25 +425,46 @@ def run(_context: str):
         if m:
             body.material = m
             break
+    # Appearances.itemByName RAISES on a miss instead of returning null, unlike
+    # Materials.itemByName - so scan the libraries rather than probing names.
+    used_appearance = 'none'
+    for want in APPEARANCE_HINTS:
+        for i in range(app.materialLibraries.count):
+            apps = app.materialLibraries.item(i).appearances
+            for j in range(apps.count):
+                a = apps.item(j)
+                if all(w.lower() in a.name.lower() for w in want):
+                    body.appearance = a
+                    used_appearance = a.name
+                    break
+            if used_appearance != 'none':
+                break
+        if used_appearance != 'none':
+            break
 
-    bb = body.boundingBox
-    print('body: %r | material: %s' % (body.name, body.material.name))
-    print('half height %.2f mm | channel floor %.2f mm | channel half width %.3f mm' % (
-        val('half_z') * 10, val('chan_z') * 10, chan_y * 10))
-    print('pinion recess r %.2f mm (tip %.2f + free %.2f)' % (
-        pin_r * 10, sval('r_tip') * 10, val('free') * 10))
-    print('arm slots: own x %.1f..%.1f full height; other x %.1f..%.1f to z %.1f mm' % (
-        val('arm_lo') * 10, val('arm_hi') * 10,
-        -val('arm_hi') * 10, -val('arm_lo') * 10, val('other_arm_z') * 10))
-    print('servo bay y %.2f..%.2f mm | tabs at y %.2f mm | far-tab slot x %.1f..%.1f' % (
-        case_bot * 10, case_top * 10, tab_lo * 10, case_far * 10,
-        (case_far + tab_over) * 10))
-    bridges = (('channel floor', chan_y * 2), ('servo bay roof', mid_y - case_bot))
+    tail_wall = (rear_x + (x_half - rear_x) * (case_bot - back_y) / (mid_y - back_y)
+                 - (case_far + loc / 2))
+    bridges = (('channel floor', chan_y * 2), ('servo bay roof', mid_y - case_bot),
+               ('tail cavity cap', (rear_x - val('pocket_inset')) * 2))
     for nm, span in bridges:
         assert span <= val('max_bridge'), (
-            '%s bridges %.1f mm, over MAX_BRIDGE_MM %.1f - it would need support'
-            % (nm, span * 10, val('max_bridge') * 10))
-    print('bridges (all under %.0f mm, so no support): %s' % (
+            '%s bridges %.1f mm, over MAX_BRIDGE_MM %.1f' % (nm, span * 10, val('max_bridge') * 10))
+
+    bb = body.boundingBox
+    print('body: %r | material: %s | appearance: %s' % (
+        body.name, body.material.name, used_appearance))
+    print('form: %.0f long x %.1f tall, %.0f wide at the hand tapering to %.0f at the wrist' % (
+        (front_y - back_y) * 10, val('half_z') * 10, x_half * 2 * 10, rear_x * 2 * 10))
+    print('style: %.1f mm facet, R%.1f corners, %.1f mm elephant foot' % (
+        facet * 10, tval('radius') * 10, tval('ef') * 10))
+    print('channel floor %.2f mm | half width %.3f mm | pinion recess r %.2f mm' % (
+        val('chan_z') * 10, chan_y * 10, pin_r * 10))
+    print('servo bay y %.2f..%.2f | tabs at y %.2f | far-tab slot x %.1f..%.1f' % (
+        case_bot * 10, case_top * 10, tab_lo * 10, case_far * 10, (case_far + tab_over) * 10))
+    print('J5 roll interface: 4 x M3 at x +/-%.1f, z +/-%.1f through a %.1f mm wall' % (
+        val('eff_bolt_x') * 10, val('eff_bolt_z') * 10, val('back_wall') * 10))
+    print('tail wall beside the servo pocket: %.2f mm' % (tail_wall * 10))
+    print('bridges (all under %.0f mm, no support): %s' % (
         val('max_bridge') * 10,
         ', '.join('%s %.2f mm' % (nm, span * 10) for nm, span in bridges)))
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f' % (

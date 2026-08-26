@@ -26,17 +26,124 @@ envelope with room to spare; the split reasons are given per piece below.
 | J1 | base yaw | vertical | SG90 | ±90° (loom twist) | 3 × 608ZZ rollers |
 | J2 | shoulder pitch | horizontal | MG995 | −15° to +95° | servo shaft + printed idler stub |
 | J3 | elbow pitch | horizontal | MG90S | ±90° | servo shaft + printed idler stub |
-| J4 | wrist pitch | horizontal | MG90S | ±90° | servo shaft + printed idler stub |
-| J5 | gripper | rack & pinion | SG90 | 0–40 mm | rack channels |
+| J4 | wrist pitch | horizontal | MG90S | ±90° | fork straddling the roll housing |
+| J5 | **wrist roll** | along the arm | SG90 | ±90° (loom twist) | inline rotator |
+| J6 | **pruner** | rack & pinion | SG90 | 0–40 mm | rack channels |
 
-**Why pitch at the wrist and not roll.** Pitch is what lets the jaws face
-down at a table without the shoulder and elbow folding into a pose that
-costs reach. Roll would be cheaper to hold (gravity does no work about it)
-but the shoulder+elbow can already supply the pitch that roll cannot.
+**The effector is a cutter, not a hand.** The arm's job is pruning house
+plants held in a fixture on the bench. The gripper is built, gated and kept
+as a swappable head — same 4 × M3 pattern on `wrist_rotator` — but the
+pruner is what the arm is now dimensioned around. See `pruner.md`.
 
-**Why only 5 DOF when 6 servos exist.** A sixth joint is 9–13 g added at
-the far end of the chain, and the elbow is the binding constraint (below).
-The spare SG90 is worth more in the drawer than bolted to the tip.
+This changes the arm's economics completely. **A shear's cutting force is
+internal to the tool**, blade against counter-blade, so the ~50 N of the cut
+never reaches J4, J3 or J2. And a cutter carries no payload. Payload was
+40 % of the elbow moment; spending it on length instead is what took the
+forearm from 40 mm to 65 mm and the reach from 125 mm to ~150 mm.
+
+**Six DOF, and the roll is what makes the wrist buildable.** This was
+5 DOF for most of the design, on the argument that a sixth joint costs
+9–13 g at the end of the arm. That was true and beside the point: without a
+roll joint, J4's fork has to straddle the **48 mm hand**, and every version
+of that came out too wide, too heavy, or both — 94 mm and 95 g at worst.
+
+Put a roll joint between the pitch and the hand and the fork straddles a
+**24 mm roll housing** instead. The hand then bolts flat to the rotator's
+face and needs no ears, trunnions or barrel at all. The sixth servo pays for
+itself twice over in the part it deletes.
+
+It also uses the inventory exactly: 1 × MG995, 2 × MG90S, 3 × SG90, no spare.
+
+**What it costs is reach.** J3's MG90S is the bottleneck for the whole arm
+and always has been:
+
+| Forearm L2 | Reach | Payload | J3 |
+|---|---|---|---|
+| 40 mm | 125 mm | 25 g | 91 % |
+| 55 mm | 140 mm | 18 g | 90 % |
+| 65 mm | 150 mm | 12 g | 92 % |
+| **65 mm** | **~150 mm** | **none - it cuts** | **82 %** |
+
+**L2 = 65 mm is chosen and built**, on the last row. The first three are the
+gripper arm and are kept for the record.
+
+| item | printed g | r cm | g·cm |
+|---|---|---|---|
+| forearm | 20.6 | 2.84 | 58.5 |
+| wrist_hub × 2 (J4) | 5.2 | 6.50 | 34.0 |
+| wrist_roll | 12.2 | 6.73 | 82.2 |
+| wrist_rotator | 5.3 | 8.48 | 45.1 |
+| MG90S J4 servo | 13.4 | 5.90 | 79.1 |
+| SG90 J5 roll servo | 9.0 | 6.50 | 58.5 |
+| SG90 effector servo | 9.0 | 9.70 | 87.3 |
+| pruner head + blades | 38.3 | ~11.2 | 429.0 |
+| **total** | **113.0** | | **873.7** |
+
+0.874 kg·cm against 1.00 — **87 %**. The four printed wrist parts' centres of mass are
+**measured in assembly context**, not estimated. The head is a placeholder
+at the gripper's mass and is the one soft number. **Every gram in the head
+costs 1.12 % of elbow duty.**
+
+The superseded L2 = 40 figure follows, for the record. The 91 % is no longer an estimate: it is
+the moment of the built parts' own volumes, printed mass taken as 0.6 ×
+solid PETG, about the J3 axis with the arm horizontal.
+
+| item | printed g | r cm | g·cm |
+|---|---|---|---|
+| forearm | 13.8 | 2.0 | 27.6 |
+| wrist_hub × 2 (J4) | 5.2 | 4.0 | 20.9 |
+| wrist_roll | 12.2 | 4.2 | 50.7 |
+| wrist_rotator | 5.3 | 6.0 | 31.9 |
+| gripper, 5 parts | 31.7 | 8.5 | 269.5 |
+| MG90S J4 servo | 13.4 | 3.4 | 45.6 |
+| SG90 J5 roll servo | 9.0 | 4.0 | 36.0 |
+| SG90 gripper servo | 9.0 | 7.0 | 63.0 |
+| payload | 25.0 | 14.5 | 362.5 |
+| **total** | **124.7** | | **907.7** |
+
+0.908 kg·cm against a 1.00 kg·cm duty limit. Empty, it is 55 %. **The hand
+and its payload are 70 % of that moment** — the arm's own structure is not
+the problem and lightening it further buys almost nothing. The two levers
+that matter are a lighter gripper and a second MG995.
+
+The MG995 cannot move to the elbow: the shoulder always carries strictly
+more than the elbow (everything the elbow carries, plus the elbow servo and
+the upper arm, at a longer arm), so an MG90S there would not hold the arm up
+at all. **A second MG995 is the single BOM change that would unlock full
+reach at full payload** — it roughly quadruples J3's ceiling.
+
+**J3 AND J4 are the same joint, built twice.** Both are forks straddling a
+24 mm block, both journal a `wrist_hub` in a 20.35 bore, both retain it with
+nothing but geometry — the hex bottoms in its socket at one end of the
+travel and the flange cannot pass back through the bore at the other. Four
+hubs, one design, no fasteners in either pivot. Deciding this once and
+spending it twice is worth more than either joint being individually ideal.
+
+**The forearm forks at BOTH ends, and that is forced.** The first layout had
+it straddled at the elbow and forking at the wrist. It cannot be built.
+Material inside the straddle has to clear the roll housing's 25.4 mm sweep
+about J4, so it can only live at y < −25.4; material outboard has to clear
+the upper arm's own prongs, so it can only live at y > −25.8. The two
+regions do not touch, and nothing in the 0.4 mm running gap can bridge them.
+Forking at both ends makes the side walls continuous from pivot to pivot.
+
+**Both wrist servos hang outboard, staggered — J4 on +X, J3 on −X.** An
+MG90S is 24.0 mm along its own shaft axis, so a servo driving an X axis
+occupies 24 mm of X. Inboard is the straddle and it is spoken for. Hiding
+J4's servo in the link behind a printed 1:1 spur pair was priced properly
+and rejected on packaging, not on taste: its case would have had to start
+28.6 mm behind the pitch axis to clear the housing's swing, putting its far
+end **12.6 mm past the elbow axis**. There is no forearm short enough to
+reach 125 mm and long enough to hide that servo.
+
+The wrist is therefore **39.8 mm across the prongs, 47.8 mm across the
+printed part, and 67.8 mm once the J4 servo's own body is on it**, against a
+48 mm hand. That is the price of direct drive and it is
+visible. Staggering the two lobes to opposite sides is what stops it reading
+as a bracket bolted to one flank.
+
+**Wrist order is pitch then roll**, which is what keeps the roll servo's
+mass close to the pitch axis and lets the hand bolt to a flat face.
 
 ## Load budget — J3 sets the whole design
 
@@ -54,7 +161,11 @@ Worst pose: **arm laid straight out horizontal, payload gripped.**
 | J2 shoulder | MG995 | 9.4 | 4.70 | 1.98 kg·cm | 42 % | 2.37 |
 | J3 elbow | MG90S | 2.0 | 1.00 | **0.91 kg·cm** | **91 %** | **1.10** |
 | J4 wrist | MG90S | 2.0 | 1.00 | 0.32 kg·cm | 32 % | 3.13 |
-| J5 gripper | SG90 | 1.6 | 0.80 | grip force only | — | 0.5 kgf/jaw |
+| J6 pruner | SG90 | 1.6 | 1.12 * | cutting force only | — | ~50 N at the throat |
+
+\* the effector alone runs at 0.7 × stall, not 0.5. A cut is a brief event,
+not a static hold. The cost is thermal and it is real: **a stall timeout in
+the controller is a requirement of the design.** See `pruner.md`.
 
 J3 detail (elbow at origin, everything outboard, 25 g payload):
 
@@ -92,6 +203,86 @@ Three honest ways to raise it, in order of cost:
 
 The plastic is nowhere near a limit anywhere in this arm; the sections are
 sized by printability minimums and by servo torque, not by stress.
+
+## THE OUTPUT SHAFT IS NOT IN THE MIDDLE OF THE CASE
+
+Found 2026-08-26, on Jonathan noticing the stator's servo mounting "looked
+way off" in a render. It was.
+
+`lib/servo.py` carries `shaft_from_end` for every servo — "shaft axis to the
+NEAR end of the case". Until this date **exactly one file read it**
+(`servo_adapter.py`). Every other part positioned its servo by eye.
+
+Three of the four got it right anyway:
+
+| part | servo | case | shaft lands | |
+|---|---|---|---|---|
+| `shoulder_bracket` | MG995 | z −30.0 … 10.0 | z 0 | correct |
+| `forearm` J4 | MG90S | y −18.0 … 6.0 | y 0 | correct |
+| `forearm` J3 | MG90S | y −51.0 … −27.0 | y −45 | correct |
+| `wrist_roll` | SG90 | z −16.5 … 6.1 | z 0 | correct |
+| **`turntable_stator`** | **SG90** | **y ±11.3, centred** | **y +5.2** | **WRONG** |
+
+The stator centred the *case* on J1, which puts the *shaft* 5.2 mm off the
+axis. `shoulder_bracket`'s horn cross pocket is centred on the axis, so the
+horn would have driven the rotor as a **5.2 mm crank** — it orbits and binds
+rather than turning. This is why the base rotation "didn't make sense": as
+drawn, it didn't.
+
+Fixed by deriving `ts_shaft_off = case_l/2 − shaft_from_end` and offsetting
+the aperture, the pilots and the servo pad by it, with an assertion that the
+shaft lands within 1e-6 of the axis. The offset goes toward +Y, which also
+moves the case away from the loom window at az 270 rather than into it.
+
+**The lesson is not "check the servos".** It is that a datum in a shared
+library which only one file reads is not a contract, it is a decoration.
+
+## SUPERSEDED — the budget above is stale in two ways
+
+Both found 2026-08-26 while pricing Jonathan's request to match the reference
+arm's proportions. `lib/arm_budget.py` is now the authority; it reproduces the
+873.7 g·cm figure above to within 0.5 g·cm, which is what makes the rest of
+its output trustworthy.
+
+**1. Every printed mass here is 12 % high.** They were computed as 0.6 ×
+Fusion's "PET Plastic" density, which is 1.541 g/cm³. PETG *filament* is 1.27,
+and the real solid fraction measured off an actual slice is 0.65, not 0.60 —
+so 1.541 × 0.60 = 0.925 was used where the truth is 1.27 × 0.65 = 0.826.
+Servos and payload are bought and unaffected. **J3 as built is 80 %, not
+87 %.** Seven points of headroom were an arithmetic artefact.
+
+**2. Shortening the links is far cheaper than this table implies, because
+everything outboard of the elbow translates 1:1 with L2.** The head alone is
+49 % of the elbow moment and it moves the full distance. The links themselves
+are almost irrelevant — at L2 = 45 the section could go to **7.3 ×** its
+current mass before J3 reaches 90 %.
+
+| config | L1 | L2 | head | links | J3 | J2 | reach |
+|---|---|---|---|---|---|---|---|
+| as built, as shipped | 85 | 65 | 38.3 | 1.0× | 87 % | 44 % | 150 |
+| as built, corrected | 85 | 65 | 38.3 | 1.0× | **80 %** | 41 % | 150 |
+| reference proportions | 65 | 45 | 38.3 | 1.0× | 60 % | 30 % | 110 |
+| **+ grip-and-cut head** | **65** | **45** | **55** | **3.0×** | **79 %** | **42 %** | **110** |
+
+**The last row is the point.** Full reference proportions, triple-mass slab
+links, and a head heavy enough to grip *and* cut, all land slightly under
+where the arm sits today with thin links and a cutter that only cuts.
+Working reach falls from 300 mm to 260 mm at the jaw faces.
+
+**What this means for the design language.** `_style.md` rule 5 says "the
+styling may not cost payload" and rejected cosmetic mass on the grounds that
+the elbow was at 91 %. That constraint was real then and is not real now:
+at L2 = 45 there is roughly 7× the link mass available. Chunky faceted links
+are the *cheap* part of matching the reference. The expensive part is the
+head, and the head is expensive whatever it looks like.
+
+**Still unverified:** `UPPERARM_G_PER_MM` in `arm_budget.py` is an estimate —
+`upper_arm` has never been massed. And the whole model assumes the outboard
+cluster's offsets are rigid, which is true for the built parts and is an
+assumption for any new head. `_check_loads.py`, which this spec has promised
+since it was written, still does not exist; when it does it should replace
+the constants at the top of `arm_budget.py` with real Fusion volumes and
+centres of mass.
 
 ## Frame — the numbers every piece derives from
 
