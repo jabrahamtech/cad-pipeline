@@ -459,3 +459,42 @@ check let through. **Where a feature clears another part, assert on the
 INTERVAL — `lo <= other_lo and hi >= other_hi` — not on the length.** A
 length comparison cannot see an offset, and offsets are exactly what gets
 added late.
+
+## Units, flavour six: an ANGLE parameter comes back in RADIANS
+
+The rule as written says `val()` returns CENTIMETRES. That is true for a
+LENGTH. For a parameter whose unit is `deg`, Fusion's internal unit is
+**radians**, and the `* 10` that turns cm into mm does not just fail to help —
+it manufactures a plausible number.
+
+Found writing `_j1_roller_options.py`, reading `ts_window_deg` (50°):
+
+```python
+win_half = gv('ts_window_deg') / 20.0     # gv() already did the * 10
+```
+
+0.8727 rad → 8.727 → half-angle **0.4°** instead of 25.0°. Which printed the
+ligament between two windows as **14.57 mm** when it is **4.49 mm** — a
+three-fold error, in the safe direction, on the number the whole option was
+being judged by. No exception, no invalid body, nothing to notice.
+
+**The fix is the same one that worked for lengths: separate accessors whose
+names carry the unit.** `gv()` for millimetres, `gdeg()` for degrees, and each
+one asserts on `parameter.unit` so passing an angle to the length accessor
+stops rather than converts:
+
+```python
+def gv(name):                      # LENGTHS -> mm
+    p = ups.itemByName(name)
+    assert p.unit not in ('deg', 'rad'), '%s is an angle - use gdeg()' % name
+    return p.value * 10.0
+
+def gdeg(name):                    # ANGLES -> degrees
+    p = ups.itemByName(name)
+    assert p.unit in ('deg', 'rad'), '%s is not an angle' % name
+    return math.degrees(p.value)
+```
+
+Every `_check_*` and every part script that reads an angle parameter wants
+this. `math.radians(val('x'))` on a parameter that is already radians is the
+same bug wearing a hat.
