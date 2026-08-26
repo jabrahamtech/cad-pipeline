@@ -35,8 +35,14 @@ MEASURED = {
     # Caliper each twice, 90 deg apart, and average.
     'boss': {20.00: None, 8.00: None},          # D20, D8   - outside features
     'bore': {20.00: None, 8.00: None, 4.00: None},   # B20, B8, B4 - inside
-    'block_x': None,                             # nominal 20.00
-    'block_y': None,                             # nominal 10.00
+    # BLOCK IS 10 WIDE IN X AND 20 LONG IN Y, and these two keys were the
+    # other way round until 2026-08-26. _gauge_slim builds it at X 34.0..44.0
+    # (10.0) and Y -45.0..-25.0 (20.0); its BLOCK_XYZ tuple is ordered
+    # (Y, X, Z), which is what crossed the wires here. Paste by AXIS, not by
+    # tuple position: whatever your caliper reads across the short side is
+    # block_x.
+    'block_x': None,                             # nominal 10.00, the SHORT side
+    'block_y': None,                             # nominal 20.00, the LONG side
     'block_z': None,                             # nominal  5.00
     # The plate's OWN outline. Exactly 96.000 x 150.000 and nothing reaches
     # outside it, so these are two free long outside references - and they are
@@ -238,7 +244,7 @@ def report_truth():
             else:
                 print('  %-5s %6.2f   NOT MEASURED' % (label, nom))
 
-    for k, nom in (('block_x', 20.00), ('block_y', 10.00), ('block_z', 5.00)):
+    for k, nom in (('block_x', 10.00), ('block_y', 20.00), ('block_z', 5.00)):
         v = MEASURED[k]
         if v is None:
             print('  %-5s %6.2f   NOT MEASURED' % (k[-1].upper(), nom))
