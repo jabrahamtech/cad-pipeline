@@ -75,9 +75,33 @@ UPPERARM_G_PER_MM = 30890.567 * 0.0009246 / 65.0
 FOREARM_COM_FRAC = 2.84 / 6.5        # 0.437, from the _assembly.md table
 UPPERARM_COM_FRAC = 0.50             # ESTIMATE
 
-# --- as built, for validation ---------------------------------------------
+# --- two different arms, and they must never be paired -----------------------
+# BUILT is the arm ON DISK TODAY. VALIDATION is the arm _assembly.md's
+# published 873.7 g.cm was computed for, which is the one BEFORE the
+# 2026-08-26 link change. They sat adjacent as `BUILT` and `BUILT_J3_TARGET`
+# with nothing saying they belonged to different geometries, and pairing them
+# gives a 33 % error - 658 g.cm against a 873.7 target. Caught 2026-08-26 by
+# tests/test_arm_loads.py doing exactly that.
 BUILT = dict(l1=65.0, l2=45.0, head_g=38.3, section=1.0)
-BUILT_J3_TARGET = 873.7              # g.cm, _assembly.md
+VALIDATION = dict(l1=85.0, l2=65.0, head_g=38.3, section=1.0)
+VALIDATION_J3_TARGET = 873.7         # g.cm, _assembly.md, at VALIDATION's L2
+VALIDATION_TOL = 1.0
+
+
+def validate():
+    """Reproduce _assembly.md's published figure, or say so and stop.
+
+    This was a printed row that a human had to eyeball, which is not a
+    mechanism. It is an assertion now, and main() runs it before printing
+    anything - a table derived from a broken model is worse than no table.
+    """
+    got = j3_moment(VALIDATION['l2'], VALIDATION['head_g'],
+                    VALIDATION['section'], correct_density=False)[0]
+    assert abs(got - VALIDATION_J3_TARGET) <= VALIDATION_TOL, (
+        'arm_budget no longer reproduces _assembly.md: %.2f against %.1f g.cm '
+        'at L2 %.0f. Fix this before trusting any row below it.'
+        % (got, VALIDATION_J3_TARGET, VALIDATION['l2']))
+    return got
 
 
 def j3_moment(l2, head_g, section=1.0, correct_density=False):
@@ -150,6 +174,10 @@ def row(tag, l1, l2, head_g, section=1.0, correct=True):
 
 
 def main():
+    _v = validate()
+    print('')
+    print('  validated: L2 %.0f reproduces _assembly.md at %.2f g.cm '
+          '(target %.1f)' % (VALIDATION['l2'], _v, VALIDATION_J3_TARGET))
     hdr = ('  %-30s %4s %4s %6s %7s %7s %6s %7s %6s %6s'
            % ('scenario', 'L1', 'L2', 'head', 'section', 'J3 g.cm', 'J3', 'J2 g.cm', 'J2', 'reach'))
     print('')
