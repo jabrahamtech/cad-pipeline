@@ -100,6 +100,43 @@ The arm sits at 80 % today.
 3. Cut completes. Grip holds. The cutting stays in the head.
 4. Arm moves; head opens; the cutting is released where you want it.
 
+## THE PACKAGING PROBLEM — found 2026-08-27, blocks the CAD
+
+The solver sized the leaf in one dimension and it is right. Taking it to 3D
+exposes a topology conflict the spec never resolved, and it is why the CAD
+stops here pending a decision.
+
+**The two carriers are ONE design, TWO copies, the second turned over**
+(`(x,y,z) → (−x,y,−z)`). Any finger feature not symmetric about the cutting
+plane therefore lands on OPPOSITE sides of it on the two blades: blade A's
+finger sits above the plane, blade B's below. The two grip faces never share
+a z band — and after the cut, the severed piece (entirely on one side of the
+plane) is touched by ONE finger pressing against nothing. It falls, which is
+the exact failure the finger exists to prevent.
+
+Every escape runs into another wall:
+
+- **Grip faces symmetric about the plane** (band z ±3, which is exactly the
+  6.0 leaf width — probably what the solver imagined): identical parts work,
+  the fingers meet face-to-face on empty close and simply deflect each other
+  (2.2 mm, within budget). But the tip then hangs 3 mm BELOW the carrier's
+  inner face, which is the print bed. Unprintable flat; the no-support
+  orientation dies.
+- **Handed integrated fingers, both above the plane**: blade B's finger must
+  rise from below its inner face — same unprintable overhang, plus the
+  identical-pair contract breaks.
+- **Separate finger parts, flipped for the second copy**: flipping a flat
+  part mirrors it in z, so the tips land on opposite sides again. Both tips
+  above the plane requires a genuinely handed PAIR, and blade B's needs a
+  riser column climbing from its outer face (z −3.55) past the whole carrier
+  stack, dodging blade A's ±80° relative sweep AND the shell walls.
+- **Single flexure against the OTHER blade's nose as anvil**: attractive —
+  the other nose is rigid and exactly where the cutting is — but on empty
+  close the finger face crosses the closing EDGE's path. A flexure that
+  presses toward an arriving steel edge gets cut on every empty cycle unless
+  the landing zone is proven to stay behind the flat. Needs its own sweep
+  gate before it is credible.
+
 ## Not yet answered
 
 - **Release.** The head must open to drop the cutting, which it does — but
