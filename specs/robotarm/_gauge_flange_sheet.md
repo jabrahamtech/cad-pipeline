@@ -59,3 +59,43 @@ MG995 horn (hub Ø, arm width, blade) — `shoulder_hub` is BLOCKED on the
 horn-mounting decision (see `_assembly.md`, horn audit); this plate's
 combs and bores are micro-horn sized. The 0.01 mm caliper purchase stands
 for everything the drop tests bracket but cannot pin.
+
+---
+
+# gauge_horn v1 — the horn plate (companion, printed after the audit)
+
+Print `exports/robotarm/gauge_horn_v1.3mf` (~25 g, same profile, supports
+OFF). The flange plate that printed first (v1) predates the horn audit —
+its hub bores bracket the OLD guess. This plate is horn-only, and every
+station is the interface a part actually ships. Arm slots run off their
+pads, so drop UNTRIMMED horns straight in; engraved ticks mark the trim
+lines for the real assemblies.
+
+**CROSS** — the J1 rotor pocket (3.4 slots × 2.4 deep, Ø13 root relief,
+Ø6 screw bore). SG90 4-arm horn, blade down: must seat with nothing proud
+of the pad. Wedged arms → tt_horn_w tight; root binds → relief small;
+proud → pocket shallow (the rotor would ride the horn). Ticks at ±16.4 =
+where the long arms get trimmed for the turret.
+
+**MG995 STACK** — shoulder_hub's interface (hub Ø14.2 × 3.9 under
+6.65 × 2.6 blade slots). MG995 horn, hub down: hub disappears, blade
+lands ~0.1 under flush. This is what the 2.0 J2 standoff was sized
+around. Ticks at ±7.6.
+
+**WRIST** — wrist_rotator / gripper_pinion interface (hub Ø8.15 × 3.2
+under a 5.65 × 2.1 slot). Micro horn, blade down.
+
+**HUB 74–86 / HUB 132–144** — fine hub-Ø sweeps centred on the audit's
+8.0 and 13.8. Smallest accepting bore = hub Ø; write it on the
+`_horn_numbers.md` sheet.
+
+**BL 18–27** — blade comb 1.8/2.0/2.2/2.5/2.7, blade edge-in. Micro says
+2.0, MG995 says 2.5.
+
+**PIN 20 / 23** — pin pairs at 2.0 c-c (Ø1.2) and 2.3 c-c (Ø1.3). Drop an
+arm over a pair: both pins in adjacent holes = hole Ø and pitch confirmed
+together. The pins are 4 mm PETG — a gauge, not a handle.
+
+A replica that REFUSES your horn is the plate doing its job: note which
+station and which way it fails, and the parts re-derive before anything
+structural prints.
