@@ -99,6 +99,9 @@ def run(_context: str):
     if REPO not in sys.path:
         sys.path.insert(0, REPO)
     from lib import arm_loads as al
+    from lib import arm_budget as ab
+    ab_fa_frac = ab.FOREARM_COM_FRAC
+    ab_ua_frac = ab.UPPERARM_COM_FRAC
 
     def gv(name):
         p = ups.itemByName(name)
@@ -159,9 +162,30 @@ def run(_context: str):
 
     # ---- B: the joint moment budget -----------------------------------------
     l1_mm = gv('ua_l1')
-    l2_mm = gv('fa_l2') if ups.itemByName('fa_l2') else gv('ua_l1')
+    l2_mm = gv('fa_l2')
     head_g = (mass('pruner_shell') + 2 * mass('pruner_blade')
               + 2 * mass('pruner_rack') + mass('gripper_pinion'))
+
+    # ---- the link centres of mass, DERIVED from what was just harvested ----
+    # Both links are authored with one joint on the origin and the other at
+    # -length in Y, so the COM Fusion reports converts straight into a
+    # fraction with no pose composition and nothing to get backwards:
+    #   forearm   origin on J4, J3 at y = -fa_l2
+    #   upper_arm origin on J3, J2 at y = -ua_l1
+    # arm_budget carries these as constants - 0.437 from _assembly.md's table
+    # and 0.50 marked ESTIMATE. They are measured now, and the two are
+    # cross-checked below rather than left to drift apart silently.
+    fa_com_y = props['forearm']['com_mm'][1]
+    ua_com_y = props['upper_arm']['com_mm'][1]
+    fa_frac = (fa_com_y + l2_mm) / l2_mm
+    ua_frac = (ua_com_y + l1_mm) / l1_mm
+    assert 0.0 < fa_frac < 1.0, (
+        'the forearm COM at y %.2f is outside its own length - the frame '
+        'assumption above is wrong' % fa_com_y)
+    assert 0.0 < ua_frac < 1.0, (
+        'the upper arm COM at y %.2f is outside its own length' % ua_com_y)
+    fa_com_mm = fa_frac * l2_mm
+    ua_com_mm = ua_frac * l1_mm
 
     I = al.Item
     cluster = [
@@ -190,7 +214,6 @@ def run(_context: str):
 
     # J3: elbow at the origin. The whole cluster moves out by L2, plus the
     # forearm's own mass at its measured centre of mass along the link.
-    fa_com_mm = l2_mm * 0.437       # _assembly.md's fraction, see the caveat
     j3_items = shifted(cluster, l2_mm)
     j3_items.append(I('forearm link', mass('forearm'), fa_com_mm, 'MEASURED'))
     j3_items.append(I('payload', PAYLOAD_G, l2_mm + PAYLOAD_OFFSET_MM,
@@ -198,13 +221,21 @@ def run(_context: str):
 
     # J2: shoulder at the origin. Everything above moves out by L1 again.
     j2_items = shifted(j3_items, l1_mm)
-    j2_items.append(I('upper arm link', mass('upper_arm'), l1_mm * 0.5,
+    j2_items.append(I('upper arm link', mass('upper_arm'), ua_com_mm,
                       'MEASURED'))
     j2_items.append(I('MG90S J3', BOUGHT_G['MG90S J3'], l1_mm, 'BOUGHT'))
 
     print('=== B. joint moments, worst pose: arm straight out, payload gripped')
     print('L1 %.1f  L2 %.1f  head %.1f g (measured)  payload %.1f g'
           % (l1_mm, l2_mm, head_g, PAYLOAD_G))
+    print('link centres of mass, DERIVED from the harvested COM:')
+    for tag, frac, assumed, com_mm in (
+            ('forearm', fa_frac, ab_fa_frac, fa_com_mm),
+            ('upper_arm', ua_frac, ab_ua_frac, ua_com_mm)):
+        drift = frac - assumed
+        note = 'agrees' if abs(drift) < 0.005 else 'DRIFT %+.3f' % drift
+        print('  %-10s %.4f of its length (%.2f mm)  arm_budget says %.3f - %s'
+              % (tag, frac, com_mm, assumed, note))
     print('')
     print('%-7s %11s %11s %9s %9s  %s'
           % ('joint', 'required', 'duty', 'of duty', 'margin', ''))
@@ -317,7 +348,9 @@ def run(_context: str):
         print('   %s' % f)
     print('')
     print('STILL ASSUMED, not measured here:')
-    print('  cluster offsets are rigid; forearm COM at 0.437 of L2 and upper')
-    print('  arm at 0.50 are FRACTIONS from _assembly.md, not the COMs this')
-    print('  script just harvested. Wiring those in is the next improvement.')
+    print('  The CLUSTER offsets - where each wrist part sits relative to the')
+    print('  wrist end - are still the geometric model, not the harvested')
+    print('  COMs. Every part\'s COM is in its OWN frame and composing them')
+    print('  needs the wrist chain\'s transforms, which live in _check_wrist.')
+    print('  The two LINK fractions are no longer assumed: see section B.')
     print('  Static only - no slew, no stop, no impact.')

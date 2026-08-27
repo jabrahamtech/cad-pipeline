@@ -617,3 +617,72 @@ would have. The rule is now a real overlap, never a wall.
 
 The SG90 horn hub, modelled at Ø6.30, against `tt_screw_bore` Ø6.00. **Caliper
 a hub and re-run.** Nothing else in J1 is unmeasured geometry.
+
+
+## THE LOAD GATE EXISTS — 2026-08-26
+
+`models/robotarm/_check_loads.py`, split so the arithmetic is testable:
+`lib/arm_loads.py` is pure Python with 16 headless tests, the Fusion half only
+measures. It runs after `_check_ledger` batches 0–3 and **never mutates** — no
+part script executes, nothing is built, no parameter is touched.
+
+**Every mass in the table below is now read off the built body**, which is what
+this spec promised when it was written.
+
+| Joint | Required | Duty limit | of duty | margin |
+|---|---|---|---|---|
+| J2 shoulder | 1.66 kg·cm | 4.70 | **35 %** | 2.84 |
+| J3 elbow | **0.77 kg·cm** | 1.00 | **77 %** | 1.29 |
+| J4 wrist | 0.31 kg·cm | 1.00 | 31 % | 3.21 |
+
+Total printed mass **211.8 g** across 14 parts. The measured pruner head is
+**21.5 g** against the 38.3 g `arm_budget` assumes — there is more head budget
+than this spec thought. Section stress is nowhere near anything: bracket legs
+0 %, forearm beam 1 %, roller stub 4 %.
+
+### The two link COMs are measured, and one estimate was already right
+
+Both links put one joint on their origin and the other at −length in Y, so the
+COM Fusion reports converts straight into a fraction:
+
+| | was | measured | |
+|---|---|---|---|
+| `FOREARM_COM_FRAC` | 0.437, from the table above | **0.4686** | 7 % low |
+| `UPPERARM_COM_FRAC` | 0.50, marked ESTIMATE | **0.5000** | exactly right |
+
+Neither moves J3 much — the forearm link is 3 % of the elbow moment — but they
+are facts now rather than table entries.
+
+### J1 — what the rollers actually carry
+
+Rotating mass **219.4 g**, overturning moment **16,556 g·mm** (which is J2's
+own budget: the fork stands on the yaw axis, so what tips the turret is the
+same sum).
+
+| | |
+|---|---|
+| per roller, evenly shared | 73.1 g = 0.72 N |
+| **worst roller, arm over it** | **481.9 g = 4.73 N** |
+
+Three points on a circle do not share evenly when the arm reaches to one side.
+The worst roller sees **6.6×** the even share, and that ratio is the finding —
+a 608 is rated in kN so the bearing does not care, but it is the number the
+stub axle and the cheeks have to be designed to.
+
+### The 2026-08-26 relief, and a correction
+
+The base plate was relieved to MIN_WALL under each roller so the 608s would fit
+at all. That was called "a cantilevered axle on 1.6 mm of PETG" at the time and
+**that framing was wrong.** The relief stops at `cheek_ir` — asserted in
+`turntable_stator` — so the cheeks stand at r 31…35 on full 4.0 mm plate. The
+thinned band is a web between the servo pad and the cheeks, loaded in shear and
+bending, not a bearing pad. The stub axle root runs at 4 % of allowable.
+
+### What it deliberately does not do
+
+No FEA. No dynamics — every figure is a static hold in the worst pose, and a
+servo slewing the arm and stopping it sees more. And the **cluster offsets are
+still the geometric model**: masses are measured, but where each wrist part
+sits relative to the wrist end is not, because every COM is in its own frame
+and composing them needs `_check_wrist`'s transforms. That is the next
+improvement.

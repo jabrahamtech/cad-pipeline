@@ -140,14 +140,40 @@ def test_reproduces_assembly_md_figure():
                              'BOUGHT' if bought else 'MEASURED'))
     items.append(al.Item('head', ref['head_g'],
                          ref['l2'] + ab.HEAD_OFFSET_MM, 'MEASURED'))
+    # the HISTORICAL fraction, matching what validate() computes with. Using
+    # the live constant here would make this test fail the moment a COM is
+    # measured, which is the opposite of what it is for.
     items.append(al.Item('forearm', ab.FOREARM_G_PER_MM * ref['l2'],
-                         ref['l2'] * ab.FOREARM_COM_FRAC, 'MEASURED'))
+                         ref['l2'] * ab.VALIDATION_FOREARM_COM_FRAC,
+                         'MEASURED'))
     al_moment = al.joint_moment(items)
 
     assert al_moment == pytest.approx(ab_moment, rel=0.001), (
         'arm_loads and arm_budget disagree on the same cluster: %.2f vs '
         '%.2f g.cm - they are modelling different arms'
         % (al_moment, ab_moment))
+
+
+def test_measured_com_fracs_differ_from_the_historical_one():
+    """The upgrade itself, pinned. FOREARM_COM_FRAC is now measured and must
+    NOT silently fall back to the table figure the published moment used."""
+    from lib import arm_budget as ab
+    assert ab.FOREARM_COM_FRAC != ab.VALIDATION_FOREARM_COM_FRAC
+    assert ab.FOREARM_COM_FRAC == pytest.approx(0.4686, abs=0.001)
+    assert ab.UPPERARM_COM_FRAC == pytest.approx(0.5000, abs=0.001)
+
+
+def test_validate_ignores_the_live_com_frac():
+    """validate() proves the ARITHMETIC reproduces the published table. If it
+    read the live constants it would break every time a mass is measured -
+    punishing exactly the work it exists to protect."""
+    from lib import arm_budget as ab
+    before = ab.FOREARM_COM_FRAC
+    ab.FOREARM_COM_FRAC = 0.9          # nonsense, deliberately
+    try:
+        ab.validate()                  # must still pass
+    finally:
+        ab.FOREARM_COM_FRAC = before
 
 
 def test_built_and_validation_are_different_arms():

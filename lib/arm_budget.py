@@ -72,8 +72,22 @@ HEAD_OFFSET_MM = 47.0        # head centre of mass, past the wrist end
 # upper_arm 30891 mm3 over 65 mm. Neither is an estimate any more.
 FOREARM_G_PER_MM = 15719.949 * 0.0009246 / 45.0
 UPPERARM_G_PER_MM = 30890.567 * 0.0009246 / 65.0
-FOREARM_COM_FRAC = 2.84 / 6.5        # 0.437, from the _assembly.md table
-UPPERARM_COM_FRAC = 0.50             # ESTIMATE
+# MEASURED 2026-08-26 by models/robotarm/_check_loads.py, which reads the COM
+# Fusion reports off the built body. Both links put one joint on their origin
+# and the other at -length in Y, so the COM converts straight into a fraction.
+#   forearm   was 2.84/6.5 = 0.437 from _assembly.md's table -> 0.4686 measured
+#   upper_arm was 0.50 marked ESTIMATE                       -> 0.5000 measured
+# The estimate was exactly right; the table figure was 7 % low. Neither moves
+# J3 by much - the forearm link is 3 % of the elbow moment - but they are
+# facts now instead of table entries.
+FOREARM_COM_FRAC = 0.4686            # MEASURED
+UPPERARM_COM_FRAC = 0.5000           # MEASURED (confirmed the old ESTIMATE)
+# The fraction the PUBLISHED 873.7 g.cm was computed with. validate() must
+# keep using it: its job is to prove the ARITHMETIC still reproduces the
+# published table, and if it read the live constants instead it would break
+# every time a mass is measured - punishing exactly the work it exists to
+# protect.
+VALIDATION_FOREARM_COM_FRAC = 2.84 / 6.5      # 0.437, historical
 
 # --- two different arms, and they must never be paired -----------------------
 # BUILT is the arm ON DISK TODAY. VALIDATION is the arm _assembly.md's
@@ -96,7 +110,8 @@ def validate():
     anything - a table derived from a broken model is worse than no table.
     """
     got = j3_moment(VALIDATION['l2'], VALIDATION['head_g'],
-                    VALIDATION['section'], correct_density=False)[0]
+                    VALIDATION['section'], correct_density=False,
+                    fa_com_frac=VALIDATION_FOREARM_COM_FRAC)[0]
     assert abs(got - VALIDATION_J3_TARGET) <= VALIDATION_TOL, (
         'arm_budget no longer reproduces _assembly.md: %.2f against %.1f g.cm '
         'at L2 %.0f. Fix this before trusting any row below it.'
@@ -104,14 +119,19 @@ def validate():
     return got
 
 
-def j3_moment(l2, head_g, section=1.0, correct_density=False):
+def j3_moment(l2, head_g, section=1.0, correct_density=False,
+              fa_com_frac=None):
     """Elbow moment, arm horizontal. `section` scales the LINK mass only -
-    it is how a chunkier link gets priced."""
+    it is how a chunkier link gets priced.
+
+    fa_com_frac overrides the module constant. Only validate() passes it, so
+    that the historical check keeps using the historical number."""
     k = MASS_CORRECTION if correct_density else 1.0
+    frac = FOREARM_COM_FRAC if fa_com_frac is None else fa_com_frac
     total = 0.0
     rows = []
     fa = FOREARM_G_PER_MM * l2 * section * k
-    rows.append(('forearm', fa, FOREARM_COM_FRAC * l2 / 10.0))
+    rows.append(('forearm', fa, frac * l2 / 10.0))
     for name, m, off, bought in CLUSTER:
         mm = m if bought else m * k
         rows.append((name, mm, (l2 + off) / 10.0))
