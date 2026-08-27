@@ -781,3 +781,74 @@ Every drag figure above is qualitative — no breakaway torque has been measured
 for any option, **including the 608s**, which were found stiff with fresh
 grease on 2026-08-26. The 6810 dimensions are from memory and want checking
 against a supplier before anyone orders one.
+
+
+## SERVO LEADS: `lead_bundle_dia` WAS A DECORATION — 2026-08-27
+
+`lib/servo.py` has carried `lead_bundle_dia` for all three servos since it was
+written — SG90 3.4, MG90S 3.4, MG995 4.2 — and **nothing in the project read
+it.** Defined, documented, never used.
+
+This spec already wrote the lesson, about a different field: *"a datum in a
+shared library which only one file reads is not a contract, it is a
+decoration."* `shaft_from_end` was read by exactly one file and the yaw servo
+ended up 5.2 mm off the axis. `lead_bundle_dia` was read by none.
+`models/robotarm/_check_leads.py` now reads it, which is what makes it a
+contract.
+
+### Result
+
+| mount | host | servo | Ø lead | verdict |
+|---|---|---|---|---|
+| J1 yaw | `turntable_stator` | SG90 | 3.4 | **CLEAR** |
+| J2 shoulder | `shoulder_bracket` | MG995 | 4.2 | **CLEAR** |
+| J3 elbow | `forearm` | MG90S | 3.4 | TRAPPED — 39 % solid |
+| J4 wrist | `forearm` | MG90S | 3.4 | TRAPPED — 39 % solid |
+| J5 roll | `wrist_roll` | SG90 | 3.4 | TRAPPED — 81 % solid |
+| effector | `pruner_shell` | SG90 | 3.4 | **CLEAR** — the control |
+
+**Nothing in the turret print is affected.** J1 is clear: the SG90's lead
+leaves below the stator's 0–4 base plate, into the platter bay.
+
+### The control caught a wrong answer before it was believed
+
+`pruner_shell` is the one part that already solved this — a deliberate 5.0 mm
+`lead_notch` through its back wall, tagged `cable_management`. The first run of
+this check reported **the effector as TRAPPED**, which is impossible if the
+part is right.
+
+It was the check that was wrong. The notch runs `z: 0 → case_w/2 + loc/2`, so
+0…6.40 mm, and the probe was placed at z 8.0 — a per-part coordinate typed from
+a general rule ("one lead diameter up from the case bottom") that does not hold
+in a frame where the case's width lies along Z. It sat just above the notch, in
+solid wall.
+
+**Without a mount whose correct answer was already known, four false failures
+would have been reported as four broken parts.** Same shape as the 608 seat row
+on 2026-08-26, where a bearing held in free air was the only thing that stopped
+a greasy bearing being recorded as a fault in the printing.
+
+### What this does and does not establish
+
+The control proves the **method**. It does not prove the other five
+**placements** — each `across` coordinate is still typed per part from that
+part's printed diagnostics. **A TRAPPED row means "go open that pocket", not
+"that part is broken."**
+
+Two things remain unmeasured:
+
+- **Where the leads actually emerge.** `lib/servo.py`'s frame says the far end
+  face, away from the shaft. Nobody has put a servo in hand and looked.
+- **Whether an escaped lead can REACH the duct.** That is routing, and it needs
+  the loom modelled. Nothing models it.
+
+### Why the servos are outboard at all — already decided, worth restating
+
+`forearm`'s own docstring prices the alternative: *"Hiding it in the link behind
+a 1:1 gear pair was priced and rejected: the case would have had to start
+28.6 mm behind the pitch axis and end 12.6 mm PAST the elbow."* And an MG995 at
+40 × 20 × 36.5 cannot go inside a 26 mm link (`asm_link_w`) at any orientation.
+
+The joints are not left open either — the **drum-and-skirt contract** covers
+them at every angle. So the packaging question is settled; the gap was only ever
+the last 20 mm of each lead.
