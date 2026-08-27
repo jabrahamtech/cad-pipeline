@@ -158,7 +158,21 @@ so 1.28° of play reads as 1.41 mm of travel — comfortably measurable.
 You need three real 608ZZ bearings and the `roller_cap`.
 
 Three seats engraved `S10` `S11` `S12` — a 0.5 mm shoulder of that diameter
-under a Ø7.90 axle. Push a 608 onto each and **spin it with a finger**.
+under a Ø7.90 axle.
+
+**DO NOT ASK "DOES IT SPIN FREELY".** A new 608ZZ is packed with grease and
+does not free-spin in anyone's fingers — every seat fails that question and the
+row tells you nothing. Found the hard way on 2026-08-26, where all three read
+as dragging and the bearing turned out to drag identically in free air.
+
+Run it as a COMPARISON instead:
+
+1. Hold a 608 by its inner ring, off the plate, and flick the outer ring.
+   **That feel is your baseline.** Register it before touching the plate.
+2. Put the SAME bearing on each seat in turn and ask one question only:
+   *does this feel worse than the baseline?*
+3. If grease masks the difference — likely — degrease one bearing in IPA and
+   repeat. You have six, and a clean bearing makes a light rub obvious.
 
 | Seat | Spins freely? | |
 |---|---|---|

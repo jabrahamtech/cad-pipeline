@@ -64,15 +64,55 @@ slop 0.20 actually has, because that measurement was not taken. Tightening the
 shared hex fit on this evidence would be acting on one qualitative observation
 of one socket on one plate, with no repeat — so it is proposed, not applied.
 
+## Step 3 — the bearing seats: ONE finding, ONE question left open
+
+### FINDING: a 608 is loose on all three printed stubs
+
+Reported consistently across several attempts: **none of `S10` / `S11` / `S12`
+holds a 608 snugly — all have a little space.** The variable between those three
+seats is the COLLAR diameter, not the stub, so this is a single observation
+about `tt_axle_d`, repeated three times, and not three observations.
+
+`tt_axle_d` is 7.90 and its comment reads *"608 bore 8.0 - 0.1, a press"*.
+**That is wrong twice over.** 7.90 into an 8.00 bore is a tenth of CLEARANCE,
+not interference — a press needs the shaft over the bore, not under it. The
+number could only have worked if printed shafts came out fat enough to close
+the gap, and this plate's own outline says they do not: it is 0.2–0.4 % UNDER
+nominal.
+
+**Not a blocker, and the design already knew it.** The axle LOCATES; it does
+not retain. The M3 and the printed `roller_cap` clamp the inner race against
+`ts_collar_d`, and the rotor takes its radial position from the ring's journal
+on the Ø68 boss, not from these rollers. The live risk is long-term: a steel
+race fretting on a loose printed stub will wallow the hole.
+
+**Proposed, NOT applied: `tt_axle_d` 7.90 → 8.00.** At the measured 0.3 %
+shrinkage that lands ≈ 7.98 — roughly 0.02 of clearance in the 8.00 bore, a
+snug slip that locates without force. A genuine interference press is the wrong
+target on printed PETG: it risks splitting a 7.9 stub and makes assembly a
+fight. Grade: **one qualitative observation plus a measured shrinkage figure.**
+Wants a confirming print before it goes in as CALIBRATED.
+
+### OPEN: the collar diameter is still undecided
+
+The seats exist to find where the collar starts fouling the ZZ shield. That
+question was **not answered** and the row is inconclusive, not failed.
+
+The procedure asked "does it spin freely", and a new grease-packed 608 does not
+spin freely on anything. All three read as dragging — and so did the bearing
+held in free air with nothing touching it. The control is what saved this from
+being recorded as a failure of the plate.
+
+`_gauge_sheet.md` step 3 has been rewritten to run the row as a comparison
+against a free-air baseline, with degreasing as the fallback. **`ts_collar_d`
+11.0 remains arithmetic-grade.** It was pulled from 12.5 by reasoning and has
+still never been tested.
+
 ## Not measured
 
-Bearing seats `S10`/`S11`/`S12` (finger-spin, needs no caliper — this was the
-cheapest remaining test and is still open), the `FLAT` / `S11FLAT` stubs, both
-pilot rows, and every collapsed station in step 5.
-
-`S11` is worth doing on its own: it is the seat `turntable_stator` ships, and
-whether a 608 spins on an 11.0 collar is a yes/no question needing no
-instrument at all.
+The `FLAT` / `S11FLAT` stubs, both pilot rows, and every collapsed station in
+step 5. The seat row was attempted — see above — and yielded the stub finding
+but not the collar answer.
 
 ## Still owed, unrelated to the plate
 
