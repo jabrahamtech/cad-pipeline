@@ -864,3 +864,35 @@ a 1:1 gear pair was priced and rejected: the case would have had to start
 The joints are not left open either — the **drum-and-skirt contract** covers
 them at every angle. So the packaging question is settled; the gap was only ever
 the last 20 mm of each lead.
+
+
+## THE CONNECTOR GATE — 2026-08-27
+
+The J1 cable route could pass wires but not the plugs on their ends. The
+rotor's window is 3.4 mm wide radially (r 18.0 to `race_in` − wall) and a
+standard servo plug is ~8.7 × 4.5 in cross-section — so the four leads from
+servos mounted after turret assembly (J3, J4, J5, effector) could not be
+threaded down to the bay without pulling the three M3s and lifting the arm
+off its rollers.
+
+**Fix: a 9.8 × 5.8 keyhole** merging with the window's inner edge at its
+centre azimuth (az 270), r 12.2…18.0, cut in `shoulder_bracket`. Plugs pass
+one at a time through the gate; the ribbons then lie in the 3.4 mm arc as
+designed. Volume 57260 → 56760 mm³.
+
+**The gate deliberately enters the horn-arm corridor.** The astern arm of the
+horn cross pocket loses its side walls from r 12.2 to 16 — about 3.8 mm of
+ONE of four arms, each of which bears over its full 16 mm. At the SG90's
+0.8 kg·cm of duty the lost bearing area is nothing. Asserted in the script:
+gate width vs plug +1.0, gate span vs plug +1.0, floor at the screw bore
+wall, and width vs the fork plates so it cannot undercut a leg.
+
+Re-gated after the cut: `_check_j1` full sweep 0.000 mm³ / PASS (still
+BLOCKED only on the SG90 hub guess), `_check_shoulder` PASS at all eight
+pitches.
+
+**Assembly consequence, now written down:** thread each plug through the
+rotor's gate top-down as its servo is installed, then drop the ribbon into
+the arc window. The stator slot (7 mm wide) and the lid opening pass plugs
+without help. Still unverified: the service-loop slack between the stator
+and rotor windows over ±90° of yaw — the loom is not modelled.

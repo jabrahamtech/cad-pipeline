@@ -217,6 +217,26 @@ def run(_context: str):
     # disc is possible and would save maybe 10 g of FILAMENT - it saves no
     # payload at all, because J1's axis is vertical.
     param('cable_ir', '18.0 mm', 'the loom passes through the disc, astern of the arm')
+    # THE CONNECTOR GATE. The cable window is 3.4 mm wide radially (18.0 to
+    # race_in - wall) and a standard servo plug is ~8.7 x 4.5 in cross-section:
+    # the WIRES pass, the PLUGS on their ends do not. Found 2026-08-27. Without
+    # this, every lead from a servo mounted after turret assembly (J3, J4, J5,
+    # effector) cannot be threaded down to the bay - the arm has to come off
+    # its rollers to feed wires. One keyhole at the window's centre azimuth
+    # fixes it: plugs pass one at a time, ribbons then lie in the arc.
+    #
+    # THE GATE DELIBERATELY ENTERS THE HORN-ARM CORRIDOR. The astern arm of
+    # the horn cross loses its side walls from gate_ir out to horn_span/2 -
+    # about 3.8 mm of ONE of four arms, each bearing over its full 16 mm. At
+    # 0.8 kg.cm of duty the lost area is nothing. The cable_ir assertion
+    # protects the WINDOW from the horn; the gate floors at the screw bore.
+    param('gate_w', '9.8 mm',
+          'connector gate width, tangentially. A servo plug is ~8.7 wide;\n'
+          '           +1.1 so it never needs forcing. Stays inboard of the fork'
+          ' plates - asserted.')
+    param('gate_ir', '12.2 mm',
+          'how far in the gate bites. Floor: screw_bore/2 + wall. A plug is\n'
+          '           4.5 thick and the gate spans from here to cable_ir - asserted.')
     param('cable_deg', '50.0 deg',
           'arc the cable window sweeps, centred astern at 270 - one of the two\n'
           '           azimuths a fork leg does not occupy (a leg spans -48..+48 about\n'
@@ -449,6 +469,22 @@ def run(_context: str):
         'the cable window runs into the race band')
     assert val('cable_ir') >= tval('horn_span') / 2 + val('wall'), (
         'the cable window runs into the base servo horn')
+    # --- the connector gate's own contracts, in MILLIMETRES ---
+    _gate_w_mm = val('gate_w') * 10
+    _gate_ir_mm = val('gate_ir') * 10
+    _gate_span_mm = val('cable_ir') * 10 - _gate_ir_mm
+    PLUG_W_MM, PLUG_T_MM = 8.7, 4.5     # standard JR/Futaba servo plug
+    assert _gate_w_mm >= PLUG_W_MM + 1.0, (
+        'the gate is %.1f wide and a servo plug is %.1f - it would need '
+        'forcing' % (_gate_w_mm, PLUG_W_MM))
+    assert _gate_span_mm >= PLUG_T_MM + 1.0, (
+        'the gate spans %.1f radially and a plug is %.1f thick'
+        % (_gate_span_mm, PLUG_T_MM))
+    assert _gate_ir_mm >= (tval('screw_bore') / 2 + val('wall')) * 10, (
+        'the gate reaches r %.1f, into the horn screw bore wall' % _gate_ir_mm)
+    assert _gate_w_mm / 2 + val('wall') * 10 <= val('plate_in') * 10, (
+        'the gate is %.1f wide and the fork plates start at |x| %.1f - it '
+        'undercuts a leg' % (_gate_w_mm, val('plate_in') * 10))
 
     # How far the arm can pitch DOWN before it reaches the base it stands on.
     # Scanned, not solved. TWO obstacles now, not one: the disc out to r 48, and
@@ -557,6 +593,18 @@ def run(_context: str):
     xy_arc('cable_window', val('cable_ir'), race_in - val('wall'),
            -math.pi / 2, val('cable_deg') / 2, mm(race_z),
            mm(disc_t + tval('boss_h')), CUT)
+    # The connector gate: a keyhole merging with the window's inner edge at
+    # its centre azimuth. See the gate_w/gate_ir comments for why it exists
+    # and why entering the horn-arm corridor is deliberate.
+    _vol_before_gate = comp.bRepBodies.item(0).volume
+    xy_rect('connector_gate', -val('gate_w') / 2, val('gate_w') / 2,
+            -val('cable_ir'), -val('gate_ir'), mm(race_z),
+            mm(disc_t + tval('boss_h')), CUT)
+    _gate_drop = (_vol_before_gate - comp.bRepBodies.item(0).volume) * 1000
+    # PLAYBOOK: when a CUT changes nothing, the cut is in the wrong place.
+    assert _gate_drop > 100.0, (
+        'the connector gate removed %.1f mm3 - a 9.8 x 5.8 through-cut '
+        'should take ~500; wrong place or wrong scale' % _gate_drop)
     group(t3, PH_BASE)
 
     # ---- phase 5: finish -------------------------------------------------------------
@@ -635,6 +683,10 @@ def run(_context: str):
           '(arm %.0f long, %.1f half height, ring r %.1f)' % (
               down_deg, val('arm_l1') * 10, val('arm_half') * 10,
               tval('ring_or') * 10))
+    print('CONNECTOR GATE: %.1f x %.1f keyhole at az 270, r %.1f..%.1f - servo'
+          % (val('gate_w') * 10, val('cable_ir') * 10 - val('gate_ir') * 10,
+             val('gate_ir') * 10, val('cable_ir') * 10))
+    print('  plugs (~8.7 x 4.5) pass here; the 3.4 window takes only wires.')
     print('J1 TRAVEL: the full servo 180 deg - the ring hooks over the rim, so '
           'nothing caps rotation')
     print('filleted %d pad corners at r %.1f' % (
