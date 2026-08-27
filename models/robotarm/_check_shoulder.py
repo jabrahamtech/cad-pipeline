@@ -191,10 +191,13 @@ def run(_context: str):
     case_hi = gv('sb_shaft_end')
     case_lo = case_hi - case_l
     tab_plane = plate_out + lobe_t          # the datum. See the docstring.
-    case_top = tab_plane - lobe_t           # == plate_out, by construction
-    assert abs(case_top - plate_out) < 1e-9, (
-        'the case top does not land on the plate face - sb_lobe_t is not '
-        'tab_below_top + tab_thk any more')
+    p_off = ups.itemByName('sb_horn_standoff')
+    standoff = p_off.value if p_off is not None else 0.0
+    case_top = plate_out + standoff         # horn audit: stood off, not flush
+    assert abs((tab_plane - case_top)
+               - (gv('sb_tab_below_top') + gv('sb_tab_thk'))) < 1e-9, (
+        'the case top is not tab stack below the tab plane - sb_lobe_t is '
+        'not tab_below_top + tab_thk + horn_standoff any more')
     env_box('case', -case_w / 2, case_w / 2, case_lo, case_hi,
             case_top, case_top + case_h, NEWB)
     env_box('tabs', -case_w / 2, case_w / 2,
@@ -222,8 +225,12 @@ def run(_context: str):
     out = out_occ.component
     out.name = OUT
     env, out = out, env          # env_box/env_cyl close over `env`
-    horn_hub_d, horn_hub_h = 1.20, 0.50
-    blade_thk, arm_r = 0.25, 0.80
+    # horn audit 2026-08-27: hub Ø13.8 x 3.8 (was Ø12 x 5.0 - old numbers),
+    # arms modelled AT THE TRIM radius sh_horn_arm_r = 7.6 (was 8.0; the
+    # envelope is the trimmed horn, and the slot length is what drives the
+    # trim - an untrimmed tip here reads as phantom mm3 in the slot ends)
+    horn_hub_d, horn_hub_h = 1.38, 0.38
+    blade_thk, arm_r = 0.25, 0.76
     horn_seat = case_top - boss_h                  # the boss top
     env_cyl('output_boss', 0.0, 0.0, boss_d, horn_seat, case_top, NEWB)
     # The horn is fitted BLADE TOWARD THE SERVO, which is the assumption

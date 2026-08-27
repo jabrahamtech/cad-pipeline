@@ -375,7 +375,8 @@ def run(_context: str):
     # In the ROTOR's frame: the pad's outer face is the tab plane, the case
     # runs outboard from it in +X, and the case's own long axis is Z.
     mg_tab_x = mg_plate_out_mm + mg_lobe_t_mm
-    mg_case_x = mg_tab_x - mg_lobe_t_mm
+    _p_soff = design.userParameters.itemByName('sb_horn_standoff')
+    mg_case_x = mg_plate_out_mm + (_p_soff.value * 10 if _p_soff else 0.0)
     mg_hi = mg_shaft_end_mm
     mg_lo = mg_hi - mg_case_l_mm
     box(mg, 'case', mg_case_x, mg_case_x + MG_CASE_H_MM,

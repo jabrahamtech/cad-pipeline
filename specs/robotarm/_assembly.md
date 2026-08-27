@@ -1071,17 +1071,24 @@ What changed, all re-gated:
 - **Turret exported v3** — print v3, not v1/v2: v2's deck seats the horn
   1.4 low and its blade pocket is 0.6 too shallow and 1.4 too narrow.
 
-**BLOCKED, decision needed — shoulder_hub.** The MG995 horn hub at Ø13.8
-cannot pass behind the 16.0 af hex: a Ø13.95 relief leaves 0.93 mm of wall
-(min 1.6) and the part's own assert refuses it, correctly. Swapping
-numbers cannot fix a topology. Options: (a) bolt the Ø22 aluminium disc
-horn (MG995_DISC_HORN) flat to the back face — nothing swallowed, M4
-hardware, strongest joint; (b) stand the hub off the case top so only the
-blade enters — widens the shoulder ~2 mm and moves the sb straddle
-contract; (c) Jonathan's clone horn measures under Ø12.8 and the old
-geometry stands. shoulder_hub builds the OLD geometry with a MUST-NOT-
-PRINT block until this is decided. The MG995 was already bench-blocked;
-this adds one decision to the same gate.
+**RESOLVED same day — shoulder_hub / J2 horn mount.** The MG995 horn hub
+at Ø13.8 could not pass behind the 16.0 af hex (0.93 mm wall). Jonathan
+picked the Ø22 aluminium disc horn; that died on geometry within the
+hour — Ø22 cannot pass the Ø20.35 fork journal bore, which is the whole
+reason the arms were ever trimmed and threaded through. The build is the
+standoff variant: **sb_horn_standoff 2.0** (sb_lobe_t = tab stack + 2.0,
+so the MG995 case stands 2.0 off plate_out) pulls the horn stack outboard
+until the hub bore stops inside the hub part's body — it never enters the
+hex root. shoulder_hub recut: hub clearance Ø14.2 (free, arms drive),
+arm slots 6.65 wide, arms trimmed r 7.6 (collar wall 1.7), mouth 15.6,
+blade toward servo as before; the old blanket radial assert replaced by
+the two that matter (bore stops inside the body; collar wall around the
+bore). _check_shoulder's horn envelope updated to the audited stack and
+the TRIM radius — its untrimmed r 8.0 arms read 10 mm³ of phantom in the
+slot ends before that. J2 PASS all eight pitches, J1 full sweep PASS
+(the bracket is J1's rotor), leads PASS 6/6 (J2 probe follows the pad
+out). Still DATASHEET/model-grade: caliper the real horn before the
+shoulder prints — the standing MG995 bench item covers it.
 
 **gauge_flange v2** carries the promotion path: hub bores 7.2/8.0/8.8, arm
 comb 4.5–6.0, blade check in the tab comb, plus the flange stations and

@@ -21,7 +21,7 @@ starts. So:
   2.5 - 7.6 mm   12.15 bore   the horn hub, a 0.15 press
 
 The mouth is 16.4 because of the ARMS, not the boss. The horn is trimmed
-to r 8.0 and has to travel down this hole to reach its slot; sized on the
+to r 7.6 and has to travel down this hole to reach its slot; sized on the
 13.0 boss alone the arms would not pass and the servo could not be fitted.
 
 The horn goes in BLADE TOWARD THE SERVO. Flipped the other way its blade
@@ -127,30 +127,21 @@ def run(_context: str):
     param('lead_in', '0.6 mm', 'chamfer on the hex nose - joints_tolerances, every mating edge')
 
     # --- MG90S horn, DATASHEET (lib/servo.py) -------------------------------
-    param('horn_hub_d', '12.15 mm',
-          'BLOCKED - THE 2026-08-27 HORN AUDIT SAYS THIS IS WRONG. The MG995\n           horn hub measures ~13.8 (Futaba 25T family model), and a 13.95\n           relief leaves 0.93 mm of wall to the 16.0 af hex flats - the\n           asserts below refuse it, correctly. The real horn CANNOT pass\n           behind this hex; swapping the number cannot fix a topology.\n           Standing options, decision with Jonathan: (a) bolt the Ø22\n           aluminium disc horn (MG995_DISC_HORN) flat to the back face -\n           no swallowing at all; (b) stand the hub off the case top so\n           only the blade enters; (c) his clone horn measures under 12.8\n           and this stays. Until then this part builds the OLD geometry\n           and MUST NOT PRINT.')
-    param('horn_hub_depth', '7.60 mm',
-          'boss 3.0 + old horn hub 5.0 = 8.0 of stack above the servo case top, less\n'
-          '           the 0.5 this face stands off that top, + 0.1 seating. NOT 8.1:\n'
-          '           the boss is swallowed by the mouth below, not by this bore.')
-    param('boss_d', '16.4 mm',
-          'the mouth. Sized by the horn ARMS, not the 13.0 output boss it also\n'
-          '           clears: the arms are trimmed to r 8.0 and have to pass down\n'
-          '           this hole to reach their slot, so it is 2 x horn_arm_r + 0.4\n'
-          '           free. On the 13.0 boss alone it would be 13.4 and the servo\n'
-          '           could never be fitted.')
-    param('boss_depth', '2.5 mm',
-          'the MG995 output boss stands 3.0 proud of the case top and this face\n'
-          '           sits 0.5 outboard of it, so 2.5 of boss lands inside the hub')
+    param('horn_hub_d', '14.2 mm',
+          'MG995 horn hub 13.8 (2026-08-27 horn audit, Futaba 25T family\n           model) + 0.4 free - the arms drive, the hub only needs to clear.\n           The disc-horn option died on geometry: Ø22 cannot pass the\n           Ø20.35 fork journal bore. Instead sb_horn_standoff 2.0 pulls the\n           stack outboard so this bore stops inside the body - asserted\n           below, replacing the old blanket radial check.')
+    param('horn_hub_depth', '6.90 mm',
+          'boss 3.0 + audited hub 3.8 = 6.8 of stack above the case top, less\n           the 2.5 this face stands off it (0.5 flange slack +\n           sb_horn_standoff 2.0), + blade 2.5 between, + 0.1 seating:\n           blade 0.5..3.0, hub 3.0..6.8 from this face - horn audit')
+    param('boss_d', '15.6 mm',
+          'the mouth. Sized by the horn ARMS, not the 13.0 output boss it also\n           clears: the arms are trimmed to r 7.6 (horn audit) and have to pass\n           down this hole to reach their slot, so it is 2 x horn_arm_r + 0.4\n           free. On the 13.0 boss alone it would be 13.4 and the servo\n           could never be fitted.')
+    param('boss_depth', '0.5 mm',
+          'the MG995 output boss stands 3.0 proud of the case top and this face\n           sits 2.5 outboard of it (0.5 flange slack + sb_horn_standoff 2.0),\n           so only 0.5 of boss lands inside the hub - horn audit')
     param('arm_start', PREFIX + 'boss_depth',
           'derived: the blade plane is one boss height down from this face,\n'
           '           because the horn is fitted BLADE TOWARD THE SERVO')
-    param('horn_arm_w', '2.65 mm',
-          'BLOCKED WITH horn_hub_d ABOVE - the audit says the arm is ~6.5\n           wide at the r 8 trim (2.65 was the blade thickness misread as\n           width), but a 6.65 slot re-opens the same hex-wall problem.\n           Fixed together with the horn-mounting decision. OLD geometry,\n           MUST NOT PRINT.')
-    param('horn_arm_r', '8.0 mm',
-          'horn arms TRIMMED to this radius at assembly. Bigger than the wrist\n'
-          '           hub\'s 6.0 because an MG995 horn is bigger and this joint carries\n'
-          '           the whole arm.')
+    param('horn_arm_w', '6.65 mm',
+          'horn arm width AT the r 7.6 trim: ~6.5 + press 0.15. The old 2.65\n           was the blade THICKNESS misread as width - no MG995 horn arm\n           would have entered - 2026-08-27 horn audit')
+    param('horn_arm_r', '7.6 mm',
+          'horn arms TRIMMED to this radius at assembly. Was 8.0; the audited\n           6.65 slot corner at hypot(8, 3.3) = 8.66 left 1.34 of collar wall,\n           7.6 restores 1.7. Still past the wrist hub 6.0 - this joint\n           carries the whole arm.')
     param('horn_arm_depth', '2.6 mm', 'horn blade 2.5 DATASHEET + 0.1 seating clearance')
     param('screw_d', '6.5 mm',
           'driver access to the horn screw on the drive side; on the idler side '
@@ -318,10 +309,19 @@ def run(_context: str):
         if used_appearance != 'none':
             break
 
-    wall = (hex_af / 2 - val('horn_hub_d') / 2)
+    # THE OLD CHECK HERE WAS RADIAL-ONLY (hex flats vs relief radius) and
+    # depth-blind. What actually matters, horn audit 2026-08-27: (1) the hub
+    # bore must STOP inside the body - if it tunnels past journal + flange it
+    # cores the hex boss root, which carries all of J2; (2) the collar wall
+    # around the bore takes the torque across the bore band.
+    body_deep = wval('journal') + wval('flange_t')
+    assert val('horn_hub_depth') <= body_deep + 1e-9, (
+        'the horn hub bore runs %.2f deep and the body is only %.2f - it '
+        'tunnels into the hex boss root. Raise sb_horn_standoff, do not '
+        'thin the hex.' % (val('horn_hub_depth') * 10, body_deep * 10))
+    wall = (wval('hub_d') / 2 - val('horn_hub_d') / 2)
     assert wall >= 0.16 - 1e-9, (
-        'only %.2f mm of wall between the MG995 horn relief and the hex flats - '
-        'the horn is too big for a %.1f af hex' % (wall * 10, wval('pivot_af') * 10))
+        'only %.2f mm of collar wall around the horn hub bore' % (wall * 10))
     assert val('boss_d') >= 2 * val('horn_arm_r') + 0.04 - 1e-9, (
         'the mouth is %.2f but the trimmed horn arms sweep %.2f - they cannot '
         'travel down to their slot and the servo cannot be fitted'

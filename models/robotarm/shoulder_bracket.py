@@ -259,9 +259,18 @@ def run(_context: str):
     param('slot_depth', '5.0 mm',
           'blind. Must stay inside the pad or the screws break through into the\n'
           '           straddle - asserted below.')
-    param('lobe_t', PREFIX + 'tab_below_top + ' + PREFIX + 'tab_thk',
-          'derived: the pad has to be exactly this thick for the case top to land\n'
-          '           flush on plate_out and the tabs to bear on the pad face')
+    param('horn_standoff', '2.0 mm',
+          'the MG995 case stands this far off plate_out (it used to land flush).\n'
+          '           2026-08-27 horn audit: the real horn hub is \u00d813.8 x 3.8, and\n'
+          '           swallowing it at the old depth tunnelled a 0.8 mm tube through\n'
+          '           the shoulder_hub hex root. Standing the servo off 2.0 pulls the\n'
+          '           whole horn stack outboard so the hub bore stops at the hub\n'
+          '           part\'s body and never enters the hex. shoulder_hub derives its\n'
+          '           interface depths from the same 2.0 - the two files must agree.')
+    param('lobe_t', PREFIX + 'tab_below_top + ' + PREFIX + 'tab_thk + '
+          + PREFIX + 'horn_standoff',
+          'derived: tab stack + horn_standoff, so the case top stands exactly\n'
+          '           horn_standoff off plate_out and the tabs bear on the pad face')
     param('lobe_over', '1.0 mm', 'how far the pad sinks into the leg so the two merge')
     param('lobe_y', PREFIX + 'case_w / 2 + ' + PREFIX + 'wall', 'derived pad half width')
     param('lobe_pad', '3.0 mm', 'material past the end of the outermost tab slot')
