@@ -100,16 +100,17 @@ ROLL_AZ = (90.0, 210.0, 330.0)
 # The two numbers no user parameter in this project carries. Both are the
 # BOUGHT part, not ours, and both are read by this gate only.
 ROLLER_BORE_MM = 8.0        # 608ZZ bore - lib/bearings.py
-SG90_BLADE_W_MM = 1.6       # SG90 horn blade width. tt_horn_w is 2.0 because
-                            # it is that 1.6 plus 0.4 of pocket clearance -
-                            # cutting the envelope at 2.0 models the POCKET as
-                            # the blade and reports mm3 that are not there.
-SG90_HUB_D_MM = 6.30        # ASSUMED, and it is the only invented number in
-                            # this file. No parameter in the project carries
-                            # the SG90 horn's hub diameter, and it is what
-                            # decides whether the hub clears tt_screw_bore
-                            # (6.0). Jonathan has SG90s in hand: CALIPER IT.
-                            # Until then the horn^rotor line is not evidence.
+SG90_BLADE_W_MM = 3.0       # arm width over its outer half - 2026-08-27 horn
+                            # audit (community-model grade). tt_horn_w is 3.4 =
+                            # this + 0.4; cutting the envelope at 3.4 would
+                            # model the POCKET as the blade and report mm3
+                            # that are not there.
+SG90_HUB_D_MM = 8.0         # horn audit: was 6.30 INVENTED; now the FreeCAD
+                            # measured-model value. Still not from Jonathan's
+                            # bench - the horn dims vary by batch, and the
+                            # gauge_flange v2 hub sweep (7.0/7.6/8.2/8.8) is
+                            # what promotes this to MEASURED. Until then the
+                            # gate stays BLOCKED, same as before, new number.
 
 # Two bodies in rolling contact meet on a LINE, and a printed collar meets an
 # inner race on an annulus. Both are exact in the maths and neither is exact in
@@ -654,16 +655,17 @@ def run(_context: str):
     if worst_assumed > 0.0:
         print('')
         print('GATE J1 OVERALL      : BLOCKED, not failed.')
-        print('  The measured geometry passes. %.3f mm3 sits on ONE INVENTED'
+        print('  The measured geometry passes. %.3f mm3 sits on the SG90 horn'
               % worst_assumed)
-        print('  DIMENSION - the SG90 horn hub - and a guess cannot clear a gate')
-        print('  any more than it can fail one. Caliper the hub and re-run.')
+        print('  hub Ø - community-model grade since the horn audit, still not')
+        print('  bench-measured, and a number that varies by batch cannot clear')
+        print('  a gate. Run the gauge_flange hub sweep and re-run.')
     print('')
     print('ASSUMED, AND SO NOT EVIDENCE:')
-    print('  the SG90 horn hub at Ø%.2f is a guess - no parameter in this'
+    print('  the SG90 horn hub at Ø%.2f - community-model grade (horn audit),'
           % SG90_HUB_D_MM)
-    print('  project carries it, and it is what decides whether the hub fits')
-    print('  tt_screw_bore Ø%.2f. Any horn^rotor reading above is that guess.'
+    print('  varies by batch, unmeasured on this bench. It decides the hub vs')
+    print('  tt_screw_bore Ø%.2f story, so any horn^rotor reading is that number.'
           % (gv('tt_screw_bore') * 10))
     print('')
     print('STILL ARITHMETIC, NOT MEASURED HERE:')

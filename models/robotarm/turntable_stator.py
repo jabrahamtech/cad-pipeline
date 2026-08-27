@@ -146,9 +146,9 @@ def run(_context: str):
            '           only thing keeping the OUTER race off the cheek - without it\n'
            '           the roller does not roll, it rubs.')
     turret('axle_d', '7.9 mm', '608 bore 8.0 - 0.1, a press')
-    turret('horn_span', '32.0 mm', 'yaw servo horn tip to tip, TRIMMED at assembly')
-    turret('horn_w', '2.0 mm', 'horn blade 1.6 + 0.4 clearance')
-    turret('horn_z', '1.8 mm', 'cross pocket depth into the rotor underside')
+    turret('horn_span', '32.8 mm', 'yaw horn LONG-arm pocket span. The real 4-arm\n           horn runs ~33.5 tip to tip (ASYMMETRIC - short axis ~16; slots run\n           full span both ways, a slot longer than its arm is air), and the\n           arms were ALWAYS trimmed at assembly. 32.8 is the ceiling the\n           cable window allows (2 x (cable_ir - wall)) - trim to fit it.\n           2026-08-27 horn audit')
+    turret('horn_w', '3.4 mm', 'arm width over its outer half 3.0 + 0.4 clearance.\n           The old 2.0 was blade THICKNESS 1.6 + 0.4 - thickness-as-width, and\n           no arm would have entered - horn audit')
+    turret('horn_z', '2.4 mm', 'blade thickness 2.0 + 0.4 seating. At the old 1.8 a\n           real 2.0 blade stood proud and the rotor rode the horn, not the race\n           - horn audit. Pocket depth into the rotor underside')
     turret('screw_bore', '6.0 mm', 'driver access to the horn screw, up the rotor centre')
 
     style('ef', '0.4 mm', 'elephant-foot chamfer, functional faces - design_rules')
@@ -179,8 +179,8 @@ def run(_context: str):
           '           window at az 270 rather than into it.')
     param('tab_span', '32.3 mm', 'SG90 tab tip to tip. TowerPro E')
     param('boss_h', '4.2 mm', 'SG90 output collar above the case top')
-    param('horn_hub_h', '3.8 mm', 'SG90 horn hub height, seated on that collar')
-    param('horn_blade_t', '1.5 mm', 'SG90 horn blade thickness - DATASHEET')
+    param('horn_hub_h', '3.0 mm', 'SG90 horn hub height, seated on that collar -\n           2026-08-27 horn audit (was 3.8)')
+    param('horn_blade_t', '2.0 mm', 'SG90 horn blade thickness - horn audit (was 1.5)')
     param('pilot_d', '1.8 mm', 'SERVO_SCREW_PILOT_MM - self-tapping into PETG')
     param('pilot_depth', '4.0 mm', 'into the servo pad')
 
@@ -189,6 +189,18 @@ def run(_context: str):
     param('loc', '0.2 mm', 'locational fit - design_rules')
     param('free', '0.4 mm', 'free fit - design_rules')
     param('plate_t', '4.0 mm', 'base plate thickness')
+    param('lead_groove_w', '5.0 mm',
+          'lead groove width in the plate underside - same Ø-5 convention as\n'
+          '           every other lead escape in the project')
+    param('lead_groove_d', '1.2 mm',
+          'lead groove depth up into the plate. The 2026-08-27 horn audit\n'
+          '           shortened the horn stack and raised the deck 1.4, and the\n'
+          '           lead - one bundle Ø above the case bottom, now z -1.0 - grazed\n'
+          '           0.7 into the plate over its whole escape run. _check_leads\n'
+          '           caught it; this groove restores the daylight.')
+    param('lead_escape', '8.0 mm',
+          'how far the lead must run clear before bending - MUST MATCH\n'
+          '           _check_leads.ESCAPE_MM, which is the contract this groove serves')
     param('plate_ir', '10.0 mm', 'base plate inner radius - the servo comes through here')
     param('plate_or', '50.0 mm', 'base plate outer radius - out to the ring')
     # THE LOOM HAD NO WAY THROUGH THIS PART. The servo well is 12.40 x 22.90
@@ -549,6 +561,25 @@ def run(_context: str):
             _soff - (val('case_l') + val('loc')) / 2,
             _soff + (val('case_l') + val('loc')) / 2,
             mm(-1.0), mm(deck_z + 1.0), CUT)
+    # the lead groove: from just before the case's far end face out past the
+    # escape run, cut up into the plate underside so the bundle's top edge
+    # keeps daylight. Volume-drop asserted below.
+    _far_y = _soff + val('case_l') / 2
+    _v_before_groove = comp.bRepBodies.item(0).volume
+    xy_rect('lead_groove',
+            -val('lead_groove_w') / 2, val('lead_groove_w') / 2,
+            _far_y - 0.1, _far_y + val('lead_escape') + 0.1,
+            mm(-0.1), PREFIX + 'lead_groove_d + 1.0 mm', CUT)
+    _groove_drop = (_v_before_groove - comp.bRepBodies.item(0).volume) * 1000
+    # ceiling over the cut's FULL span (case-aperture overlap and the roller
+    # relief band both legitimately reduce the real drop)
+    _groove_full = (val('lead_groove_w') * 10) * (val('lead_groove_d') * 10) \
+        * ((val('lead_escape') + 0.2) * 10)
+    assert _groove_full / 3 < _groove_drop <= _groove_full + 1.0, (
+        'the lead groove removed %.1f mm3 against a %.1f ceiling - it is not '
+        'where the plate is' % (_groove_drop, _groove_full))
+    assert val('plate_t') - val('lead_groove_d') >= 0.16, (
+        'the lead groove leaves less than a wall of plate above it')
     for i, sy in enumerate((-1, +1)):
         xy_circle('servo_pilot_%d' % i, 0.0, _soff + sy * val('tab_pitch') / 2,
                   val('pilot_d'),

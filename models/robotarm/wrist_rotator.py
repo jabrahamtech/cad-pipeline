@@ -108,12 +108,12 @@ def run(_context: str):
 
     # --- SG90 horn + boss, DATASHEET (lib/servo.py) ---------------------------
     param('boss_h', '4.2 mm', 'SG90 output boss height above the case top')
-    param('horn_hub_d', '7.15 mm', 'SG90 horn hub 7.0 DATASHEET + press 0.15')
-    param('horn_arm_w', '3.95 mm', 'SG90 horn arm 3.8 DATASHEET + press 0.15')
+    param('horn_hub_d', '8.15 mm', 'SG90 horn hub 8.0 + press 0.15 - 2026-08-27 horn audit, lib/servo.py')
+    param('horn_arm_w', '5.65 mm', 'horn arm width AT THE r 6 trim: 5.5 + press\n           0.15. The arm TAPERS 5.5 -> 3; the old 3.95 read the blade\n           thickness as its width and no horn would have entered - 2026-08-27 horn audit, lib/servo.py')
     param('horn_arm_r', '6.0 mm', 'horn arm TRIMMED to this radius at assembly')
     param('relief_d', PREFIX + 'boss_h + '
-          '3.9 mm', 'derived: horn hub 3.8 + 0.1 PLUS the boss, so the disc sits on the case top')
-    param('horn_arm_depth', '1.6 mm', 'horn blade 1.5 DATASHEET + 0.1')
+          '3.1 mm', 'derived: horn hub 3.0 + 0.1 PLUS the boss, so the disc\n           sits on the case top - 2026-08-27 horn audit, lib/servo.py')
+    param('horn_arm_depth', '2.1 mm', 'horn blade 2.0 + 0.1 - 2026-08-27 horn audit, lib/servo.py')
     param('screw_d', '5.5 mm', 'driver access to the horn retaining screw')
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
     param('scallop_r', '4.0 mm', 'radius of each notch cut into the rim - _style.md 4b')

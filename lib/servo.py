@@ -116,8 +116,8 @@ SG90 = ServoSpec(
     tab_span=32.3, tab_thk=2.4, tab_hole_dia=2.1, tab_hole_pitch=27.8,
     tab_below_top=4.3, shaft_from_end=6.1,
     boss_dia=5.0, boss_h=4.2, spline_dia=4.9, spline_h=2.5,
-    horn_hub_dia=7.0, horn_hub_h=3.8, horn_blade_thk=1.5,
-    horn_arm_len=15.95, horn_hole_dia=0.9, horn_hole_pitch=2.1,
+    horn_hub_dia=8.0, horn_hub_h=3.0, horn_blade_thk=2.0,
+    horn_arm_len=17.0, horn_hole_dia=1.4, horn_hole_pitch=2.0,
     horn_screw_dia=2.5,
     lead_bundle_dia=3.4,
     mass_g=9.0,
@@ -144,8 +144,8 @@ MG90S = ServoSpec(
     tab_span=32.1, tab_thk=2.5, tab_hole_dia=2.1, tab_hole_pitch=27.5,
     tab_below_top=3.0, shaft_from_end=6.0,
     boss_dia=6.0, boss_h=6.0, spline_dia=5.0, spline_h=4.0,
-    horn_hub_dia=7.0, horn_hub_h=3.8, horn_blade_thk=1.5,
-    horn_arm_len=15.95, horn_hole_dia=0.9, horn_hole_pitch=2.1,
+    horn_hub_dia=8.0, horn_hub_h=3.0, horn_blade_thk=2.0,
+    horn_arm_len=17.0, horn_hole_dia=1.4, horn_hole_pitch=2.0,
     horn_screw_dia=2.5,
     lead_bundle_dia=3.4,
     mass_g=13.4,
@@ -174,8 +174,8 @@ MG995 = ServoSpec(
     tab_span=54.0, tab_thk=2.5, tab_hole_dia=4.8, tab_hole_pitch=47.8,
     tab_below_top=7.2, shaft_from_end=10.0,
     boss_dia=13.0, boss_h=3.0, spline_dia=5.9, spline_h=3.6,
-    horn_hub_dia=12.0, horn_hub_h=5.0, horn_blade_thk=2.5,
-    horn_arm_len=19.5, horn_hole_dia=1.6, horn_hole_pitch=3.0,
+    horn_hub_dia=13.8, horn_hub_h=3.8, horn_blade_thk=2.5,
+    horn_arm_len=16.5, horn_hole_dia=1.5, horn_hole_pitch=2.3,
     horn_screw_dia=3.0,
     lead_bundle_dia=4.2,
     mass_g=55.0,
@@ -187,6 +187,35 @@ MG995_TAB_HOLE_PITCH_Y = 10.2
 # drawing B's 47.8, published clones' 49.5) plus an M3 clearance hole:
 # 3.4 + (49.5 - 47.5) = 5.4, rounded up.
 MG995_TAB_SLOT_X_MM = 5.6
+
+# --- HORN GEOMETRY, CORRECTED 2026-08-27 ("the servo arms seem really
+# wrong" - Jonathan, and he was right) -----------------------------------
+# The horn values above were re-derived from the FreeCAD parts library's
+# measured SG90 horn set (STEP/STL, read numerically: hub Ø8.0 x 3.0,
+# blade 2.0 thick, total 5.0, holes Ø1.4 at 2.0 pitch, single arm
+# outermost hole r 17) cross-checked against deshipu's SG-90 teardown
+# (holes 2 mm apart) and an independent spec (arm ~20 long x 5 wide x
+# 2 THICK). The old 1.5 blade / Ø7.0 hub / 0.9 holes matched nothing.
+# MG995 horn values follow the Futaba 25T-spline family model (hub
+# Ø13.5-14, total 6.3, symmetric cross reach ~19.5, outermost hole
+# ~16.5) - MG995 clones take Futaba-compatible horns.
+#
+# THE MISTAKE THE OLD NUMBERS CAUSED IN PARTS: a horn ARM is not a
+# constant-width blade. It tapers from ~5.5-6 wide near the hub to ~3 at
+# the tip (micro; the MG995's runs ~6.5 down to ~4.5). Five parts cut
+# arm SLOTS at "blade 2.5/3.8 wide" - the blade THICKNESS misread as its
+# width - and no real horn would have entered any of them. Slot widths
+# now come from the width AT THE TRIM RADIUS below.
+#
+# deshipu's warning stands: horn dimensions VARY BY BATCH. Everything in
+# this block is COMMUNITY-MODEL grade, one step above the old numbers
+# and one below the bench. gauge_flange v2 carries the arm comb and hub
+# sweep that promote these to MEASURED.
+MICRO_HORN_ARM_W_AT_6 = 5.5    # arm width where the wrist parts trim (r 6)
+MICRO_HORN_CROSS_LONG = 33.5   # 4-arm horn, long axis tip to tip (ASYMMETRIC)
+MICRO_HORN_CROSS_SHORT = 16.0  # short axis tip to tip - it is NOT a sym cross
+MICRO_HORN_ARM_W_OUTER = 3.0   # width over the outer half of a long arm
+MG995_HORN_ARM_W_AT_8 = 6.5    # arm width where shoulder_hub trims (r 8)
 
 # --- MG995 round horn (the Oe22 aluminium disc), DATASHEET -------------
 # Supplied drawing: Oe22 disc, 4 holes on a Oe16 bolt circle (2 tapped M4,

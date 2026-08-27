@@ -18,11 +18,13 @@ the wrong way and the ring clamps the rotor and J1 will not turn. The
 mitigation is designed in - sand or shim at the three posts.
 
 Never overwrite a version that may have been printed; bump VERSION instead.
-v1: first export, 2026-08-27 morning. v2: the flange audit (TowerPro
-official config tables) narrowed the SG90 pocket - ts_case_w 12.6 -> 12.2,
-ts_case_l 22.6 -> 22.7 - so the stator moved; ring and lid re-exported with
-it so a version is always a matched set. If v1 stator is already printed,
-its servo pocket is 0.4 loose in X: usable with a shim, wrong by the audit.
+v1: first export, 2026-08-27 morning. v2: the flange audit narrowed the
+SG90 pocket (ts_case_w 12.6 -> 12.2, case_l 22.7). v3, same day: the HORN
+audit - hub 3.0 (was 3.8), blade 2.0 (was 1.5) raised the deck 1.4 and
+recut the rotor cross pocket 32.8 x 3.4 x 2.4 with a Ø13 root relief, and
+a lead groove in the plate underside keeps the (now higher) lead clear.
+PRINT v3, NOT v1/v2: v2's deck seats the horn 1.4 low and its blade pocket
+is 0.6 too shallow and 1.4 too narrow.
 """
 
 import os
@@ -32,7 +34,7 @@ import adsk.fusion
 
 REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
 EXPORT_DIR = os.path.join(REPO, 'exports', 'robotarm')
-VERSION = 2
+VERSION = 3
 
 # name, print orientation, note
 PARTS = [

@@ -58,11 +58,15 @@ likely misconfiguration if they fall outside it. Read that before section 2.
 ## Open, roughly in order of what blocks what
 
 1. **Print and reduce the gauge.** Everything tolerance-related waits on it.
-   NOTE 2026-08-27: print the TURRET from **v2** exports — the flange audit
-   (see `_assembly.md`, "Servo flange audit") corrected every servo's case
-   and tab numbers to TowerPro's own tables and the stator pocket moved.
-   v1's pocket is 0.4 loose in X. Caliper list grew: MG90S hole pitch 27.5
-   is DERIVED, MG90S tab 2.5 ASSUMED — measure before the forearm prints.
+   NOTE 2026-08-27: print the TURRET from **v3** exports — the flange audit
+   corrected every case/tab number to TowerPro's own tables, and the HORN
+   audit (same day, `_assembly.md`) corrected every horn number and recut
+   the rotor cross pocket; v1/v2 seat the horn wrong. Print
+   **gauge_flange_v2** with or before it — its drop tests promote the
+   derived/assumed numbers (MG90S pitch 27.5, tab 2.5, horn hub Ø8.0, arm
+   width 5.5, blade 2.0) to MEASURED, and its flexure coupon calibrates
+   the gripcut finger's grip force. shoulder_hub is BLOCKED on the MG995
+   horn-mounting decision — see the horn audit section.
 2. **Grip-and-cut fingers: DONE in CAD, open on the bench.** Modelled,
    swept, PASS (`robotarm_gripcut_gate`). Remaining: the leaf FORCE is
    solver arithmetic until the flexure coupon on the next gauge plate; and

@@ -1030,3 +1030,59 @@ SG90 horn hub Ø (blocks the J1 gate's PASS), the platter column, and every
 figure above at the 0.01 mm caliper when it arrives — these are TowerPro's
 numbers for genuine servos, and clone flanges are exactly where clones
 cheap out.
+
+
+## Servo horn audit (2026-08-27) — "the servo arms seem really wrong"
+
+They were. Sources: the FreeCAD parts library's measured SG90 horn set
+(STEP/STL read numerically in the sandbox — hub Ø8.0 × 3.0, blade 2.0
+thick, total 5.0, holes Ø1.4 at 2.0 pitch, 1-arm outermost hole r 17, and
+the 4-arm cross is ASYMMETRIC: long axis ~33.5 tip-to-tip, short ~16),
+deshipu's SG-90 teardown (holes 2 mm apart; "horn dimensions vary greatly
+between batches"), an independent spec (arm ~20 × 5 × 2 THICK), and the
+Futaba 25T-family model for the MG995's horns (hub Ø13.5–14, total 6.3).
+
+**The systematic error: blade thickness misread as arm width.** A horn arm
+tapers ~5.5–6 wide at the hub to ~3 at the tip. Five parts had cut arm
+slots at 2.65–3.95 wide — the blade's THICKNESS plus a press fit — and no
+real horn would have entered any of them.
+
+What changed, all re-gated:
+
+- **lib/servo.py**: micro horn hub Ø7.0→8.0, hub h 3.8→3.0, blade
+  1.5→2.0, holes 0.9/2.1→1.4/2.0, arm_len 15.95→17.0; MG995 horn hub
+  12.0→13.8, hub h 5.0→3.8, arm_len 19.5→16.5. New: arm width at the trim
+  radii, cross-horn asymmetry constants.
+- **wrist_hub / wrist_rotator / gripper_pinion**: hub press pockets
+  7.15→8.15, arm slots 3.95→5.65 wide, 1.6→2.1 deep, hub reliefs
+  shortened 0.8. `_check_wrist`, `_check_pruner` PASS.
+- **Turret cross pocket** (shoulder_bracket + stator contract): 32.0 × 2.0
+  × 1.8 → **32.8 × 3.4 × 2.4 with a Ø13 root relief** — at the old numbers
+  a real 2.0 blade stood 0.2 proud (the rotor would have ridden the horn,
+  not the race) and the 2.0 slot could not take a 3-wide arm, let alone
+  its 6-wide root. Span is capped at 32.8 by the cable window (2 ×
+  (cable_ir − wall)); the arms were always trimmed at assembly — trim to
+  ≤ 32.8. The stator deck rose 1.4 (shorter hub), which pushed the J1 lead
+  into the plate underside — `_check_leads` caught it (TIGHT 15 %) and the
+  stator now carries a 5.0 × 1.2 lead groove. Leads PASS 6/6 again.
+- **_check_j1**: full sweep 0.000 mm³, PASS — and no longer BLOCKED: the
+  Ø6.30 invented hub is now Ø8.0 (community-model grade, listed as
+  ASSUMED-not-evidence; the gauge hub sweep promotes it).
+- **Turret exported v3** — print v3, not v1/v2: v2's deck seats the horn
+  1.4 low and its blade pocket is 0.6 too shallow and 1.4 too narrow.
+
+**BLOCKED, decision needed — shoulder_hub.** The MG995 horn hub at Ø13.8
+cannot pass behind the 16.0 af hex: a Ø13.95 relief leaves 0.93 mm of wall
+(min 1.6) and the part's own assert refuses it, correctly. Swapping
+numbers cannot fix a topology. Options: (a) bolt the Ø22 aluminium disc
+horn (MG995_DISC_HORN) flat to the back face — nothing swallowed, M4
+hardware, strongest joint; (b) stand the hub off the case top so only the
+blade enters — widens the shoulder ~2 mm and moves the sb straddle
+contract; (c) Jonathan's clone horn measures under Ø12.8 and the old
+geometry stands. shoulder_hub builds the OLD geometry with a MUST-NOT-
+PRINT block until this is decided. The MG995 was already bench-blocked;
+this adds one decision to the same gate.
+
+**gauge_flange v2** carries the promotion path: hub bores 7.2/8.0/8.8, arm
+comb 4.5–6.0, blade check in the tab comb, plus the flange stations and
+the finger's flexure coupon. `_gauge_flange_sheet.md` is the bench sheet.

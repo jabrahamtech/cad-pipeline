@@ -172,9 +172,9 @@ def run(_context: str):
     turret('ring_t', '4.0 mm', 'retainer thickness - SHARED, see turntable_ring.py')
     turret('ring_or', '50.0 mm', 'ring outer radius - it is what the arm pitches down onto')
     turret('ring_lift', '0.40 mm', 'gap between the ring and the rim it holds down')
-    turret('horn_span', '32.0 mm', 'yaw servo horn tip to tip, TRIMMED at assembly')
-    turret('horn_w', '2.0 mm', 'horn blade 1.6 + 0.4 clearance')
-    turret('horn_z', '1.8 mm', 'cross pocket depth into this underside')
+    turret('horn_span', '32.8 mm', 'yaw horn LONG-arm pocket span. The real 4-arm\n           horn runs ~33.5 tip to tip (ASYMMETRIC - short axis ~16; slots run\n           full span both ways, a slot longer than its arm is air), and the\n           arms were ALWAYS trimmed at assembly. 32.8 is the ceiling the\n           cable window allows (2 x (cable_ir - wall)) - trim to fit it.\n           2026-08-27 horn audit')
+    turret('horn_w', '3.4 mm', 'arm width over its outer half 3.0 + 0.4 clearance.\n           The old 2.0 was blade THICKNESS 1.6 + 0.4 - thickness-as-width, and\n           no arm would have entered - horn audit')
+    turret('horn_z', '2.4 mm', 'blade thickness 2.0 + 0.4 seating. At the old 1.8 a\n           real 2.0 blade stood proud and the rotor rode the horn, not the race\n           - horn audit. Pocket depth into this underside')
     turret('screw_bore', '6.0 mm', 'driver access to the horn screw, up the centre')
 
     style('ef', '0.4 mm', 'elephant-foot chamfer, functional faces - design_rules')
@@ -252,6 +252,8 @@ def run(_context: str):
           'tab hole pitch along the case, drawing B. Drawing A implies 49.5 - hence\n'
           '           slots, see MG995_TAB_SLOT_X_MM in lib/servo.py')
     param('tab_pitch_y', '10.2 mm', 'tab hole pitch across the case - MG995_TAB_HOLE_PITCH_Y')
+    param('root_relief_d', '13.0 mm',
+          'round relief at the yaw horn cross centre. The arms taper 5.5 -> 3\n           and are wider than the 3.4 slots everywhere inboard of r ~6.5, so\n           Ø13 clears that whole root zone; beyond it the slots take over.\n           2026-08-27 horn audit')
     param('slot_len', '5.6 mm', 'MG995_TAB_SLOT_X_MM - covers every candidate pitch\n           (derived 47.5, drawing B 47.8, clones 49.5)')
     param('slot_w', '2.5 mm', 'M3 self-tapper into PETG')
     param('slot_depth', '5.0 mm',
@@ -586,6 +588,11 @@ def run(_context: str):
         else:
             xy_rect('horn_arm_' + tag, -hw, hw, -half_span, half_span,
                     mm(race_z), TURRET + 'horn_z', CUT)
+    # The arm ROOTS: the blade widens from ~3 at the tips to ~5.5-6 near the
+    # hub, and a straight 3.4 slot pinches it inside r ~6.5. One round relief
+    # swallows every root and the screw boss with it - horn audit.
+    xy_circle('horn_root_relief', 0, 0, val('root_relief_d'), mm(race_z),
+              TURRET + 'horn_z', CUT)
     xy_circle('horn_screw_bore', 0, 0, tval('screw_bore'), mm(race_z),
               mm(disc_t + tval('boss_h')), CUT)
     # The loom, astern of the arm at 270 deg - one of the two azimuths a leg

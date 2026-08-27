@@ -7,13 +7,11 @@
   "rotor_stator": 1.4999999999999925,
   "mg995_stator": 9.874753497311296,
   "mg995_lid": 34.05,
-  "horn_rotor": 3.0411297243e-313,
-  "sg90_rotor": 6.200000000000001,
+  "horn_rotor": 2.7755575615628914e-16,
+  "sg90_rotor": 4.8,
   "interference": 0.0,
-  "pairs": [
-   "ASSUMED shoulder_bracket^SG90_horn 3.02 mm3"
-  ],
-  "assumed": 3.0165803553773443,
+  "pairs": [],
+  "assumed": 0.0,
   "noise": 0.03130047673126446
  },
  {
@@ -24,13 +22,11 @@
   "rotor_stator": 1.4999999999999925,
   "mg995_stator": 16.003332728784162,
   "mg995_lid": 34.05,
-  "horn_rotor": 3.0411297243e-313,
-  "sg90_rotor": 6.200000000000001,
+  "horn_rotor": 0.0,
+  "sg90_rotor": 4.8,
   "interference": 0.0,
-  "pairs": [
-   "ASSUMED shoulder_bracket^SG90_horn 3.02 mm3"
-  ],
-  "assumed": 3.0165803553773385,
+  "pairs": [],
+  "assumed": 0.0,
   "noise": 0.03130047673126446
  },
  {
@@ -41,13 +37,11 @@
   "rotor_stator": 1.4999999999999925,
   "mg995_stator": 14.949999999999996,
   "mg995_lid": 34.05,
-  "horn_rotor": 3.0411297243e-313,
-  "sg90_rotor": 6.200000000000001,
+  "horn_rotor": 0.0,
+  "sg90_rotor": 4.8,
   "interference": 0.0,
-  "pairs": [
-   "ASSUMED shoulder_bracket^SG90_horn 3.02 mm3"
-  ],
-  "assumed": 3.0165803553773296,
+  "pairs": [],
+  "assumed": 0.0,
   "noise": 0.03130047673126446
  },
  {
@@ -58,13 +52,11 @@
   "rotor_stator": 1.4999999999999925,
   "mg995_stator": 14.949999999999996,
   "mg995_lid": 34.05,
-  "horn_rotor": 3.0411297243e-313,
-  "sg90_rotor": 6.200000000000001,
+  "horn_rotor": 1.1102230246251565e-15,
+  "sg90_rotor": 4.8,
   "interference": 0.0,
-  "pairs": [
-   "ASSUMED shoulder_bracket^SG90_horn 3.02 mm3"
-  ],
-  "assumed": 3.0165803553773176,
+  "pairs": [],
+  "assumed": 0.0,
   "noise": 0.03130047673126446
  },
  {
@@ -75,13 +67,11 @@
   "rotor_stator": 1.4999999999999925,
   "mg995_stator": 14.949999999999996,
   "mg995_lid": 34.05,
-  "horn_rotor": 3.0411297243e-313,
-  "sg90_rotor": 6.200000000000001,
+  "horn_rotor": 5.551115123125783e-16,
+  "sg90_rotor": 4.8,
   "interference": 0.0,
-  "pairs": [
-   "ASSUMED shoulder_bracket^SG90_horn 3.02 mm3"
-  ],
-  "assumed": 3.016580355377359,
+  "pairs": [],
+  "assumed": 0.0,
   "noise": 0.03130047673126446
  },
  {
@@ -92,13 +82,11 @@
   "rotor_stator": 1.4999999999999925,
   "mg995_stator": 14.949999999999996,
   "mg995_lid": 34.05,
-  "horn_rotor": 3.0411297243e-313,
-  "sg90_rotor": 6.200000000000001,
+  "horn_rotor": 0.0,
+  "sg90_rotor": 4.8,
   "interference": 0.0,
-  "pairs": [
-   "ASSUMED shoulder_bracket^SG90_horn 3.02 mm3"
-  ],
-  "assumed": 3.016580355377334,
+  "pairs": [],
+  "assumed": 0.0,
   "noise": 0.03130047673126446
  },
  {
@@ -109,13 +97,11 @@
   "rotor_stator": 1.4999999999999925,
   "mg995_stator": 14.949999999999996,
   "mg995_lid": 34.05,
-  "horn_rotor": 3.0411297243e-313,
-  "sg90_rotor": 6.200000000000001,
+  "horn_rotor": 0.0,
+  "sg90_rotor": 4.8,
   "interference": 0.0,
-  "pairs": [
-   "ASSUMED shoulder_bracket^SG90_horn 3.02 mm3"
-  ],
-  "assumed": 3.016580355377345,
+  "pairs": [],
+  "assumed": 0.0,
   "noise": 0.03130047673126446
  },
  {
@@ -126,13 +112,11 @@
   "rotor_stator": 1.4999999999999925,
   "mg995_stator": 16.00333272878417,
   "mg995_lid": 34.05,
-  "horn_rotor": 3.0411297243e-313,
-  "sg90_rotor": 6.200000000000001,
+  "horn_rotor": 0.0,
+  "sg90_rotor": 4.8,
   "interference": 0.0,
-  "pairs": [
-   "ASSUMED shoulder_bracket^SG90_horn 3.02 mm3"
-  ],
-  "assumed": 3.0165803553773385,
+  "pairs": [],
+  "assumed": 0.0,
   "noise": 0.03130047673126446
  },
  {
@@ -143,13 +127,11 @@
   "rotor_stator": 1.4999999999999925,
   "mg995_stator": 20.38892872412131,
   "mg995_lid": 34.05,
-  "horn_rotor": 3.0411297243e-313,
-  "sg90_rotor": 6.200000000000001,
+  "horn_rotor": 0.0,
+  "sg90_rotor": 4.8,
   "interference": 0.0,
-  "pairs": [
-   "ASSUMED shoulder_bracket^SG90_horn 3.02 mm3"
-  ],
-  "assumed": 3.0165803553773407,
+  "pairs": [],
+  "assumed": 0.0,
   "noise": 0.03130047673126446
  },
  {
@@ -160,13 +142,11 @@
   "rotor_stator": 1.4999999999999925,
   "mg995_stator": 16.003332728784166,
   "mg995_lid": 34.05,
-  "horn_rotor": 3.0411297243e-313,
-  "sg90_rotor": 6.200000000000001,
+  "horn_rotor": 0.0,
+  "sg90_rotor": 4.8,
   "interference": 0.0,
-  "pairs": [
-   "ASSUMED shoulder_bracket^SG90_horn 3.02 mm3"
-  ],
-  "assumed": 3.0165803553773176,
+  "pairs": [],
+  "assumed": 0.0,
   "noise": 0.03130047673126446
  },
  {
@@ -177,13 +157,11 @@
   "rotor_stator": 1.4999999999999947,
   "mg995_stator": 14.949999999999996,
   "mg995_lid": 34.05,
-  "horn_rotor": 3.0411297243e-313,
-  "sg90_rotor": 6.200000000000001,
+  "horn_rotor": 0.0,
+  "sg90_rotor": 4.8,
   "interference": 0.0,
-  "pairs": [
-   "ASSUMED shoulder_bracket^SG90_horn 3.02 mm3"
-  ],
-  "assumed": 3.0165803553773305,
+  "pairs": [],
+  "assumed": 0.0,
   "noise": 0.03130047673126446
  },
  {
@@ -194,13 +172,11 @@
   "rotor_stator": 1.4999999999999925,
   "mg995_stator": 14.949999999999996,
   "mg995_lid": 34.05,
-  "horn_rotor": 3.0411297243e-313,
-  "sg90_rotor": 6.200000000000001,
+  "horn_rotor": 0.0,
+  "sg90_rotor": 4.8,
   "interference": 0.0,
-  "pairs": [
-   "ASSUMED shoulder_bracket^SG90_horn 3.02 mm3"
-  ],
-  "assumed": 3.016580355377334,
+  "pairs": [],
+  "assumed": 0.0,
   "noise": 0.03130047673126446
  },
  {
@@ -211,13 +187,11 @@
   "rotor_stator": 1.4999999999999925,
   "mg995_stator": 9.874753497311282,
   "mg995_lid": 34.05,
-  "horn_rotor": 3.0411297243e-313,
-  "sg90_rotor": 6.200000000000001,
+  "horn_rotor": 2.7755575615628914e-16,
+  "sg90_rotor": 4.8,
   "interference": 0.0,
-  "pairs": [
-   "ASSUMED shoulder_bracket^SG90_horn 3.02 mm3"
-  ],
-  "assumed": 3.0165803553773443,
+  "pairs": [],
+  "assumed": 0.0,
   "noise": 0.03130047673126446
  }
 ]

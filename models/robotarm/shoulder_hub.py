@@ -127,9 +127,10 @@ def run(_context: str):
     param('lead_in', '0.6 mm', 'chamfer on the hex nose - joints_tolerances, every mating edge')
 
     # --- MG90S horn, DATASHEET (lib/servo.py) -------------------------------
-    param('horn_hub_d', '12.15 mm', 'MG995 horn hub 12.0 DATASHEET + press 0.15')
+    param('horn_hub_d', '12.15 mm',
+          'BLOCKED - THE 2026-08-27 HORN AUDIT SAYS THIS IS WRONG. The MG995\n           horn hub measures ~13.8 (Futaba 25T family model), and a 13.95\n           relief leaves 0.93 mm of wall to the 16.0 af hex flats - the\n           asserts below refuse it, correctly. The real horn CANNOT pass\n           behind this hex; swapping the number cannot fix a topology.\n           Standing options, decision with Jonathan: (a) bolt the Ø22\n           aluminium disc horn (MG995_DISC_HORN) flat to the back face -\n           no swallowing at all; (b) stand the hub off the case top so\n           only the blade enters; (c) his clone horn measures under 12.8\n           and this stays. Until then this part builds the OLD geometry\n           and MUST NOT PRINT.')
     param('horn_hub_depth', '7.60 mm',
-          'boss 3.0 + horn hub 5.0 = 8.0 of stack above the servo case top, less\n'
+          'boss 3.0 + old horn hub 5.0 = 8.0 of stack above the servo case top, less\n'
           '           the 0.5 this face stands off that top, + 0.1 seating. NOT 8.1:\n'
           '           the boss is swallowed by the mouth below, not by this bore.')
     param('boss_d', '16.4 mm',
@@ -144,7 +145,8 @@ def run(_context: str):
     param('arm_start', PREFIX + 'boss_depth',
           'derived: the blade plane is one boss height down from this face,\n'
           '           because the horn is fitted BLADE TOWARD THE SERVO')
-    param('horn_arm_w', '2.65 mm', 'MG995 horn blade 2.5 DATASHEET + press 0.15')
+    param('horn_arm_w', '2.65 mm',
+          'BLOCKED WITH horn_hub_d ABOVE - the audit says the arm is ~6.5\n           wide at the r 8 trim (2.65 was the blade thickness misread as\n           width), but a 6.65 slot re-opens the same hex-wall problem.\n           Fixed together with the horn-mounting decision. OLD geometry,\n           MUST NOT PRINT.')
     param('horn_arm_r', '8.0 mm',
           'horn arms TRIMMED to this radius at assembly. Bigger than the wrist\n'
           '           hub\'s 6.0 because an MG995 horn is bigger and this joint carries\n'

@@ -127,12 +127,12 @@ def run(_context: str):
     param('lead_in', '0.6 mm', 'chamfer on the hex nose - joints_tolerances, every mating edge')
 
     # --- MG90S horn, DATASHEET (lib/servo.py) -------------------------------
-    param('horn_hub_d', '7.15 mm', 'MG90S horn hub 7.0 DATASHEET + press 0.15 - design_rules')
-    param('horn_hub_depth', '9.9 mm',
-          'horn hub 3.8 + 0.1, PLUS the MG90S output boss (6.0) which this relief\n           swallows. Sitting the hub ON the case top instead of on top of the boss\n           takes 6 mm out of the wrist width, which is the whole ballgame here:\n           the yoke has to fit between two ears 38.8 mm apart.')
-    param('horn_arm_w', '3.95 mm', 'MG90S horn arm 3.8 DATASHEET + press 0.15 - design_rules')
+    param('horn_hub_d', '8.15 mm', 'MG90S horn hub 8.0 + press 0.15 - 2026-08-27 horn audit, lib/servo.py')
+    param('horn_hub_depth', '9.1 mm',
+          'horn hub 3.0 + 0.1 (2026-08-27 horn audit), PLUS the MG90S output boss (6.0) which this relief\n           swallows. Sitting the hub ON the case top instead of on top of the boss\n           takes 6 mm out of the wrist width, which is the whole ballgame here:\n           the yoke has to fit between two ears 38.8 mm apart.')
+    param('horn_arm_w', '5.65 mm', 'horn arm width AT THE r 6 trim: 5.5 + press\n           0.15. The arm tapers 5.5 -> 3; 3.95 was the blade thickness\n           misread as width - 2026-08-27 horn audit, lib/servo.py')
     param('horn_arm_r', '6.0 mm', 'horn arm TRIMMED to this radius at assembly - see spec')
-    param('horn_arm_depth', '1.6 mm', 'horn blade 1.5 DATASHEET + 0.1 seating clearance')
+    param('horn_arm_depth', '2.1 mm', 'horn blade 2.0 + 0.1 seating - 2026-08-27 horn audit, lib/servo.py')
     param('screw_d', '5.5 mm',
           'driver access to the horn screw on the drive side; on the idler side '
           'the M3 retaining screw passes through the same bore')

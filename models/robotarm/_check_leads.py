@@ -54,11 +54,13 @@ ESCAPE_MM = 8.0     # how far a lead must run clear before it can be bent away
 #   across        the other two coords of the lead centre, mm
 MOUNTS = [
     # J1 yaw. Case y -6.10..+16.60 (shaft on the axis, ts_shaft_off +5.25
-    # after the 2026-08-27 flange audit set ts_case_l 22.7),
+    # after the 2026-08-27 flange audit set ts_case_l 22.7). The horn audit
+    # moved the deck: case bottom is now z -4.40, so the lead sits at
+    # -4.4 + 3.4 = -1.0 - still below the stator's 0..4 base plate,
     # z -5.80..+17.90. Lead end +Y, and it sits BELOW the stator's 0..4 base
     # plate - which is the whole question for this one.
     dict(tag='J1 yaw', host='turntable_stator', servo='SG90',
-         axis='y', sign=+1, lead_at=16.60, across=(0.0, -3.5)),
+         axis='y', sign=+1, lead_at=16.60, across=(0.0, -1.0)),
     # J2 shoulder. The MG995 runs DOWN along Z, case z -30.9..+10.0 (case_l
     # 40.9, TowerPro B), mounted on a pad whose outer face is at
     # x = sb_plate_out + sb_lobe_t = 29.6 (lobe_t 9.7 after tab_below_top
