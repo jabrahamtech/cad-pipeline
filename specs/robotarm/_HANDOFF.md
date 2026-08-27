@@ -46,7 +46,10 @@ likely misconfiguration if they fall outside it. Read that before section 2.
   old figure to 0.5 g·cm.
 - **Grip-and-cut head chosen** over the plain pruner. Mechanism solved in
   `lib/gripcut_finger.py`, written up in `specs/robotarm/gripcut.md`.
-  Costs 1.0 g. **NOT MODELLED YET.**
+  Costs 1.0 g. **Modelled 2026-08-27**: `gripcut_finger.py` (flipped pair,
+  above-stack couple grip) + a key pocket in `pruner_blade.py`;
+  `_check_gripcut` sweep PASS in doc `robotarm_gripcut_gate`. Three earlier
+  topologies died under the gate — story in `gripcut_finger.md`.
 - `base_lid` is now ours. The printed one has no central opening at all —
   measured, not assumed — so the SG90 could never have reached the platter.
 - **`turntable_stator`'s yaw servo was 5.2 mm off the J1 axis.** See
@@ -55,9 +58,11 @@ likely misconfiguration if they fall outside it. Read that before section 2.
 ## Open, roughly in order of what blocks what
 
 1. **Print and reduce the gauge.** Everything tolerance-related waits on it.
-2. **Model the grip-and-cut fingers.** Spec is written and solved; the CAD
-   is not started. Two flexure leaves on the existing `pruner_blade`
-   carriers, lead 2.0, t 1.2, L 29.1 folded.
+2. **Grip-and-cut fingers: DONE in CAD, open on the bench.** Modelled,
+   swept, PASS (`robotarm_gripcut_gate`). Remaining: the leaf FORCE is
+   solver arithmetic until the flexure coupon on the next gauge plate; and
+   shell-vs-finger z clearance (head now reaches z 9.55) is flagged NOT
+   CHECKED in `_check_pruner`'s doc.
 3. **`forearm_cover` and `upper_arm_cover` do not exist.** Both links are
    box beams with an open cable duct and nothing closes them. They were
    always in `_assembly.md`'s part table and were never built.

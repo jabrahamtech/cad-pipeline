@@ -33,6 +33,10 @@ Cut at the THROAT, not the tip. Advantage is 3.25 at the throat root and
 1.30 at the tip - the same 2.5x falloff every bypass pruner has. A stem cut
 at the tip gets 11 N and is crushed.
 
+Carries the gripcut finger's keying pocket in its outer face - the 'one
+extra feature per carrier'. The finger itself is a separate flipped-pair
+part: models/robotarm/gripcut_finger.py.
+
 Print orientation: INNER FACE (z = pb_gap) ON THE BED, built along +Z. The
 blade pocket then opens upward, the pivot bore and the drive slot are
 vertical, and the part is a flat plate. No support.
@@ -150,6 +154,15 @@ def run(_context: str):
           '           enough that the carrier takes the side load, not the steel.')
     param('clamp_d', '1.8 mm', 'M2 pilot for the segment clamp')
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
+    # --- the gripcut finger's keying pocket - the 'one extra feature per
+    #     carrier' specs/robotarm/gripcut.md budgeted. The finger part rides
+    #     the pivot M3 and this pocket stops it rotating. Cut into the OUTER
+    #     face on the tail, where the carrier is solid; 1.4 deep in a 3.5
+    #     wall leaves 2.1 - asserted.
+    param('key_w', '4.2 mm', 'pocket, tangential - gf_key_w 4.0 + loc 0.2')
+    param('key_l', '3.2 mm', 'pocket, radial - gf_key_l 3.0 + loc 0.2')
+    param('key_d', '1.4 mm', 'pocket depth - gf_key_h')
+    param('key_y', '-7.9 mm', 'pocket centre - matches gf_key_y')
 
     # ---- idempotent rebuild ---------------------------------------------------
     STALE = COMPONENT + '_stale_'
@@ -311,6 +324,23 @@ def run(_context: str):
     t3 = design.timeline.count
     slot('drive_slot', -(r_far + val('slide') / 2), -(val('tail_r') - val('slide') / 2),
          val('pin_d') + val('slide'), Z0, DZ, CUT)
+    # the gripcut finger's keying pocket, in the OUTER face (z thk down key_d)
+    _wall_left_mm = (val('thk') - val('key_d')) * 10
+    assert _wall_left_mm >= val('wall') * 10 + val('tol') * 10, (
+        'the key pocket leaves %.2f of carrier under it - below the %.2f wall'
+        % (_wall_left_mm, val('wall') * 10))
+    _vol_before_key = comp.bRepBodies.item(0).volume
+    poly('finger_key_pocket',
+         [(-val('key_w') / 2, val('key_y') - val('key_l') / 2),
+          (val('key_w') / 2, val('key_y') - val('key_l') / 2),
+          (val('key_w') / 2, val('key_y') + val('key_l') / 2),
+          (-val('key_w') / 2, val('key_y') + val('key_l') / 2)],
+         PREFIX + 'thk + ' + PREFIX + 'gap - ' + PREFIX + 'key_d',
+         PREFIX + 'key_d + 1 mm', CUT)
+    _key_drop = (_vol_before_key - comp.bRepBodies.item(0).volume) * 1000
+    # PLAYBOOK: when a CUT changes nothing, the cut is in the wrong place.
+    assert _key_drop > val('key_w') * val('key_l') * val('key_d') * 1000 / 2, (
+        'the key pocket removed %.1f mm3 - wrong place or wrong scale' % _key_drop)
     group(t3, PH_DRIVE)
 
     # ---- phase 5: finish -----------------------------------------------------------

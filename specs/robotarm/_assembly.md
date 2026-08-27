@@ -896,3 +896,38 @@ rotor's gate top-down as its servo is installed, then drop the ribbon into
 the arc window. The stator slot (7 mm wide) and the lid opening pass plugs
 without help. Still unverified: the service-loop slack between the stator
 and rotor windows over ±90° of yaw — the loom is not modelled.
+
+
+## Grip-and-cut finger gate (2026-08-27) — three designs died, the fourth is a couple
+
+`_check_gripcut.py`, run in doc `robotarm_gripcut_gate`. Deflected-pose
+sweep: the finger is translated along local +x by the deflection the leaf
+would carry (d = r·sinθ + stem_r − af against a Ø5 stem at r 8.5), because a
+rigid finger swung undeflected follows a path the real flexure never takes.
+
+What the sweep killed, in order:
+
+1. **The straddling face** (z ±3.0, the only self-mapping band under the
+   turn-over) — collides with the other carrier's Ø12 hub disc, and the blade
+   bodies sweep the ±3.55 band during closure. Nothing can grip there.
+2. **Hub-clipped variant** — deflection fault: the stem pushes the finger
+   toward its OWN blade, 0.1 mm of room vs 4.5 mm of travel.
+3. **Scissor-sense bug found on the way**: R(θ)·F rotates the mirrored copy
+   the SAME way — jaws tilt together and never close. Invisible against a
+   fixed stem (relative closure is equivalent), which is why `_check_pruner`
+   never saw it. True sense: F·R(θ) = R(−θ)·F — turned copies get −θ.
+
+The survivor: **grip face entirely above the blade stack** (z 3.65…9.55,
+0.1 mm air over the carrier top). The grip is a couple on one carrier —
+finger presses from above, the piece leans on that carrier's own nose edge
+below; cut-and-hold secateurs pattern. On empty close the fingers BYPASS in
+disjoint z bands, like the blades.
+
+Final numbers: finger^blade 0.00 and finger^finger 0.00 at every pose
+(θ 0…24.3°, deflected and empty); deflection peaks 4.50 of the 4.7 mm
+budget; finger^stem grows monotonically to 16.79 mm³ at closure (the grip
+engaging); the key boss's rigid-pose anchor shear is bucketed separately and
+capped at the boss's own volume (peak 15.96 < 34.6), with the UNDEFLECTED
+empty close reading 0.00 as proof the boss really fits its pocket. GATE
+PASS. Not checked here: shell z clearance (head now reaches 9.55) and leaf
+force — the coupon owns that.
