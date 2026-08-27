@@ -709,3 +709,75 @@ servo slewing the arm and stopping it sees more.
 no model file contains them and there is no COM to read: 31.4 g of the 219.4 g
 cluster. The pruner head is one lump at `HEAD_OFFSET_MM` 47.0 — its five pieces
 are measured but not composed.
+
+
+## J1 BEARING: THE ROLLERS ARE A CHOICE NOW, NOT AN INHERITANCE — 2026-08-27
+
+Three 608ZZ on radial stub axles was carried over from the legacy build and had
+**never been compared against a bought slewing bearing.** CLAUDE.md is explicit
+that bearings are COTS and that the standard part should be named before one is
+built out of printed geometry. A grep of the whole repo found no mention of a
+slewing ring, Lazy Susan, thin-section bearing or crossed roller, ever. This
+closes that.
+
+**Decision: keep the three rollers.**
+
+### The framing that decides it: J1 is FRICTION-limited, not load-limited
+
+The yaw axis is vertical, so gravity contributes nothing. `_check_loads`
+section D: rotating mass **219.4 g**, overturning moment **0.162 N·m**, worst
+roller **4.73 N**. Those numbers are trivial for every option below — load
+capacity does not discriminate at all.
+
+What is tight is the servo. **An SG90 gives 0.80 kg·cm of duty** and spends all
+of it on friction and inertia. So the selection criteria, in order:
+
+1. **Drag** — the servo has no margin to give away.
+2. **Slop** — 229 mm of reach multiplies any angular play at the base.
+3. **Centre access** — 15 leads cross J1, and they cross at the axis because
+   that is where twist per degree is smallest.
+4. Height, cost, availability.
+
+### The alternatives, and why each loses here
+
+| | Drag | Slop | Height | Centre | Verdict |
+|---|---|---|---|---|---|
+| **3 × 608 track rollers** | **excellent** | good | ~24 mm | fully open | **KEPT** |
+| Thin-section DGBB (6810-class) | excellent | **excellent** | **~7 mm** | Ø50 bore | best if starting fresh — but the platter is already printed |
+| Two spaced bearings, hollow column | excellent | excellent | 40 mm+ | open if hollow | more height and parts for no gain at these loads |
+| Printed race + 6 mm airsoft BBs | good | mediocre | ~12 mm | fully open | bigger circle helps moment, but adds slop and wear |
+| Lazy Susan / stamped turntable | **poor, notchy** | **poor, 0.3–0.5 mm** | ~9 mm | open | **rejected first** — the two things this arm cannot absorb |
+| PTFE thrust washer + journal | **bad** | good | ~3 mm | open | sliding friction would eat the SG90's budget |
+
+**The thin-section bearing is the technically better answer on a blank sheet**
+— 7 mm tall, real bearing tolerances instead of printed ones, and a Ø50 bore
+that would swallow the SG90 *and* the loom, replacing rollers, ring and journal
+with one bought part. It loses on a fact about this project rather than about
+engineering: **the platter is printed and in hand**, with three M3 inserts fixed
+at r 45, and the whole turret datums off it.
+
+### Known weakness, and the retrofit for it
+
+A 608's OD is a plain 7 mm cylinder pressing into a flat PETG face — **line
+contact on plastic** at 4.73 N. The bearing is nowhere near its rating; the
+*race face* is what will slowly groove. Purpose-made track rollers are crowned
+or much wider and run on a hardened track.
+
+**Fix, if it ever matters: bond a thin steel shim onto the race band**, turning
+plastic-on-steel into steel-on-steel. Costs almost nothing and is retrofittable
+after assembly, so it blocks nothing now.
+
+### The one thing that could actually be frustrating
+
+Not the bearing choice — **the ring's 0.40 mm lift stack**, built from two
+printed Z surfaces at `DIM_TOL_Z` 0.25 each. If it comes out tight the ring
+clamps the rotor and J1 will not turn. The mitigation is designed in: sand or
+shim at the three posts. That is a twenty-minute annoyance once, not a
+redesign, and the v1 turret print exists to find out.
+
+### Numbers in here that are NOT measured
+
+Every drag figure above is qualitative — no breakaway torque has been measured
+for any option, **including the 608s**, which were found stiff with fresh
+grease on 2026-08-26. The 6810 dimensions are from memory and want checking
+against a supplier before anyone orders one.
