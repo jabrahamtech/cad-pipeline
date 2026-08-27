@@ -51,6 +51,20 @@ divide 60° — 12 works, 6 works and reads coarse, 9 does not contain 180.
 Every fixing lands on a lobe, never in a notch, and `turntable_ring.py`
 asserts it rather than trusting the arithmetic.
 
+**EXCEPTION — a flange that is a JOURNAL stays round.** `wr_flange_d` (Ø24 on
+both hubs) runs inside a Ø24.35 counterbore as a rotating fit — `fa_cbore_d`
+is literally `wr_flange_d + rotating 0.35`. Lobe it and a 0.35 mm running
+surface becomes a few points of contact. Those two flanges are also completely
+buried, so there is nothing to gain. **The rule is about flanges you can see.**
+
+**And where the fixing pattern is not rotationally symmetric, the notches go
+in the GAPS.** `wrist_rotator`'s four inserts sit on a rectangle — ±11.0 by
+±9.0, az 39.29 / 140.71 / 219.29 / 320.71 — so the gaps alternate 101.42° and
+78.58° and *no* uniform lobe count lands on all four. Putting four notches at
+0/90/180/270 puts every insert on a lobe by construction instead. Eight was
+tried and fails: a notch at az 45 sits 5.71° from the insert at 39.29 and
+breaks into its boss. The assertion in `wrist_rotator.py` is what caught it.
+
 **5. Two-tone by PART, never by added panels.**
 `sty_light` (mustard/cream) for bodies and links; `sty_dark` (charcoal) for
 drums, servo bays, the base and anything that reads as a joint. The X2D's

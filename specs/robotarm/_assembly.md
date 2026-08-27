@@ -286,14 +286,26 @@ centres of mass.
 
 ## Frame — the numbers every piece derives from
 
+> **THIS TABLE WAS STALE IN FOUR OF ITS ROWS, found 2026-08-27.** `asm_l1`,
+> `asm_l2`, `asm_eff_bolt_x` and `asm_eff_bolt_z` all disagreed with the code,
+> by 20 mm, 20 mm, 5 mm and 3 mm. The parts were right and consistent with each
+> other every time; only this table was wrong.
+>
+> That matters more than four numbers. A table headed *"the numbers every piece
+> derives from"* that nothing verifies is the same failure this project has
+> already paid for twice — `shaft_from_end` read by one file, `lead_bundle_dia`
+> read by none. **Nothing checks these against the live Fusion parameters.**
+> Until something does, treat the part scripts as authoritative and this table
+> as a summary that can drift.
+
 Shared as Fusion user parameters with the `asm_` prefix, defined
 **identically** in every script that touches them
 (knowledge/assembly_decomposition.md §2).
 
 | Parameter | Value | Meaning |
 |---|---|---|
-| `asm_l1` | 85.0 | shoulder axis → elbow axis |
-| `asm_l2` | 65.0 | elbow axis → wrist axis |
+| `asm_l1` | **65.0** | shoulder axis → elbow axis — was 85.0 here until 2026-08-27; the parts have built 65.0 since the link change. `ua_l1` is the live value. |
+| `asm_l2` | **45.0** | elbow axis → wrist axis — was 65.0 here; `fa_l2` is the live value. |
 | `asm_l3` | 68.0 | wrist axis → jaw faces at mid-opening |
 | `asm_link_w` | 26.0 | outside width of both links (across the pitch axes) |
 | `asm_chan_w` | 9.0 | cable channel width inside a link |
@@ -302,8 +314,8 @@ Shared as Fusion user parameters with the `asm_` prefix, defined
 | `asm_drum_r_j3` | 17.0 | elbow drum outer radius |
 | `asm_drum_r_j4` | 17.0 | wrist drum outer radius |
 | `asm_skirt_gap` | 0.40 | drum-to-skirt running clearance — `free` fit |
-| `asm_eff_bolt_x` | 16.0 | effector bolt pattern, ± across the jaw axis |
-| `asm_eff_bolt_z` | 12.0 | effector bolt pattern, ± across the shell split |
+| `asm_eff_bolt_x` | **11.0** | effector bolt pattern, ± across the jaw axis — was 16.0 here; `gs_eff_bolt_x` and `wro_bolt_x` have both been 11.0 all along. |
+| `asm_eff_bolt_z` | **9.0** | effector bolt pattern, ± across the shell split — was 12.0 here; `gs_eff_bolt_z` is 9.0. |
 | `asm_yaw_roller_r` | 34.0 | 608ZZ contact circle on the turntable |
 | `asm_base_r` | 75.0 | base plinth outer radius |
 

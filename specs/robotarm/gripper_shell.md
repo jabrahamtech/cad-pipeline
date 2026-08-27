@@ -47,7 +47,7 @@ servo lifts straight out when the shells come apart.
 | SG90 tab plane | 17.0 mm above the case bottom | DATASHEET | this is the datum |
 | SG90 boss height | 4.2 mm | DATASHEET | sets the servo's y position |
 | clamshell bolts | 4 × M3, x ±19, y −8 and −24 | design_rules FASTENER_MM | Ø3.4 clearance + nyloc |
-| wrist flange bolts | 2 × M3 at (±16, +12), along Y | `asm_eff_bolt_x/z` | Ø3.4 clearance |
+| wrist flange bolts | 2 × M3 at (±11, +9), along Y | `asm_eff_bolt_x/z` | Ø3.4 clearance — was written ±16/+12 here; `gs_eff_bolt_x/z` in the script are 11.0/9.0 |
 | shell half height | 16.30 mm | derived | — |
 
 The bolts sit at y = −8 and −24 because a hole anywhere in |y| < 4.125

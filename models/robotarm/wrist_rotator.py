@@ -25,6 +25,8 @@ output boss as well as the horn, so this disc sits on the servo's case top
 rather than 4.2 mm above it - the roll joint is that much shorter for it.
 """
 
+import math
+
 import adsk.core
 import adsk.fusion
 
@@ -33,10 +35,32 @@ BODY_NAME = 'wrist_rotator'
 PREFIX = 'wrt_'
 STYLE = 'sty_'
 PH_FORM = 'disc'
+PH_SCALLOP = 'scallops'
 PH_HORN = 'horn interface'
 PH_MOUNT = 'effector inserts'
 PH_FINISH = 'finish'
-PHASES = [PH_FORM, PH_HORN, PH_MOUNT, PH_FINISH]
+PHASES = [PH_FORM, PH_SCALLOP, PH_HORN, PH_MOUNT, PH_FINISH]
+
+# _style.md rule 4b: lobed flanges, not plain discs. This part was a plain
+# Ø36 circle until 2026-08-27 - the second most flange-shaped object in the
+# arm, fully exposed at the effector end, and the ONLY part other than
+# turntable_ring that the rule obviously applies to.
+#
+# FOUR, AND 4b's OWN REQUIREMENT CANNOT BE MET LITERALLY HERE. The rule says
+# the lobe count must divide into the fixing pattern so every fixing lands on
+# a lobe. On the ring that works: three posts at az 120/180/240, spacing
+# divides 60. Here the four inserts sit on a RECTANGLE - ±11.0 by ±9.0, so
+# az 39.29 / 140.71 / 219.29 / 320.71 - and the gaps alternate 101.42 and
+# 78.58 deg. No uniform lobe count lands on all four; the pattern has 2-fold
+# symmetry, not 4-fold.
+#
+# So the notches go in the GAPS instead, at 0/90/180/270, which puts every
+# insert on a lobe by construction rather than by divisibility. EIGHT WAS
+# TRIED AND FAILS: a notch at az 45 sits 5.71 deg from the insert at 39.29
+# and breaks into its boss. The assertion below is what caught that, and it
+# is kept so the next person raising the count gets the same answer.
+SCALLOP_N = 4
+SCALLOP_AZ0 = 0.0
 MATERIAL_NAME = 'PET Plastic'
 # _style.md rule 5: two-tone by PART. A rotator is a joint, so it is dark.
 APPEARANCE_HINTS = [('plastic', 'black'), ('paint', 'black'), ('black',), ('plastic',)]
@@ -92,6 +116,11 @@ def run(_context: str):
     param('horn_arm_depth', '1.6 mm', 'horn blade 1.5 DATASHEET + 0.1')
     param('screw_d', '5.5 mm', 'driver access to the horn retaining screw')
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
+    param('scallop_r', '4.0 mm', 'radius of each notch cut into the rim - _style.md 4b')
+    param('scallop_cr', '20.0 mm',
+          'centre radius of the notch circles. At 20.0 with r 4.0 the cut\n'
+          '           reaches in to r 16.0, biting 2.0 mm out of an 18.0 rim - enough\n'
+          '           to read as a cog without touching an insert boss.')
 
     # ---- idempotent rebuild ---------------------------------------------------
     # RENAME FIRST, THEN DELETE. Deleting a component's LAST occurrence orphans
@@ -159,6 +188,8 @@ def run(_context: str):
 
     # ---- values in cm -----------------------------------------------------------
     corner = (val('bolt_x') ** 2 + val('bolt_z') ** 2) ** 0.5
+    s_cr = val('scallop_cr')
+    s_r = val('scallop_r')
     assert corner + val('boss_od') / 2 <= val('disc_d') / 2, (
         'the bolt bosses reach %.2f mm, past the %.2f mm disc radius'
         % ((corner + val('boss_od') / 2) * 10, val('disc_d') / 2 * 10))
@@ -177,6 +208,44 @@ def run(_context: str):
     disc('horn_hub', 0, 0, val('hub_d'), '-' + PREFIX + 'hub_h', PREFIX + 'hub_h',
          adsk.fusion.FeatureOperations.JoinFeatureOperation)
     group(t0, PH_FORM)
+
+    # ---- phase 1b: scallops, _style.md rule 4b -------------------------------
+    # Cut BEFORE the inserts so the assertion below is the only thing standing
+    # between a notch and an insert boss - if it ever stops being true the
+    # build fails here rather than quietly eating a boss wall later.
+    ts = design.timeline.count
+    s_cr_mm = val('scallop_cr') * 10
+    s_r_mm = val('scallop_r') * 10
+    disc_r_mm = val('disc_d') / 2 * 10
+    boss_r_mm = val('boss_od') / 2 * 10
+    corner_mm = corner * 10
+    WALL_MM = 1.6
+    reach_in_mm = s_cr_mm - s_r_mm
+    assert reach_in_mm < disc_r_mm - 1e-9, (
+        'the scallops reach r %.2f and the disc is r %.2f - they would not cut '
+        'the rim at all' % (reach_in_mm, disc_r_mm))
+    assert disc_r_mm - reach_in_mm >= 1.0, (
+        'the scallops bite only %.2f mm out of the rim - under a millimetre '
+        'reads as a defect, not a lobe' % (disc_r_mm - reach_in_mm))
+    insert_az = [math.degrees(math.atan2(sz * val('bolt_z'), sx * val('bolt_x')))
+                 for sx in (-1, 1) for sz in (-1, 1)]
+    for i in range(SCALLOP_N):
+        az = SCALLOP_AZ0 + i * 360.0 / SCALLOP_N
+        a = math.radians(az)
+        # NO NOTCH MAY BREAK INTO AN INSERT BOSS. This is the achievable half
+        # of 4b, and it is what turntable_ring actually asserts too.
+        for iaz in insert_az:
+            d_mm = math.sqrt(s_cr_mm ** 2 + corner_mm ** 2
+                             - 2 * s_cr_mm * corner_mm
+                             * math.cos(math.radians(az - iaz)))
+            assert d_mm > s_r_mm + boss_r_mm + WALL_MM, (
+                'scallop at az %.0f is %.2f mm from the insert boss at az %.2f '
+                '- it needs %.2f. Lower SCALLOP_N or move scallop_cr out.'
+                % (az, d_mm, iaz, s_r_mm + boss_r_mm + WALL_MM))
+        disc('scallop_%d' % i, s_cr * math.cos(a), s_cr * math.sin(a),
+             val('scallop_r') * 2, '-' + PREFIX + 'hub_h',
+             PREFIX + 'hub_h + ' + PREFIX + 'disc_t', CUT)
+    group(ts, PH_SCALLOP)
 
     # ---- phase 2: horn interface ----------------------------------------------------
     t1 = design.timeline.count
@@ -244,6 +313,15 @@ def run(_context: str):
     bb = body.boundingBox
     print('body: %r | material: %s | appearance: %s' % (
         body.name, body.material.name, used_appearance))
+    print('SCALLOPS: %d lobes at az %s - _style.md 4b. The inserts sit on the'
+          % (SCALLOP_N, [round(SCALLOP_AZ0 + 180.0 / SCALLOP_N
+                               + i * 360.0 / SCALLOP_N) for i in range(SCALLOP_N)]))
+    print('  lobes because the notches are in the GAPS: a rectangular bolt')
+    print('  pattern has no lobe count that lands on all four.')
+    print('  notch r %.1f at r %.1f, biting %.1f mm out of an %.1f rim'
+          % (val('scallop_r') * 10, val('scallop_cr') * 10,
+             val('disc_d') / 2 * 10 - (val('scallop_cr') - val('scallop_r')) * 10,
+             val('disc_d') / 2 * 10))
     print('disc OD %.1f x %.1f | effector pattern 4 x M3 at +/-%.1f, +/-%.1f (corner %.2f)' % (
         val('disc_d') * 10, val('disc_t') * 10, val('bolt_x') * 10, val('bolt_z') * 10,
         corner * 10))
