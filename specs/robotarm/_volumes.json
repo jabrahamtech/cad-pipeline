@@ -1,8 +1,9 @@
 {
   "base_lid": 60900.628,
   "forearm": 15389.033,
+  "gripcut_finger": 1035.602,
   "gripper_pinion": 1630.072,
-  "pruner_blade": 1706.552,
+  "pruner_blade": 1687.736,
   "pruner_rack": 3562.163,
   "pruner_shell": 13937.272,
   "shoulder_bracket": 56760.273,
@@ -11,6 +12,6 @@
   "turntable_stator": 35297.048,
   "upper_arm": 27671.317,
   "wrist_hub": 2823.451,
-  "wrist_roll": 13207.77,
+  "wrist_roll": 13105.87,
   "wrist_rotator": 5535.461
 }

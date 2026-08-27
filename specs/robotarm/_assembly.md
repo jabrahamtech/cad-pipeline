@@ -814,9 +814,9 @@ contract.
 |---|---|---|---|---|
 | J1 yaw | `turntable_stator` | SG90 | 3.4 | **CLEAR** |
 | J2 shoulder | `shoulder_bracket` | MG995 | 4.2 | **CLEAR** |
-| J3 elbow | `forearm` | MG90S | 3.4 | TRAPPED — 39 % solid |
-| J4 wrist | `forearm` | MG90S | 3.4 | TRAPPED — 39 % solid |
-| J5 roll | `wrist_roll` | SG90 | 3.4 | TRAPPED — 81 % solid |
+| J3 elbow | `forearm` | MG90S | 3.4 | ~~TRAPPED 39 %~~ **CLEAR** — the probe was misplaced, see below |
+| J4 wrist | `forearm` | MG90S | 3.4 | ~~TRAPPED 39 %~~ **CLEAR** — same |
+| J5 roll | `wrist_roll` | SG90 | 3.4 | ~~TRAPPED 81 %~~ **CLEAR** — really was trapped; lead channel cut, see below |
 | effector | `pruner_shell` | SG90 | 3.4 | **CLEAR** — the control |
 
 **Nothing in the turret print is affected.** J1 is clear: the SG90's lead
@@ -931,3 +931,38 @@ capped at the boss's own volume (peak 15.96 < 34.6), with the UNDEFLECTED
 empty close reading 0.00 as proof the boss really fits its pocket. GATE
 PASS. Not checked here: shell z clearance (head now reaches 9.55) and leaf
 force — the coupon owns that.
+
+
+## Lead-audit follow-up (2026-08-27) — two misplaced probes, one real trap
+
+The three TRAPPED rows resolved into two different stories, found by
+intersecting each probe with its host and reading the interference bbox
+instead of trusting the typed coordinates.
+
+**J3/J4 were never trapped.** The blocking solid was a 1.8 mm sliver of the
+lobe's inner edge (28.66 mm³, x ±18.9…20.7) — because the probe sat at
+x ±19, z −3.5, INBOARD of the lobe. But the MG90S hangs OUTBOARD:
+`fa_lobe_t = tab_below_top + tab_thk` exactly, tabs on the lobe's outer
+face, shaft pointing inboard as the pivot, so the case body (below_tab
+20.0, DATASHEET) is all outside and the lead-end bottom corner sits at
+|x| 43.9 in free air. The typed coordinates had the case height and width
+axes swapped — the same error class the effector control caught at z 8.0.
+Corrected probes (±40.5, 0.0): CLEAR through open air. No part changed.
+
+**J5 really was trapped**, and correcting its probe from (0, 0) to the
+rule's (0, −8.6) — one lead diameter up from `wro_case_bot` — did not free
+it: below the case bottom end face is pocket floor, then keel, solid to
+`z_bot`. `wrist_roll.py` now cuts a Ø5.0 `lead_channel` (same Ø as
+`pruner_shell`'s notch, for the same servo) at (x 0, y `wro_lead_y`),
+from `z_bot − wall` up through the pocket floor. It breaks out of the
+keel's 45° back bevel partway down — the lead leaves through the bevel
+face — and never comes near the lower tab slot, which is what the keel is
+for (asserted, plus a volume-drop interval bounded by the full-cylinder
+ceiling). Removed 101.9 mm³; wrist_roll 13207.77 → 13105.87.
+
+Re-run over all six mounts: **GATE leads PASS, every row CLEAR.** Ledger
+updated (wrist_roll, pruner_blade 1687.736 after the finger key pocket,
+gripcut_finger 1035.602 NEW; `_check_ledger` batch 1 now builds
+gripcut_finger too). Still true: lead exit positions are DATASHEET-derived,
+not measured, and nothing yet models whether an escaped lead can REACH the
+duct.

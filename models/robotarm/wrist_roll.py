@@ -158,6 +158,21 @@ def run(_context: str):
           'derived: the keel overlaps the slab by wall + loc/2 rather than meeting\n'
           '           it exactly. Two volumes that TOUCH are non-manifold - see PLAYBOOK.')
     param('rot_bore', '11.0 mm', 'clearance bore for the boss and the rotator hub')
+
+    # --- lead escape ---------------------------------------------------------
+    param('lead_d', '3.4 mm',
+          'SG90 lead_bundle_dia - lib/servo.py. Typed here like the other\n'
+          '           DATASHEET numbers; _check_leads probes with the LIBRARY value,\n'
+          '           so if the two drift the gate fails rather than lying.')
+    param('lead_y', PREFIX + 'case_bot + ' + PREFIX + 'lead_d',
+          'derived: where the lead leaves the case bottom end face - one lead\n'
+          '           diameter up from the case bottom, centred across the width.\n'
+          '           The same rule _check_leads places its probe by.')
+    param('lead_ch_d', '5.0 mm',
+          'lead channel bore through the pocket floor and keel - same Ø as\n'
+          '           pruner_shell\'s lead_notch for the same servo. Without it the\n'
+          '           lead was 81 % TRAPPED: below the case bottom end face is floor,\n'
+          '           then keel, solid to z_bot.')
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
 
     # ---- idempotent rebuild --------------------------------------------------
@@ -264,6 +279,18 @@ def run(_context: str):
     r_c = wval('pivot_af') / 2 / math.cos(math.pi / (2 * 3))
     assert r_c + val('wall') <= val('z_top'), 'the hex socket breaks out of the top face'
 
+    # lead channel sanity, in cm. The channel may break out of the keel's 45
+    # deg back bevel partway down - that is a feature, the lead leaves through
+    # the bevel face - but it must never reach the tab slot, which is what the
+    # keel is FOR, and it must pass the bundle.
+    assert val('lead_ch_d') >= val('lead_d') + 2 * loc, (
+        'the lead channel is tighter than the bundle plus a locational fit')
+    assert val('lead_y') + val('lead_ch_d') / 2 + val('wall') <= \
+        val('tab_lo') - loc / 2, (
+        'the lead channel comes within a wall of the lower tab slot')
+    assert val('lead_ch_d') / 2 + val('wall') <= val('keel_half_x'), (
+        'the lead channel leaves less than a wall of keel beside it')
+
     # The keel's back face is a 45 deg bevel, not a wall: it starts at the bed
     # plane as a knife edge and grows downward one layer per layer, so it needs
     # no support, AND it keeps the bottom-back corner inside the sweep circle.
@@ -306,6 +333,22 @@ def run(_context: str):
          val('case_z_hi') + val('tab_over') + loc / 2,
          PREFIX + 'tab_lo - ' + PREFIX + 'loc / 2',
          PREFIX + 'tab_thk + ' + PREFIX + 'loc', CUT)
+    v_before = comp.bRepBodies.item(0).volume
+    sk_lead = sketch(comp.xYConstructionPlane, 'sk_lead_channel')
+    sk_lead.sketchCurves.sketchCircles.addByCenterRadius(
+        mpt(sk_lead, 0, val('lead_y'), 0), val('lead_ch_d') / 2)
+    extrude(profiles(sk_lead, expected=1), CUT,
+            PREFIX + 'z_bot - ' + PREFIX + 'wall',
+            PREFIX + 'case_z_lo - ' + PREFIX + 'z_bot + ' + PREFIX + 'wall',
+            'lead_channel')
+    drop = (v_before - comp.bRepBodies.item(0).volume) * 1000
+    # bounds from the geometry itself: a full cylinder through the keel span
+    # is the ceiling; the 45 deg back bevel eats some of it, but never half.
+    ch_full = math.pi * (val('lead_ch_d') / 2) ** 2 \
+        * (val('case_z_lo') - val('z_bot')) * 1000
+    assert ch_full / 2 < drop < ch_full, (
+        'the lead channel removed %.1f mm3 against a %.1f full-cylinder '
+        'ceiling - it is not cutting where the trap was' % (drop, ch_full))
     sk_rot = sketch(comp.xZConstructionPlane, 'sk_rotator_bore')
     sk_rot.sketchCurves.sketchCircles.addByCenterRadius(
         mpt(sk_rot, 0, 0, 0), val('rot_bore') / 2)
@@ -368,6 +411,10 @@ def run(_context: str):
     print('keel: y %.1f..%.1f, z %.1f..%.1f, %.1f wide, back face bevelled %.1f' % (
         val('y_back') * 10, val('keel_front') * 10, val('z_bot') * 10,
         val('keel_top') * 10, val('keel_half_x') * 20, keel_drop * 10))
+    print('lead channel: Ø%.1f at (x 0, y %.1f), z %.1f down through the keel '
+          '- the SG90 lead escapes the bay it was 81 %% trapped in'
+          % (val('lead_ch_d') * 10, val('lead_y') * 10,
+             val('case_z_lo') * 10))
     print('WORST SWEEP about J4: %s at %.1f mm (forearm allows %.1f)' % (
         worst[0], worst[1] * 10, wval('sweep_r') * 10))
     print('hex socket %.1f af, %.1f deep, leaving %.2f mm of wall beside the servo' % (

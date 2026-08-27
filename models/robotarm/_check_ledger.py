@@ -46,7 +46,8 @@ LEDGER = os.path.join(REPO, 'specs', 'robotarm', '_volumes.json')
 # Order matters: it is the order the arm is built in, and a shared-parameter
 # fault only shows downstream of the file that causes it.
 BATCHES = [
-    ['gripper_pinion', 'pruner_blade', 'pruner_rack', 'pruner_shell'],
+    ['gripper_pinion', 'pruner_blade', 'gripcut_finger', 'pruner_rack',
+     'pruner_shell'],
     ['wrist_hub', 'wrist_rotator', 'wrist_roll', 'forearm'],
     ['upper_arm', 'shoulder_hub', 'shoulder_bracket'],
     ['turntable_stator', 'turntable_ring', 'base_lid'],

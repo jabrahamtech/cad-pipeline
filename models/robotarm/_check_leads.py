@@ -65,16 +65,34 @@ MOUNTS = [
          axis='z', sign=-1, lead_at=-30.0, across=(29.9 + 18.25, 0.0)),
     # J3 elbow. MG90S in the forearm's -X lobe, case y -51.0..-27.0 with the
     # elbow at y -45.0, so the near end is -51.0 and the lead end is -27.0.
+    #
+    # THE FIRST across HERE WAS (-19.0, -3.5) AND IT REPORTED 39 % TRAPPED.
+    # That x put the lead INBOARD of the lobe's inner face, clipping the lobe
+    # end wall - but the MG90S hangs OUTBOARD: fa_lobe_t = tab_below_top +
+    # tab_thk exactly, tabs on the outer face, shaft inboard as the pivot, so
+    # the case body (below_tab = 20.0, DATASHEET) is all outside the lobe and
+    # the lead-end bottom corner sits at |x| 43.9 in free air. Same error
+    # class the effector control caught: a per-part coordinate typed with the
+    # height and width axes swapped. x = plate_out 19.9 + lobe_t 4.0 +
+    # below_tab 20.0 - lead dia 3.4 = 40.5; centred across the width -> z 0.
     dict(tag='J3 elbow', host='forearm', servo='MG90S',
-         axis='y', sign=+1, lead_at=-27.0, across=(-19.0, -3.5)),
+         axis='y', sign=+1, lead_at=-27.0, across=(-40.5, 0.0)),
     # J4 wrist pitch. MG90S in the +X lobe, case y -18.0..+6.0, shaft at 0,
-    # near end +6.0, lead end -18.0.
+    # near end +6.0, lead end -18.0. Mirror of J3 - same fix, same reason.
     dict(tag='J4 wrist', host='forearm', servo='MG90S',
-         axis='y', sign=-1, lead_at=-18.0, across=(19.0, -3.5)),
+         axis='y', sign=-1, lead_at=-18.0, across=(40.5, 0.0)),
     # J5 roll. SG90 on its side, long axis along Z, case z -16.5..+6.1 with
     # the shaft at 0. Lead end is the BOTTOM, -Z, down in the keel.
+    #
+    # First across was (0.0, 0.0) - case mid-height, not where a lead lives.
+    # The rule this file states puts it one lead dia up from the case bottom:
+    # case_bot y -12.0 + 3.4 = -8.6. Both placements are in the keel, so
+    # unlike J3/J4 the correction does NOT clear this row by itself - the
+    # keel really did trap the lead, and wrist_roll.py now cuts a Ø5 lead
+    # channel through the pocket floor and keel at exactly this position
+    # (wro_lead_y, derived from the same rule). This row verifies that cut.
     dict(tag='J5 roll', host='wrist_roll', servo='SG90',
-         axis='z', sign=-1, lead_at=-16.5, across=(0.0, 0.0)),
+         axis='z', sign=-1, lead_at=-16.5, across=(0.0, -8.6)),
     # Effector. THE CONTROL, and the only mount that already models a lead
     # escape: pruner_shell cuts a 5.0 mm lead_notch through its back wall at
     # x +-2.5, z 0 .. (case_w/2 + loc/2) = 0..6.40. The lead centre is the
