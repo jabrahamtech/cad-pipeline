@@ -37,11 +37,13 @@ RUN ORDER. Needs every part in the document, so it runs after _check_ledger:
     mod.BATCH = 0,1,2,3   on _check_ledger, THEN
     _check_loads.run()    in the same document
 
-It measures and never mutates: no part script is executed, nothing is built,
-no parameter is touched. Safe to run against a document you care about.
+It runs no part script, builds no geometry and touches no parameter. It does
+place three occurrences to compose the wrist chain (section B0) and deletes
+them again, which is the only mark it makes on the timeline.
 """
 
 import json
+import math
 import os
 import sys
 
@@ -64,17 +66,22 @@ BOUGHT_G = {
 }
 
 # Where each mass sits, as a radius from the joint being summed about, in mm.
-# OFFSETS ARE MEASURED FROM THE WRIST END OF THE FOREARM, exactly as
-# lib/arm_budget.py's CLUSTER is - the two files must not disagree about the
-# geometry or they are modelling different arms.
-CLUSTER_OFFSET_MM = {
-    'wrist_hub': 0.0,
-    'wrist_roll': 2.3,
-    'wrist_rotator': 19.8,
+#
+# THE PRINTED PARTS ARE NO LONGER IN THIS TABLE. Their offsets are COMPOSED -
+# the wrist chain is assembled at the worst pose and each part's COM is read
+# in the ASSEMBLY's frame, so the number is the real distance from J4 and not
+# a figure anyone typed. lib/arm_budget.py still carries them as constants;
+# section B prints both and says when they drift.
+#
+# What is left here is the BOUGHT parts, which appear in no model file and so
+# have no COM to read. These stay declared, and stay flagged BOUGHT.
+BOUGHT_OFFSET_MM = {
     'MG90S J4': -6.0,
     'SG90 J5': 0.0,
     'SG90 effector': 32.0,
 }
+HUB_SPIN_DEG = 90.0          # matches _check_wrist - every socket in this arm
+                             # has a hex vertex on the assembly's +Y
 HEAD_OFFSET_MM = 47.0        # pruner head centre of mass, past the wrist end
 PAYLOAD_G = 25.0             # rated payload, _assembly.md
 PAYLOAD_OFFSET_MM = 68.0     # asm_l3 - wrist axis to the jaw faces
@@ -85,6 +92,70 @@ ROTATING = ('shoulder_bracket', 'shoulder_hub', 'upper_arm', 'forearm',
             'pruner_blade', 'pruner_rack', 'gripper_pinion')
 ROTATING_BOUGHT = ('MG995 J2', 'MG90S J3', 'MG90S J4', 'SG90 J5',
                    'SG90 effector')
+
+
+def compose_wrist(design, root, gv):
+    """Assemble the wrist chain at pitch 0 / roll 0 and return each printed
+    part's COM as a distance from J4, in mm.
+
+    Placements are lifted from _check_wrist so the two files cannot disagree
+    about how this arm goes together. It PLACES OCCURRENCES AND DELETES THEM -
+    the only mutation this gate makes, and the timeline is left as it was
+    found.
+    """
+    M3 = adsk.core.Matrix3D.create
+    VEC = adsk.core.Vector3D.create
+    ORG = adsk.core.Point3D.create(0, 0, 0)
+    plate_in = gv('fa_plate_in') / 10.0        # placements work in Fusion cm
+    y_front = gv('wro_y_front') / 10.0
+
+    def rot_m(angle, axis):
+        m = M3()
+        m.setToRotation(angle, axis, ORG)
+        return m
+
+    def place_hub(sx):
+        m = rot_m(math.radians(HUB_SPIN_DEG), VEC(0, 0, 1))
+        m.transformBy(rot_m(-sx * math.pi / 2, VEC(0, 1, 0)))
+        t = m.translation
+        t.x = sx * plate_in
+        m.translation = t
+        return m
+
+    def place_rotator():
+        m = rot_m(-math.pi / 2, VEC(1, 0, 0))
+        t = m.translation
+        t.y = y_front
+        m.translation = t
+        return m
+
+    comps = {}
+    for occ in root.occurrences:
+        n = occ.component.name
+        if n.startswith('robotarm_') and n not in comps:
+            comps[n] = occ.component
+    want = ('wrist_hub', 'wrist_roll', 'wrist_rotator')
+    for w in want:
+        assert 'robotarm_' + w in comps, (
+            '%s is not in this document - run _check_ledger first' % w)
+
+    add = root.occurrences.addExistingComponent
+    placed = {
+        'wrist_hub': add(comps['robotarm_wrist_hub'], place_hub(+1)),
+        'wrist_roll': add(comps['robotarm_wrist_roll'], M3()),
+        'wrist_rotator': add(comps['robotarm_wrist_rotator'], place_rotator()),
+    }
+    out = {}
+    for tag, occ in placed.items():
+        body = occ.component.bRepBodies.item(0).createForAssemblyContext(occ)
+        bb = body.boundingBox
+        assert bb.maxPoint.x - bb.minPoint.x > 1e-6, (
+            'degenerate body composing %s - the timeline marker is not at the '
+            'end, or the occurrence is hidden' % tag)
+        out[tag] = body.physicalProperties.centerOfMass.y * 10.0
+    for occ in placed.values():
+        occ.deleteMe()
+    return out
 
 
 def run(_context: str):
@@ -187,19 +258,41 @@ def run(_context: str):
     fa_com_mm = fa_frac * l2_mm
     ua_com_mm = ua_frac * l1_mm
 
+    # ---- compose the wrist chain and read the COMs where they really sit ---
+    # Placements are _check_wrist's, at the worst pose (pitch 0, roll 0): the
+    # arm straight out. Reading createForAssemblyContext gives the COM in the
+    # ROOT frame, so the radius from J4 is just its Y - no hand-derived
+    # rotation to get backwards, which is how the hub placement went wrong in
+    # _check_wrist and cost 81 mm3 at every pitch.
+    composed = compose_wrist(design, root, gv)
+    print('=== B0. wrist cluster offsets, COMPOSED not declared ===')
+    print('%-16s %10s %10s   %s' % ('part', 'composed', 'arm_budget', ''))
+    ab_cluster = dict((n.split(' ')[0], off) for n, _m, off, _b in ab.CLUSTER)
+    for tag in sorted(composed):
+        was = ab_cluster.get(tag)
+        note = ''
+        if was is not None:
+            note = ('agrees' if abs(composed[tag] - was) < 0.05
+                    else 'DRIFT %+.2f mm' % (composed[tag] - was))
+        print('%-16s %10.2f %10s   %s'
+              % (tag, composed[tag],
+                 '%.2f' % was if was is not None else '-', note))
+    print('')
+
     I = al.Item
     cluster = [
-        I('wrist_hub x2', 2 * mass('wrist_hub'), 0.0, 'MEASURED'),
-        I('wrist_roll', mass('wrist_roll'), CLUSTER_OFFSET_MM['wrist_roll'],
+        I('wrist_hub x2', 2 * mass('wrist_hub'), composed['wrist_hub'],
           'MEASURED'),
-        I('wrist_rotator', mass('wrist_rotator'),
-          CLUSTER_OFFSET_MM['wrist_rotator'], 'MEASURED'),
-        I('MG90S J4', BOUGHT_G['MG90S J4'], CLUSTER_OFFSET_MM['MG90S J4'],
+        I('wrist_roll', mass('wrist_roll'), composed['wrist_roll'],
+          'MEASURED'),
+        I('wrist_rotator', mass('wrist_rotator'), composed['wrist_rotator'],
+          'MEASURED'),
+        I('MG90S J4', BOUGHT_G['MG90S J4'], BOUGHT_OFFSET_MM['MG90S J4'],
           'BOUGHT'),
-        I('SG90 J5', BOUGHT_G['SG90 J5'], CLUSTER_OFFSET_MM['SG90 J5'],
+        I('SG90 J5', BOUGHT_G['SG90 J5'], BOUGHT_OFFSET_MM['SG90 J5'],
           'BOUGHT'),
         I('SG90 effector', BOUGHT_G['SG90 effector'],
-          CLUSTER_OFFSET_MM['SG90 effector'], 'BOUGHT'),
+          BOUGHT_OFFSET_MM['SG90 effector'], 'BOUGHT'),
         I('pruner head', head_g, HEAD_OFFSET_MM, 'MEASURED'),
     ]
 
@@ -348,9 +441,11 @@ def run(_context: str):
         print('   %s' % f)
     print('')
     print('STILL ASSUMED, not measured here:')
-    print('  The CLUSTER offsets - where each wrist part sits relative to the')
-    print('  wrist end - are still the geometric model, not the harvested')
-    print('  COMs. Every part\'s COM is in its OWN frame and composing them')
-    print('  needs the wrist chain\'s transforms, which live in _check_wrist.')
-    print('  The two LINK fractions are no longer assumed: see section B.')
-    print('  Static only - no slew, no stop, no impact.')
+    print('  The BOUGHT parts. Three servos sit at declared offsets because')
+    print('  no model file contains them - there is no COM to read. They are')
+    print('  %.1f g of the %.1f g cluster.'
+          % (sum(BOUGHT_G[k] for k in BOUGHT_OFFSET_MM), rot_g))
+    print('  The pruner head is one lump at HEAD_OFFSET_MM %.1f mm; its own'
+          % HEAD_OFFSET_MM)
+    print('  five pieces are measured but not composed.')
+    print('  Static only - no slew, no stop, no impact. No FEA.')

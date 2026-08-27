@@ -678,11 +678,34 @@ at all. That was called "a cantilevered axle on 1.6 mm of PETG" at the time and
 thinned band is a web between the servo pad and the cheeks, loaded in shear and
 bending, not a bearing pad. The stub axle root runs at 4 % of allowable.
 
+### The cluster offsets are composed now, and they were already right
+
+Section B0 assembles the wrist chain at the worst pose using `_check_wrist`'s
+own placements, then reads each part's COM in the **assembly's** frame — so
+the radius from J4 is the real distance, with no hand-derived rotation to get
+backwards. That mattered: `_check_wrist`'s own hub placement went wrong exactly
+that way once and put 81 mm³ of hub inside the housing at every pitch.
+
+| part | composed | `arm_budget` declared | |
+|---|---|---|---|
+| `wrist_hub` | 0.00 | 0.00 | agrees |
+| `wrist_roll` | 2.34 | 2.30 | agrees |
+| `wrist_rotator` | 19.85 | 19.80 | agrees |
+
+All three inside 0.05 mm. **The declared offsets were already COM-derived** —
+the caveat that called them "the geometric model" overstated the problem. They
+are derived rather than typed now, and they will follow the parts if a wrist
+piece changes.
+
+It places three occurrences to do this and deletes them: occurrence count and
+timeline length both come back with a delta of zero, checked.
+
 ### What it deliberately does not do
 
 No FEA. No dynamics — every figure is a static hold in the worst pose, and a
-servo slewing the arm and stopping it sees more. And the **cluster offsets are
-still the geometric model**: masses are measured, but where each wrist part
-sits relative to the wrist end is not, because every COM is in its own frame
-and composing them needs `_check_wrist`'s transforms. That is the next
-improvement.
+servo slewing the arm and stopping it sees more.
+
+**The bought parts stay declared.** Three servos sit at typed offsets because
+no model file contains them and there is no COM to read: 31.4 g of the 219.4 g
+cluster. The pruner head is one lump at `HEAD_OFFSET_MM` 47.0 — its five pieces
+are measured but not composed.
