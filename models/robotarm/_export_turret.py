@@ -17,8 +17,12 @@ rim is built from two printed Z surfaces at DIM_TOL_Z 0.25 each. Stack them
 the wrong way and the ring clamps the rotor and J1 will not turn. The
 mitigation is designed in - sand or shim at the three posts.
 
-Versions are v1: nothing in this project has been exported before. Never
-overwrite a version that may have been printed; bump VERSION instead.
+Never overwrite a version that may have been printed; bump VERSION instead.
+v1: first export, 2026-08-27 morning. v2: the flange audit (TowerPro
+official config tables) narrowed the SG90 pocket - ts_case_w 12.6 -> 12.2,
+ts_case_l 22.6 -> 22.7 - so the stator moved; ring and lid re-exported with
+it so a version is always a matched set. If v1 stator is already printed,
+its servo pocket is 0.4 loose in X: usable with a shim, wrong by the audit.
 """
 
 import os
@@ -28,7 +32,7 @@ import adsk.fusion
 
 REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
 EXPORT_DIR = os.path.join(REPO, 'exports', 'robotarm')
-VERSION = 1
+VERSION = 2
 
 # name, print orientation, note
 PARTS = [
@@ -50,10 +54,12 @@ def run(_context: str):
     root = design.rootComponent
 
     comps = {}
+    occs = {}
     for occ in root.occurrences:
         n = occ.component.name
         if n.startswith('robotarm_') and n not in comps:
             comps[n] = occ.component
+            occs[n] = occ
 
     os.makedirs(EXPORT_DIR, exist_ok=True)
     em = design.exportManager
@@ -70,6 +76,14 @@ def run(_context: str):
             % (name, comp.bRepBodies.count))
         body = comp.bRepBodies.item(0)
         assert body.isValid, '%s is not a valid body' % name
+        # A HIDDEN OCCURRENCE EXPORTS AS AN EMPTY FILE. Fusion's STEP/3MF
+        # export silently skips occurrences whose light bulb is off, and the
+        # gates toggle bulbs while posing - the first v2 export shipped three
+        # 3.7 KB headers this way. Force it visible; the old 1000-byte floor
+        # below let the empty files through, hence the tighter one.
+        if not occs[full].isLightBulbOn:
+            occs[full].isLightBulbOn = True
+        assert occs[full].isLightBulbOn, '%s stays hidden - export would be empty' % name
 
         base = os.path.join(EXPORT_DIR, '%s_v%d' % (name, VERSION))
         # NEVER overwrite a version that may have been printed.
@@ -87,7 +101,7 @@ def run(_context: str):
         # A 3MF that came out tiny means the export took an empty component.
         step_b = os.path.getsize(base + '.step')
         mf_b = os.path.getsize(base + '.3mf')
-        assert step_b > 1000 and mf_b > 1000, (
+        assert step_b > 20000 and mf_b > 20000, (
             '%s exported %d / %d bytes - that is an empty file, not a part'
             % (name, step_b, mf_b))
         written.append((name, vol, step_b, mf_b, orientation, note))
@@ -126,5 +140,5 @@ def run(_context: str):
     print('     printed 7.9 runs LOOSE in an 8.0 bore.')
     print('  3. whether the SG90 horn hub clears tt_screw_bore Ø6.00. That')
     print('     diameter is the one invented number in the J1 gate.')
-    print('  4. the platter column, 12.45 x 23.05 UNVERIFIED against a 12.60')
+    print('  4. the platter column, 12.45 x 23.05 UNVERIFIED against a 12.20')
     print('     SG90 case. Caliper it before pressing the servo in.')

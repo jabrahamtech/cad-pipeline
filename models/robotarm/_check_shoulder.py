@@ -9,7 +9,7 @@ neighbour, a measurement of nothing, a joint that assembles at zero and jams
 at sixty), plus one this joint has and the wrist does not:
 
 4. THE SERVO IS THE BIGGEST THING AT J2 AND IT IS NOT A PRINTED PART. An
-   MG995 is 40 x 20 x 36.5 with tabs spanning 52.8, and none of it appears in
+   MG995 is 40.9 x 20 x 36.5 with tabs spanning 54.0, and none of it appears in
    any model file - the bracket only cuts a hole where it goes. So this gate
    builds the servo as a scratch envelope (case, tab plate, output boss) and
    sweeps the arm past it. Getting that envelope's ORIGIN wrong is the easy
@@ -18,7 +18,7 @@ at sixty), plus one this joint has and the wrist does not:
 THE SERVO ENVELOPE, DERIVED NOT ASSUMED. lib/servo.py puts the origin on the
 output shaft axis at the TAB PLANE - the underside of the mounting tabs, the
 face a bracket clamps - with +Z out of the shaft. tab_below_top is measured to
-the TOP of the tabs, so the underside sits tab_below_top + tab_thk = 10.0 mm
+the TOP of the tabs, so the underside sits tab_below_top + tab_thk = 9.7 mm
 from the case top. That sum is exactly sb_lobe_t, which is why the pad is that
 thick and not a chosen number: the tabs bear on the pad's OUTER face, the
 screws go inboard from there, and the case top lands flush on sb_plate_out.
@@ -187,7 +187,7 @@ def run(_context: str):
     case_h = 3.65            # MG995 case_h 36.5 mm, DATASHEET drawing B
     boss_d, boss_h = 1.30, 0.30
     tab_thk = gv('sb_tab_thk')
-    tab_span = 5.28
+    tab_span = 5.40          # cm - TowerPro official E 54.0, 2026-08-27 audit
     case_hi = gv('sb_shaft_end')
     case_lo = case_hi - case_l
     tab_plane = plate_out + lobe_t          # the datum. See the docstring.

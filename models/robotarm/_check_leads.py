@@ -53,18 +53,25 @@ ESCAPE_MM = 8.0     # how far a lead must run clear before it can be bent away
 #   lead_at       coordinate of the far end face, mm
 #   across        the other two coords of the lead centre, mm
 MOUNTS = [
-    # J1 yaw. Case y -6.10..+16.50 (shaft on the axis, ts_shaft_off +5.20),
+    # J1 yaw. Case y -6.10..+16.60 (shaft on the axis, ts_shaft_off +5.25
+    # after the 2026-08-27 flange audit set ts_case_l 22.7),
     # z -5.80..+17.90. Lead end +Y, and it sits BELOW the stator's 0..4 base
     # plate - which is the whole question for this one.
     dict(tag='J1 yaw', host='turntable_stator', servo='SG90',
-         axis='y', sign=+1, lead_at=16.50, across=(0.0, -3.5)),
-    # J2 shoulder. The MG995 runs DOWN along Z, case z -30.0..+10.0, mounted
-    # on a pad whose outer face is at x = sb_plate_out + sb_lobe_t. Lead end
-    # is the BOTTOM, -Z.
+         axis='y', sign=+1, lead_at=16.60, across=(0.0, -3.5)),
+    # J2 shoulder. The MG995 runs DOWN along Z, case z -30.9..+10.0 (case_l
+    # 40.9, TowerPro B), mounted on a pad whose outer face is at
+    # x = sb_plate_out + sb_lobe_t = 29.6 (lobe_t 9.7 after tab_below_top
+    # 7.2). Lead end is the BOTTOM, -Z. The first across here was the CASE
+    # CENTRE (pad face + case_h/2) - not where a lead lives; the rule puts
+    # it one dia up from the case bottom, which is outboard: pad face +
+    # F 26.8 - dia 4.2 = pad face + 22.6. Both read CLEAR in free air, but
+    # only one of them is the lead.
     dict(tag='J2 shoulder', host='shoulder_bracket', servo='MG995',
-         axis='z', sign=-1, lead_at=-30.0, across=(29.9 + 18.25, 0.0)),
-    # J3 elbow. MG90S in the forearm's -X lobe, case y -51.0..-27.0 with the
-    # elbow at y -45.0, so the near end is -51.0 and the lead end is -27.0.
+         axis='z', sign=-1, lead_at=-30.9, across=(29.6 + 22.6, 0.0)),
+    # J3 elbow. MG90S in the forearm's -X lobe, case y -51.0..-28.2 with the
+    # elbow at y -45.0, so the near end is -51.0 and the lead end is -28.2
+    # (case_l 24.0 -> 22.8, TowerPro B, 2026-08-27 flange audit).
     #
     # THE FIRST across HERE WAS (-19.0, -3.5) AND IT REPORTED 39 % TRAPPED.
     # That x put the lead INBOARD of the lobe's inner face, clipping the lobe
@@ -73,16 +80,19 @@ MOUNTS = [
     # the case body (below_tab = 20.0, DATASHEET) is all outside the lobe and
     # the lead-end bottom corner sits at |x| 43.9 in free air. Same error
     # class the effector control caught: a per-part coordinate typed with the
-    # height and width axes swapped. x = plate_out 19.9 + lobe_t 4.0 +
-    # below_tab 20.0 - lead dia 3.4 = 40.5; centred across the width -> z 0.
+    # height and width axes swapped. x = plate_out 19.9 + lobe_t 5.5 +
+    # below_tab (= TowerPro F) 18.5 - lead dia 3.4 = 40.5; centred across
+    # the width -> z 0. (plate_out + case_h - dia: the flange audit moved
+    # lobe_t and F by equal and opposite amounts, so x stands.)
     dict(tag='J3 elbow', host='forearm', servo='MG90S',
-         axis='y', sign=+1, lead_at=-27.0, across=(-40.5, 0.0)),
-    # J4 wrist pitch. MG90S in the +X lobe, case y -18.0..+6.0, shaft at 0,
-    # near end +6.0, lead end -18.0. Mirror of J3 - same fix, same reason.
+         axis='y', sign=+1, lead_at=-28.2, across=(-40.5, 0.0)),
+    # J4 wrist pitch. MG90S in the +X lobe, case y -16.8..+6.0, shaft at 0,
+    # near end +6.0, lead end -16.8. Mirror of J3 - same fix, same reason.
     dict(tag='J4 wrist', host='forearm', servo='MG90S',
-         axis='y', sign=-1, lead_at=-18.0, across=(40.5, 0.0)),
-    # J5 roll. SG90 on its side, long axis along Z, case z -16.5..+6.1 with
-    # the shaft at 0. Lead end is the BOTTOM, -Z, down in the keel.
+         axis='y', sign=-1, lead_at=-16.8, across=(40.5, 0.0)),
+    # J5 roll. SG90 on its side, long axis along Z, case z -16.6..+6.1 with
+    # the shaft at 0 (case_l 22.7 after the flange audit). Lead end is the
+    # BOTTOM, -Z, down in the keel.
     #
     # First across was (0.0, 0.0) - case mid-height, not where a lead lives.
     # The rule this file states puts it one lead dia up from the case bottom:
@@ -92,7 +102,7 @@ MOUNTS = [
     # channel through the pocket floor and keel at exactly this position
     # (wro_lead_y, derived from the same rule). This row verifies that cut.
     dict(tag='J5 roll', host='wrist_roll', servo='SG90',
-         axis='z', sign=-1, lead_at=-16.5, across=(0.0, -8.6)),
+         axis='z', sign=-1, lead_at=-16.6, across=(0.0, -8.6)),
     # Effector. THE CONTROL, and the only mount that already models a lead
     # escape: pruner_shell cuts a 5.0 mm lead_notch through its back wall at
     # x +-2.5, z 0 .. (case_w/2 + loc/2) = 0..6.40. The lead centre is the

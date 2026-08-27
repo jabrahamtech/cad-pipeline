@@ -370,7 +370,7 @@ def run(_context: str):
     mg_tab_thk_mm = gv('sb_tab_thk') * 10
     mg_plate_out_mm = gv('sb_plate_out') * 10
     MG_CASE_H_MM = 36.5              # MG995 case height, DATASHEET drawing B
-    MG_TAB_SPAN_MM = 52.8
+    MG_TAB_SPAN_MM = 54.0            # TowerPro official E, 2026-08-27 audit
     # In the ROTOR's frame: the pad's outer face is the tab plane, the case
     # runs outboard from it in +X, and the case's own long axis is Z.
     mg_tab_x = mg_plate_out_mm + mg_lobe_t_mm

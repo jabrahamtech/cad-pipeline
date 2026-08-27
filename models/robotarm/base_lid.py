@@ -21,8 +21,9 @@ proved fit.
   4 x M3        at r 78.0, az 45/135/225/315, counterbored from the top so the
                 heads finish under the rim.
   servo well    NEW. The stator's own central void is a Ø20 circle unioned
-                with a 12.80 x 22.80 rectangle - measured off the built body -
-                and the SG90 case (12.60 x 22.60) drops through it. This lid
+                with a 12.40 x 22.90 rectangle - tracked off the stator's
+                case + loc cut (flange audit 2026-08-27) -
+                and the SG90 case (12.20 x 22.70) drops through it. This lid
                 has to clear ALL of that, not just the servo.
   cable route   NEW, and it is the same opening. The loom crosses from the
                 rotating half to the fixed half at the CENTRE, where the twist
@@ -65,13 +66,13 @@ VENT_N = 12
 # lid masked 3.60 of the well and the SG90 case fouled the lid by 3.50.
 # _check_j1 found it. Every comparison below is now lo/hi, not length.
 STATOR_VOID_R = 10.00        # the circular part
-STATOR_WELL_X = 12.80        # the rectangular part
-STATOR_WELL_Y = 22.80
-STATOR_WELL_OFF_Y = 5.20     # ts_shaft_off - the well's centre, off the axis
+STATOR_WELL_X = 12.40        # the rectangular part (case 12.2 + loc)
+STATOR_WELL_Y = 22.90        # case 22.7 + loc - 2026-08-27 flange audit
+STATOR_WELL_OFF_Y = 5.25     # ts_shaft_off - the well's centre, off the axis
 STATOR_PLATE_IR = 10.00      # stator base plate lands on the lid from here...
 STATOR_PLATE_OR = 50.00      # ...to here. Nothing may vent under it.
-SG90_CASE_W = 12.60
-SG90_CASE_L = 22.60
+SG90_CASE_W = 12.20          # TowerPro D - 2026-08-27 flange audit
+SG90_CASE_L = 22.70          # TowerPro B
 
 
 def run(_context: str):
@@ -115,12 +116,12 @@ def run(_context: str):
     # --- NEW ------------------------------------------------------------------
     param('open_x', '22.00 mm',
           'servo + cable opening, across the flats of the SG90. Must contain\n'
-          '           the STATOR\'S void (a 20.0 circle unioned with a 12.80 x 22.80\n'
+          '           the STATOR\'S void (a 20.0 circle unioned with a 12.40 x 22.90\n'
           '           rectangle), not merely the servo - the two parts share this hole.')
     param('open_y', '31.00 mm',
           'the long way. WAS 26.00 and centred, which masked the servo well.\n'
           '           Three things set it now: the stator\'s Ø20 void ON the axis,\n'
-          '           its 12.80 x 22.80 well at y +5.20, and the loom slot\'s inner\n'
+          '           its 12.40 x 22.90 well at y +5.25, and the loom slot\'s inner\n'
           '           radius at 13.0, which this opening has to reach PAST rather\n'
           '           than stop short of - see the merge note below.')
     param('open_off_y', '2.00 mm',
@@ -142,8 +143,8 @@ def run(_context: str):
     param('tie_r', '20.00 mm', 'zip-tie slots this far out, either side of the opening')
     # THE LOOM. Five servos live above J1 - J2 MG995, J3/J4 MG90S, J5 SG90 and
     # the effector SG90 - so fifteen leads cross here. They cannot pass beside
-    # the yaw servo: turntable_stator's well is 12.80 x 22.80 on a 12.60 x
-    # 22.60 case, a tenth of a millimetre each side. This slot is the bottom of
+    # the yaw servo: turntable_stator's well is 12.40 x 22.90 on a 12.20 x
+    # 22.70 case, a tenth of a millimetre each side. This slot is the bottom of
     # a three-part route: base_lid -> turntable_stator (same slot) -> the space
     # under the rotor -> shoulder_bracket's own window, which turns with J1.
     param('cable_ir', '13.00 mm', 'MUST MATCH ts_cable_ir - asserted below')
@@ -435,7 +436,8 @@ def run(_context: str):
           % (c_ir_mm, c_or_mm, val('cable_deg') * 180 / math.pi,
              val('cable_az') * 180 / math.pi))
     print('  15 leads cross J1 (5 servos above it). They CANNOT go beside the')
-    print('  yaw servo: the stator\'s well is 12.80 x 22.80 on a 12.60 case.')
+    print('  yaw servo: the stator\'s well is %.2f x %.2f on a %.2f case.'
+          % (STATOR_WELL_X, STATOR_WELL_Y, SG90_CASE_W))
     print('fixings: 3 x %.2f at r %.1f az %s | 4 x M3 at r %.1f az %s, heads %.1f x %.1f'
           % (post_d_mm, post_r_mm, POST_AZ, screw_r_mm, SCREW_AZ,
              val('head_d') * 10, val('head_z') * 10))

@@ -103,13 +103,17 @@ class ServoSpec:
         return self.case_h - self.tab_below_top - self.tab_thk
 
 
-# --- SG90: 9 g plastic-gear micro. DATASHEET, drawing "SG90_Model_A" -----
-# Read off the drawing: 32.4 tab span with the holes 2.3 in from each tip
-# gives 27.8 c-c, which agrees with the widely published SG90 value.
+# --- SG90: 9 g plastic-gear micro. DATASHEET, drawing "SG90_Model_A",
+# reconciled 2026-08-27 against TowerPro's own config table
+# (towerpro.com.tw/product/sg90-analog: B 22.7, D 12.2, E 32.3, F 17,
+# A 30.3 - A confirms case_h + boss_h + spline_h exactly). Deltas applied:
+# case_l 22.6 -> 22.7, case_w 12.6 -> 12.2, tab_span 32.4 -> 32.3. Hole
+# pitch stays 27.8 (drawing-stated; holes 2.3 in from each tip of a 32.3
+# span gives 27.7, agreement to 0.1). tab_plane 17.0 = TowerPro F, exact.
 SG90 = ServoSpec(
     name="SG90",
-    case_l=22.6, case_w=12.6, case_h=23.7,
-    tab_span=32.4, tab_thk=2.4, tab_hole_dia=2.1, tab_hole_pitch=27.8,
+    case_l=22.7, case_w=12.2, case_h=23.7,
+    tab_span=32.3, tab_thk=2.4, tab_hole_dia=2.1, tab_hole_pitch=27.8,
     tab_below_top=4.3, shaft_from_end=6.1,
     boss_dia=5.0, boss_h=4.2, spline_dia=4.9, spline_h=2.5,
     horn_hub_dia=7.0, horn_hub_h=3.8, horn_blade_thk=1.5,
@@ -120,15 +124,25 @@ SG90 = ServoSpec(
     stall_kgcm=1.6,
 )
 
-# --- MG90S: 13.4 g metal-gear micro. DATASHEET, TowerPro drawing --------
-# NOT dimensionally identical to the SG90 on this drawing: 34.0 span and
-# 29.0 c-c against the SG90's 32.4 / 27.8. They are NOT interchangeable in
-# a shared tab pattern — do not design one pocket for both.
+# --- MG90S: 13.4 g metal-gear micro. DATASHEET — CORRECTED 2026-08-27.
+# The drawing this block was first typed from said 34.0 span / 29.0 c-c and
+# "not interchangeable with the SG90". TowerPro's own config table
+# (towerpro.com.tw/product/mg90s-3: A 32.5, B 22.8, C 28.4, D 12.4,
+# E 32.1, F 18.5) contradicts it: the flange is the SG90's footprint to
+# within 0.2. Third-party drawings (components101, electronicoscaldas)
+# agree on ~22.5-22.8 case / 32.5 span and never showed 34/29. Adopted:
+# case_l 22.8, case_w 12.4, tab_span 32.1; tab_thk 2.5 ASSUMED (micro
+# family, table does not give it); tab_below_top 3.0 DERIVED from F:
+# case_h - F - tab_thk = 24.0 - 18.5 - 2.5. Hole pitch 27.5 DERIVED
+# (holes centred in the tab overhang, (B+E)/2), no drawing states it —
+# CALIPER before anything prints against these holes. Note official
+# A 32.5 reads 1.5 SHORTER than case_h+boss+spline below — the envelope
+# kept here is the conservative one.
 MG90S = ServoSpec(
     name="MG90S",
-    case_l=24.0, case_w=12.5, case_h=24.0,
-    tab_span=34.0, tab_thk=3.0, tab_hole_dia=2.1, tab_hole_pitch=29.0,
-    tab_below_top=1.0, shaft_from_end=6.0,
+    case_l=22.8, case_w=12.4, case_h=24.0,
+    tab_span=32.1, tab_thk=2.5, tab_hole_dia=2.1, tab_hole_pitch=27.5,
+    tab_below_top=3.0, shaft_from_end=6.0,
     boss_dia=6.0, boss_h=6.0, spline_dia=5.0, spline_h=4.0,
     horn_hub_dia=7.0, horn_hub_h=3.8, horn_blade_thk=1.5,
     horn_arm_len=15.95, horn_hole_dia=0.9, horn_hole_pitch=2.1,
@@ -142,16 +156,23 @@ MG90S = ServoSpec(
 # THE TWO DRAWINGS JONATHAN SUPPLIED DISAGREE ON THE MOUNTING PATTERN:
 #   drawing A (grey):  tab span 54.0, case 40 x 20 x 38,  total 47.2
 #   drawing B (black): tab span 52.8, case 40 x 20 x 36.5, c-c 47.8 x 10.2
-# 1.2 mm of span and 1.7 mm of hole pitch is more than any clearance hole
-# absorbs. The values below are drawing B (the one that dimensions the hole
-# pitch at all); the shoulder bracket therefore mounts this servo on SLOTS
-# elongated along X, not on holes -- see MG995_TAB_SLOT_X_MM. Replace both
-# with MEASURED values before the bracket prints at full size.
+# TIE PARTLY BROKEN 2026-08-27 by TowerPro's own config table
+# (towerpro.com.tw/product/mg995: A 42.7, B 40.9, C 37, D 20, E 54,
+# F 26.8 - the MG995 and MG996R pages carry the same case table): the
+# manufacturer sides with drawing A on the span (54, not 52.8) and reads
+# the case a shade longer (40.9). Adopted: tab_span 54.0, case_l 40.9,
+# tab_below_top 7.2 (DERIVED from official F: case_h - F - tab_thk =
+# 36.5 - 26.8 - 2.5). The hole pitch is still ONLY drawing B's 47.8 -
+# tab-centred derivation off the official numbers gives (B+E)/2 = 47.5,
+# published clones say 49.5 - so the bracket keeps mounting this servo on
+# SLOTS elongated along X (MG995_TAB_SLOT_X_MM, widened to cover
+# 47.5..49.5). Replace with MEASURED values before the bracket prints at
+# full size — this is the standing bench item that blocks the shoulder.
 MG995 = ServoSpec(
     name="MG995",
-    case_l=40.0, case_w=20.0, case_h=36.5,
-    tab_span=52.8, tab_thk=2.5, tab_hole_dia=4.8, tab_hole_pitch=47.8,
-    tab_below_top=7.5, shaft_from_end=10.0,
+    case_l=40.9, case_w=20.0, case_h=36.5,
+    tab_span=54.0, tab_thk=2.5, tab_hole_dia=4.8, tab_hole_pitch=47.8,
+    tab_below_top=7.2, shaft_from_end=10.0,
     boss_dia=13.0, boss_h=3.0, spline_dia=5.9, spline_h=3.6,
     horn_hub_dia=12.0, horn_hub_h=5.0, horn_blade_thk=2.5,
     horn_arm_len=19.5, horn_hole_dia=1.6, horn_hole_pitch=3.0,
@@ -162,9 +183,10 @@ MG995 = ServoSpec(
 )
 # MG995 mounts on FOUR holes: 47.8 apart along X, this far apart across Y.
 MG995_TAB_HOLE_PITCH_Y = 10.2
-# Slot length along X that covers BOTH published patterns (47.8 and 49.5)
-# plus an M3 clearance hole: 3.4 + (49.5 - 47.8) = 5.1, rounded up.
-MG995_TAB_SLOT_X_MM = 5.4
+# Slot length along X that covers EVERY candidate pattern (derived 47.5,
+# drawing B's 47.8, published clones' 49.5) plus an M3 clearance hole:
+# 3.4 + (49.5 - 47.5) = 5.4, rounded up.
+MG995_TAB_SLOT_X_MM = 5.6
 
 # --- MG995 round horn (the Oe22 aluminium disc), DATASHEET -------------
 # Supplied drawing: Oe22 disc, 4 holes on a Oe16 bolt circle (2 tapped M4,

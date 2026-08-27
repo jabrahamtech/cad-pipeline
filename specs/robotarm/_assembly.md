@@ -966,3 +966,67 @@ gripcut_finger 1035.602 NEW; `_check_ledger` batch 1 now builds
 gripcut_finger too). Still true: lead exit positions are DATASHEET-derived,
 not measured, and nothing yet models whether an escaped lead can REACH the
 duct.
+
+
+## Servo flange audit (2026-08-27) — TowerPro's own tables vs what we had typed
+
+Jonathan: "the flanges are wrong." Went to the manufacturer. TowerPro's
+product pages carry a per-servo config table keyed to one dimension diagram
+(小馬達尺寸標示圖B): A = overall height to the spline top, B = case length,
+C = case+collar height, D = case width, E = **tab span tip to tip**,
+F = **case bottom to the tab underside**. Decoded against the SG90, whose
+lib values A and F matched exactly (30.3 and 17.0). Cross-checked against
+the components101 and electronicoscaldas drawings, read from the drawings
+themselves in a browser because every text scrape dropped the callouts.
+
+| servo | field | was | now | source |
+|---|---|---|---|---|
+| SG90 | case_w | 12.6 | **12.2** | TowerPro D; drawings say 11.8–12.2 |
+| SG90 | case_l | 22.6 | **22.7** | TowerPro B |
+| SG90 | tab_span | 32.4 | **32.3** | TowerPro E |
+| MG90S | case_l | 24.0 | **22.8** | TowerPro B |
+| MG90S | case_w | 12.5 | **12.4** | TowerPro D |
+| MG90S | tab_span | 34.0 | **32.1** | TowerPro E — the flange is the SG90's footprint, the old "not interchangeable" drawing was wrong |
+| MG90S | tab_hole_pitch | 29.0 | **27.5** | DERIVED (B+E)/2, holes centred in the tab — **no drawing states it, caliper before printing against it** |
+| MG90S | tab_thk | 3.0 | **2.5** | ASSUMED micro-family value |
+| MG90S | tab_below_top | 1.0 | **3.0** | DERIVED from TowerPro F 18.5 |
+| MG995 | case_l | 40.0 | **40.9** | TowerPro B |
+| MG995 | tab_span | 52.8 | **54.0** | TowerPro E — the manufacturer sides with drawing A on the span |
+| MG995 | tab_below_top | 7.5 | **7.2** | DERIVED from TowerPro F 26.8 |
+| MG995 | slot_len | 5.4 | **5.6** | covers every candidate pitch 47.5–49.5 |
+
+What rippled, all re-gated:
+
+- **forearm**: MG90S windows shrink 1.2 in Y, pilots move to 27.5 pitch,
+  and the tab stack correction thickens the lobes 4.0 → 5.5 — the lobe
+  grows OUTBOARD, so the shaft (= pivot) plane does not move; the lead-end
+  x stands at 43.9 because lobe_t and F shifted by equal and opposite
+  amounts (both = plate_out + case_h). `_check_wrist` PASS.
+- **wrist_roll / pruner_shell / turntable_stator / gripper_shell** (SG90
+  pockets): narrower by 0.4 in the width direction — the 12.6-wide pockets
+  were cut for a case TowerPro says is 12.2. `_check_wrist`,
+  `_check_pruner` PASS.
+- **shoulder_bracket**: case runs 0.9 longer (bottom z −30.9), pad thins to
+  9.7, slots lengthen to 5.6. `_check_shoulder` PASS all eight pitches.
+- **J1 turret**: full sweep re-run, 0.000 mm³, PASS — still BLOCKED on the
+  SG90 horn-hub guess, unchanged. **The platter-column conflict resolved
+  itself**: 12.45 column vs the case now 12.2 = +0.25 clearance where the
+  old 12.6 case read −0.15 interference. If the printed column measures as
+  drawn, the servo fits; caliper still wanted.
+- **_check_leads**: mount rows re-derived (J2 lead moved from a case-centre
+  guess to the rule position; J1/J3/J4/J5 far-end coordinates track the new
+  case lengths). GATE leads PASS, all six CLEAR.
+- **_check_loads**: PASS, J2 35 % / J3 77 % / J4 31 %.
+- **Turret exported v2** (stator/ring/lid, matched set). v1's stator pocket
+  is 0.4 loose in X against the corrected case. The first v2 export shipped
+  three 3.7 KB empty files — Fusion silently exports a hidden occurrence as
+  nothing, and a gate had left the stator's light bulb off; `_export_turret`
+  now forces visibility and the size floor is 20 KB, not 1 KB.
+
+STILL FOR THE CALIPER, in order of what bites first: MG90S tab hole pitch
+27.5 (derived, drives the forearm pilots), MG90S tab thickness 2.5
+(assumed), MG995 everything (standing item, blocks the shoulder print),
+SG90 horn hub Ø (blocks the J1 gate's PASS), the platter column, and every
+figure above at the 0.01 mm caliper when it arrives — these are TowerPro's
+numbers for genuine servos, and clone flanges are exactly where clones
+cheap out.

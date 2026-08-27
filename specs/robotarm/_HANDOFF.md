@@ -58,6 +58,11 @@ likely misconfiguration if they fall outside it. Read that before section 2.
 ## Open, roughly in order of what blocks what
 
 1. **Print and reduce the gauge.** Everything tolerance-related waits on it.
+   NOTE 2026-08-27: print the TURRET from **v2** exports — the flange audit
+   (see `_assembly.md`, "Servo flange audit") corrected every servo's case
+   and tab numbers to TowerPro's own tables and the stator pocket moved.
+   v1's pocket is 0.4 loose in X. Caliper list grew: MG90S hole pitch 27.5
+   is DERIVED, MG90S tab 2.5 ASSUMED — measure before the forearm prints.
 2. **Grip-and-cut fingers: DONE in CAD, open on the bench.** Modelled,
    swept, PASS (`robotarm_gripcut_gate`). Remaining: the leaf FORCE is
    solver arithmetic until the flexure coupon on the next gauge plate; and

@@ -182,12 +182,12 @@ def run(_context: str):
     param('duct_z', PREFIX + 'waist_z - ' + PREFIX + 'rail_z', 'derived duct half height')
 
     # --- MG90S, DATASHEET (lib/servo.py) -------------------------------------
-    param('case_l', '24.0 mm', 'MG90S case length - lies along Y')
-    param('case_w', '12.5 mm', 'MG90S case width - lies along Z')
+    param('case_l', '22.8 mm', 'MG90S case length - lies along Y. 24.0 -> 22.8 on\n           TowerPro B, 2026-08-27 flange audit (lib/servo.py)')
+    param('case_w', '12.4 mm', 'MG90S case width - lies along Z. TowerPro D')
     param('shaft_end', '6.0 mm', 'shaft axis to the near end of the case, along Y')
-    param('tab_thk', '3.0 mm', 'MG90S tab thickness - the lobe is this thick, it is the datum')
-    param('tab_below_top', '1.0 mm', 'case top to the tab TOP, along X')
-    param('tab_pitch', '29.0 mm', 'MG90S tab hole pitch - NOT the SG90 27.8, see lib/servo.py')
+    param('tab_thk', '2.5 mm', 'MG90S tab thickness - ASSUMED micro-family value, the\n           TowerPro table does not give it. Part of the lobe_t datum stack')
+    param('tab_below_top', '3.0 mm', 'case top to the tab TOP, along X - DERIVED from\n           TowerPro F 18.5: case_h - F - tab_thk. Was 1.0, which floated the\n           tabs 2.0 too high and sank the case 1.5 too shallow')
+    param('tab_pitch', '27.5 mm', 'MG90S tab hole pitch - DERIVED, holes centred in the\n           tab overhang of TowerPro B/E ((22.8+32.1)/2). The 29.0 it replaces\n           came from a drawing TowerPro\'s own table contradicts. CALIPER\n           before printing anything that screws to these tabs')
     param('lobe_t', PREFIX + 'tab_below_top + ' + PREFIX + 'tab_thk',
           'derived lobe thickness: the tabs bear on its outer face and the case top\n'
           '           sits flush with the plate outer face')

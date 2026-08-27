@@ -147,11 +147,11 @@ def run(_context: str):
     param('pin_y', SHARED + 'face / 2 + ' + PREFIX + 'free', 'derived pinion recess half width')
 
     # --- SG90, DATASHEET (lib/servo.py) --------------------------------------
-    param('case_l', '22.6 mm', 'SG90 case length - DATASHEET')
-    param('case_w', '12.6 mm', 'SG90 case width - DATASHEET')
+    param('case_l', '22.7 mm', 'SG90 case length - DATASHEET (TowerPro B)')
+    param('case_w', '12.2 mm', 'SG90 case width - DATASHEET (TowerPro D; was 12.6)')
     param('case_h', '23.7 mm', 'SG90 case height - DATASHEET')
     param('shaft_end', '6.1 mm', 'shaft axis to the NEAR end of the case - DATASHEET')
-    param('tab_span', '32.4 mm', 'SG90 tab tip to tab tip - DATASHEET')
+    param('tab_span', '32.3 mm', 'SG90 tab tip to tab tip - DATASHEET (TowerPro E)')
     param('tab_thk', '2.4 mm', 'SG90 mounting tab thickness - DATASHEET')
     param('tab_plane', '17.0 mm', 'case bottom to the tab UNDERSIDE - DATASHEET')
     param('boss_h', '4.2 mm', 'output boss height above the case top - DATASHEET')

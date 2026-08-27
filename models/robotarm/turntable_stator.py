@@ -156,12 +156,12 @@ def run(_context: str):
 
     # ---- SG90, DATASHEET (lib/servo.py) -------------------------------------
     # J1 is an SG90 because both MG90S are spoken for at J3 and J4.
-    param('case_l', '22.6 mm', 'SG90 case length - lies along Y here')
-    param('case_w', '12.6 mm', 'SG90 case width - lies along X')
+    param('case_l', '22.7 mm', 'SG90 case length - lies along Y here. TowerPro B')
+    param('case_w', '12.2 mm', 'SG90 case width - lies along X. TowerPro D; was 12.6')
     param('case_h', '23.7 mm', 'SG90 case height')
     param('tab_thk', '2.4 mm', 'SG90 tab thickness')
     param('tab_below_top', '4.3 mm', 'case top to the TOP of the tabs')
-    param('tab_pitch', '27.8 mm', 'SG90 tab hole pitch - NOT the MG90S 29.0')
+    param('tab_pitch', '27.8 mm', 'SG90 tab hole pitch - drawing SG90_Model_A;\n           the MG90S is the same footprint (27.5 derived), 2026-08-27 audit')
     # THE OUTPUT SHAFT IS NOT IN THE MIDDLE OF THE CASE, and this part used to
     # assume it was. lib/servo.py has carried shaft_from_end = 6.1 since the
     # library was written and, until 2026-08-26, servo_adapter.py was the ONLY
@@ -177,7 +177,7 @@ def run(_context: str):
           '           SHAFT lands on it. Everything servo-related below is offset\n'
           '           by this in +Y, which also moves the case away from the cable\n'
           '           window at az 270 rather than into it.')
-    param('tab_span', '32.4 mm', 'SG90 tab tip to tip')
+    param('tab_span', '32.3 mm', 'SG90 tab tip to tip. TowerPro E')
     param('boss_h', '4.2 mm', 'SG90 output collar above the case top')
     param('horn_hub_h', '3.8 mm', 'SG90 horn hub height, seated on that collar')
     param('horn_blade_t', '1.5 mm', 'SG90 horn blade thickness - DATASHEET')
@@ -191,8 +191,8 @@ def run(_context: str):
     param('plate_t', '4.0 mm', 'base plate thickness')
     param('plate_ir', '10.0 mm', 'base plate inner radius - the servo comes through here')
     param('plate_or', '50.0 mm', 'base plate outer radius - out to the ring')
-    # THE LOOM HAD NO WAY THROUGH THIS PART. The servo well is 12.80 x 22.80
-    # against an SG90 case of 12.60 x 22.60 - one tenth of a millimetre each
+    # THE LOOM HAD NO WAY THROUGH THIS PART. The servo well is 12.40 x 22.90
+    # against an SG90 case of 12.20 x 22.70 - one tenth of a millimetre each
     # side, which is a clearance fit for the servo and nothing at all for
     # fifteen wires. Five servos live above J1 (J2 MG995, J3 and J4 MG90S,
     # J5 SG90, effector SG90) and every one of their leads has to cross here.
@@ -201,7 +201,7 @@ def run(_context: str):
     # that route and base_lid carries the same slot underneath.
     param('cable_az', '270.0 deg', 'astern of the arm, matching sb_cable_deg\'s\n'
                                    '           centre - the loom is never under the reach', 'deg')
-    param('cable_ir', '13.0 mm', 'inner radius. Clears the 22.80 servo well, which\n'
+    param('cable_ir', '13.0 mm', 'inner radius. Clears the 22.90 servo well, which\n'
                                  '           reaches y -11.40, by 1.60 of wall')
     param('cable_or', '20.0 mm', 'outer radius. The race band starts at r 23.0')
     param('cable_deg', '70.0 deg', 'arc swept. At a 16.5 mean radius that is 20 mm\n'
@@ -657,7 +657,9 @@ def run(_context: str):
     print('CABLE WINDOW: r %.1f..%.1f, %.0f deg at az %.0f - the fixed half of the'
           % (val('cable_ir') * 10, val('cable_or') * 10,
              val('cable_deg') * 180 / math.pi, val('cable_az') * 180 / math.pi))
-    print('  loom route. The servo well is 12.80 x 22.80 on a 12.60 x 22.60 case,')
+    print('  loom route. The servo well is %.2f x %.2f on a %.2f x %.2f case,'
+          % (val('case_w') * 10 + val('loc') * 10, val('case_l') * 10 + val('loc') * 10,
+             val('case_w') * 10, val('case_l') * 10))
     print('  so NOTHING could pass beside the servo - 15 leads cross J1 here.')
     print('  base_lid repeats it below; shoulder_bracket\'s window is the moving half.')
     print('ONE M3 per post: ring -> post -> platter insert. 3 screws hold the turret.')

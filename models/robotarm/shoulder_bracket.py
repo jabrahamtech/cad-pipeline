@@ -57,7 +57,7 @@ under the legs stay full thickness.
 
 THE TAB SLOTS ARE SLOTS BECAUSE THE DATASHEET IS NOT TRUSTWORTHY. The two
 MG995 drawings Jonathan supplied disagree by 1.2 mm on tab span and 1.7 mm on
-hole pitch (see lib/servo.py). A 5.4 mm slot along the case's long axis covers
+hole pitch (see lib/servo.py). A 5.6 mm slot along the case's long axis covers
 both patterns. A self-tapper in a slot grips two flanks instead of a full
 circle - call it half the pull-out of a round pilot, which against 9.4 kg cm
 of stall through four screws is still not close.
@@ -243,16 +243,16 @@ def run(_context: str):
           '           its own side).', 'deg')
 
     # ---- MG995, DATASHEET (lib/servo.py) ------------------------------------
-    param('case_l', '40.0 mm', 'MG995 case length - runs DOWN along Z, see the docstring')
+    param('case_l', '40.9 mm', 'MG995 case length - runs DOWN along Z, see the\n           docstring. 40.0 -> 40.9 on TowerPro B, 2026-08-27 flange audit')
     param('case_w', '20.0 mm', 'MG995 case width - lies along Y')
     param('shaft_end', '10.0 mm', 'shaft axis to the near end of the case, along Z')
     param('tab_thk', '2.5 mm', 'MG995 tab thickness - the pad is this proud, it is the datum')
-    param('tab_below_top', '7.5 mm', 'case top to the tab TOP, along X')
+    param('tab_below_top', '7.2 mm', 'case top to the tab TOP, along X - DERIVED from\n           TowerPro F 26.8: case_h - F - tab_thk. Was 7.5')
     param('tab_pitch', '47.8 mm',
           'tab hole pitch along the case, drawing B. Drawing A implies 49.5 - hence\n'
           '           slots, see MG995_TAB_SLOT_X_MM in lib/servo.py')
     param('tab_pitch_y', '10.2 mm', 'tab hole pitch across the case - MG995_TAB_HOLE_PITCH_Y')
-    param('slot_len', '5.4 mm', 'MG995_TAB_SLOT_X_MM - covers both published patterns')
+    param('slot_len', '5.6 mm', 'MG995_TAB_SLOT_X_MM - covers every candidate pitch\n           (derived 47.5, drawing B 47.8, clones 49.5)')
     param('slot_w', '2.5 mm', 'M3 self-tapper into PETG')
     param('slot_depth', '5.0 mm',
           'blind. Must stay inside the pad or the screws break through into the\n'

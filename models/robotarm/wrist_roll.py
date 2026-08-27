@@ -111,11 +111,11 @@ def run(_context: str):
     param('free', '0.4 mm', 'free fit - design_rules')
 
     # --- SG90, DATASHEET (lib/servo.py) --------------------------------------
-    param('case_l', '22.6 mm', 'SG90 case length - lies along Z here')
-    param('case_w', '12.6 mm', 'SG90 case width - lies along X, so it sets the fork span')
+    param('case_l', '22.7 mm', 'SG90 case length - lies along Z here. TowerPro B')
+    param('case_w', '12.2 mm', 'SG90 case width - lies along X, so it sets the fork\n           span. 12.6 -> 12.2 on TowerPro D, 2026-08-27 flange audit')
     param('case_h', '23.7 mm', 'SG90 case height - lies along Y, the roll axis')
     param('shaft_end', '6.1 mm', 'shaft axis to the NEAR end of the case, along Z')
-    param('tab_span', '32.4 mm', 'SG90 tab tip to tab tip, along Z')
+    param('tab_span', '32.3 mm', 'SG90 tab tip to tab tip, along Z. TowerPro E')
     param('tab_thk', '2.4 mm', 'SG90 tab thickness, along Y')
     param('tab_plane', '17.0 mm', 'case bottom to the tab UNDERSIDE, along Y')
     param('boss_h', '4.2 mm', 'output boss height above the case top')
