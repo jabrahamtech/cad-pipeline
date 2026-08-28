@@ -100,11 +100,14 @@ ROLL_AZ = (90.0, 210.0, 330.0)
 # The two numbers no user parameter in this project carries. Both are the
 # BOUGHT part, not ours, and both are read by this gate only.
 ROLLER_BORE_MM = 8.0        # 608ZZ bore - lib/bearings.py
-SG90_BLADE_W_MM = 3.0       # arm width over its outer half - 2026-08-27 horn
-                            # audit (community-model grade). tt_horn_w is 3.4 =
-                            # this + 0.4; cutting the envelope at 3.4 would
-                            # model the POCKET as the blade and report mm3
-                            # that are not there.
+SG90_BLADE_W_MM = 4.44      # MEASURED 2026-08-28: the arm at the r 16.4 trim
+                            # line, lib.servo.micro_arm_w(16.4). The envelope
+                            # is the ARM, never the pocket - cutting it at the
+                            # slot width would report mm3 that are not there.
+                            # The pocket is now TAPERED (6.04 root -> 4.84 tip)
+                            # and this straight-sided envelope is therefore
+                            # CONSERVATIVE inboard: it overstates the arm near
+                            # the hub, where the O13 relief has the room.
 SG90_HUB_D_MM = 8.0         # horn audit: was 6.30 INVENTED; now the FreeCAD
                             # measured-model value. Still not from Jonathan's
                             # bench - the horn dims vary by batch, and the

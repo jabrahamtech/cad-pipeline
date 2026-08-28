@@ -60,7 +60,9 @@ SOLID_FRACTION = 0.65
 
 # ---- the numbers under test - every one traces to a part or lib/servo.py --
 # turret cross pocket, tt_ contract (shoulder_bracket / turntable_stator)
-CROSS_W = 3.4
+CROSS_W_ROOT = 6.04           # tapered now - MEASURED arm + 0.4
+CROSS_W_TIP = 4.84
+CROSS_R_ROOT = 6.5
 CROSS_Z = 2.4
 CROSS_RELIEF_D = 13.0
 CROSS_SCREW_D = 6.0
@@ -109,7 +111,9 @@ def run(_context: str):
     param('label_z', '0.6 mm', 'engraving depth - design_rules MIN_EMBOSS_MM')
 
     # cross-file contract checks, when the parts are in this document
-    for full, ours in (('tt_horn_w', CROSS_W), ('tt_horn_z', CROSS_Z),
+    for full, ours in (('tt_horn_w_root', CROSS_W_ROOT),
+                       ('tt_horn_w_tip', CROSS_W_TIP),
+                       ('tt_horn_r_root', CROSS_R_ROOT), ('tt_horn_z', CROSS_Z),
                        ('sb_root_relief_d', CROSS_RELIEF_D),
                        ('tt_screw_bore', CROSS_SCREW_D),
                        ('sh_horn_hub_d', SH_HUB_BORE),
@@ -257,10 +261,23 @@ def run(_context: str):
     rect('cr_pad', CR_X - cr_half, CR_X + cr_half, CR_Y - cr_half, CR_Y + cr_half,
          0.0, base_t + cr_pad_h, JOIN, [plate])
     cr_top = base_t + cr_pad_h
-    rect('cr_slot_a', CR_X - cr_half - 1.0, CR_X + cr_half + 1.0,
-         CR_Y - CROSS_W / 2, CR_Y + CROSS_W / 2, cr_top, -CROSS_Z, CUT, [plate])
-    rect('cr_slot_b', CR_X - CROSS_W / 2, CR_X + CROSS_W / 2,
-         CR_Y - cr_half - 1.0, CR_Y + cr_half + 1.0, cr_top, -CROSS_Z, CUT, [plate])
+    # TAPERED bowtie slots, matching the rotor pocket exactly (v2: v1 cut
+    # these as constant 3.4 rectangles and the horn would not enter at all)
+    wr, wt, rr = CROSS_W_ROOT / 2, CROSS_W_TIP / 2, CROSS_R_ROOT
+    hs = CROSS_TRIM_R
+    for tag, swap in (('a', False), ('b', True)):
+        pts = [(-hs, -wt), (-rr, -wr), (rr, -wr), (hs, -wt),
+               (hs, wt), (rr, wr), (-rr, wr), (-hs, wt)]
+        if swap:
+            pts = [(y, x) for (x, y) in pts]
+        sk = sketch('cr_slot_' + tag)
+        lines = sk.sketchCurves.sketchLines
+        for k in range(len(pts)):
+            a = pts[k]
+            b = pts[(k + 1) % len(pts)]
+            lines.addByTwoPoints(pt(sk, CR_X + a[0], CR_Y + a[1]),
+                                 pt(sk, CR_X + b[0], CR_Y + b[1]))
+        extrude_profs(one(sk), CUT, cr_top, -CROSS_Z, 'cr_slot_' + tag, [plate])
     circle('cr_relief', CR_X, CR_Y, CROSS_RELIEF_D, cr_top, -CROSS_Z, CUT, [plate])
     circle('cr_screw', CR_X, CR_Y, CROSS_SCREW_D, cr_top, -cr_pad_h - base_t - 1.0,
            CUT, [plate])
@@ -369,9 +386,10 @@ def run(_context: str):
     vol = plate.volume * 1000
     print('component: %r | body: %r' % (comp.name, plate.name))
     print('')
-    print('CROSS: slots %.1f wide x %.1f deep, relief O%.1f, screw O%.1f, '
-          'trim ticks +-%.1f' % (CROSS_W, CROSS_Z, CROSS_RELIEF_D,
-                                 CROSS_SCREW_D, CROSS_TRIM_R))
+    print('CROSS: TAPERED slots %.2f at r %.1f -> %.2f at the trim line, '
+          '%.1f deep, relief O%.1f, screw O%.1f, ticks +-%.1f'
+          % (CROSS_W_ROOT, CROSS_R_ROOT, CROSS_W_TIP, CROSS_Z,
+             CROSS_RELIEF_D, CROSS_SCREW_D, CROSS_TRIM_R))
     print('MG995 STACK: hub O%.2f x %.1f under slots %.2f x %.1f, trim +-%.1f'
           % (SH_HUB_BORE, SH_HUB_DEPTH, SH_ARM_W, SH_ARM_DEPTH, SH_TRIM_R))
     print('WRIST: hub O%.2f x %.1f under slot %.2f x %.1f'

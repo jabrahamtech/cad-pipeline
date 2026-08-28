@@ -77,7 +77,15 @@ arm outboard of r ≈ 13.5. The pocket needs one of:
       batch-independent, zero backlash, and every horn in the bag has
       holes. Costs a redesign of the rotor's horn interface.
 
-DECISION OUTSTANDING. Nothing in the turret prints until it is made.
+**DECIDED (a), same session.** The slots are now cut from
+`lib.servo.micro_arm_w()` — 6.04 wide at r 6.5, tapering to 4.84 at the
+r 16.4 trim line — so the pocket follows the measured arm instead of a
+retyped constant, and a re-measured horn moves it on the next rebuild.
+shoulder_bracket imports the function rather than copying its output.
+J1 full sweep re-run: 0.000 mm³, PASS, `horn^rotor` 0.000. Turret
+re-exported **v4** — v1/v2/v3 all carry a pocket no real horn enters.
+gauge_horn **v2** carries the tapered CROSS station so the fix gets the
+same drop test that caught the fault.
 
 ## Applied from this session
 - lib/servo.py micro horn: arm width 5.5→**5.7** at r 6, 3.0→**4.0** at

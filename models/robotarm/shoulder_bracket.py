@@ -74,9 +74,19 @@ forearm.py and upper_arm.py. MG995 dimensions are DATASHEET, not measured.
 """
 
 import math
+import os
+import sys
+
+REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
+if REPO not in sys.path:
+    sys.path.insert(0, REPO)
+for _stale in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.')]:
+    del sys.modules[_stale]
 
 import adsk.core
 import adsk.fusion
+
+from lib.servo import micro_arm_w  # noqa: E402 - MEASURED horn taper
 
 COMPONENT = 'robotarm_shoulder_bracket'
 BODY_NAME = 'shoulder_bracket'
@@ -173,7 +183,25 @@ def run(_context: str):
     turret('ring_or', '50.0 mm', 'ring outer radius - it is what the arm pitches down onto')
     turret('ring_lift', '0.40 mm', 'gap between the ring and the rim it holds down')
     turret('horn_span', '32.8 mm', 'yaw horn LONG-arm pocket span. The real 4-arm\n           horn runs ~33.5 tip to tip (ASYMMETRIC - short axis ~16; slots run\n           full span both ways, a slot longer than its arm is air), and the\n           arms were ALWAYS trimmed at assembly. 32.8 is the ceiling the\n           cable window allows (2 x (cable_ir - wall)) - trim to fit it.\n           2026-08-27 horn audit')
-    turret('horn_w', '3.4 mm', 'arm width over its outer half 3.0 + 0.4 clearance.\n           The old 2.0 was blade THICKNESS 1.6 + 0.4 - thickness-as-width, and\n           no arm would have entered - horn audit')
+    # THE SLOTS ARE TAPERED, because the arm is. Widths come from
+    # lib.servo.micro_arm_w() - the MEASURED taper, not a retyped constant,
+    # so a re-measured horn moves this pocket on the next rebuild.
+    _HORN_R_ROOT = 6.5
+    _HORN_R_TIP = 16.4                       # = horn_span / 2, asserted below
+    _HORN_CLEAR = 0.4
+    turret('horn_r_root', '%.2f mm' % _HORN_R_ROOT,
+           'where the tapered arm slots START - just outside the root relief.\n'
+           '           Inboard of this the O13 relief swallows the arm roots whole.')
+    turret('horn_w_root', '%.2f mm' % (micro_arm_w(_HORN_R_ROOT) + _HORN_CLEAR),
+           'slot width at horn_r_root: MEASURED arm %.2f + %.1f clearance -\n'
+           '           lib.servo.micro_arm_w(%.1f), 2026-08-28 bench.'
+           % (micro_arm_w(_HORN_R_ROOT), _HORN_CLEAR, _HORN_R_ROOT))
+    turret('horn_w_tip', '%.2f mm' % (micro_arm_w(_HORN_R_TIP) + _HORN_CLEAR),
+           'slot width at the trim line: MEASURED arm %.2f + %.1f. The old\n'
+           '           CONSTANT 3.4 (modelled 3.0 + 0.4) fit NOWHERE - the real arm\n'
+           '           is 4.0 at its narrowest - and even a constant 4.4 would only\n'
+           '           have taken it outboard of r 13.5. gauge_horn v1 CROSS, first\n'
+           '           drop, 2026-08-28.' % (micro_arm_w(_HORN_R_TIP), _HORN_CLEAR))
     turret('horn_z', '2.4 mm', 'blade thickness 2.0 + 0.4 seating. At the old 1.8 a\n           real 2.0 blade stood proud and the rotor rode the horn, not the race\n           - horn audit. Pocket depth into this underside')
     turret('screw_bore', '6.0 mm', 'driver access to the horn screw, up the centre')
 
@@ -588,18 +616,37 @@ def run(_context: str):
     t3 = design.timeline.count
     # The base servo's horn, driving this disc: a cross, so it takes the four-arm
     # horn at 90 deg increments instead of relying on a press fit.
+    half_span = tval('horn_span') / 2
+    r_root = tval('horn_r_root')
+    w_root = tval('horn_w_root') / 2
+    w_tip = tval('horn_w_tip') / 2
+    assert abs(half_span * 10 - _HORN_R_TIP) < 1e-6, (
+        'horn_span/2 is %.2f but the tip width was cut for r %.2f - the taper '
+        'is being evaluated at the wrong radius'
+        % (half_span * 10, _HORN_R_TIP))
+    assert w_root > w_tip, 'the arm tapers OUTWARD in this build - check micro_arm_w'
+    assert 2 * w_root * 10 < val('root_relief_d') * 10, (
+        'the slot is wider at its root (%.2f) than the O%.2f relief that is '
+        'supposed to swallow the arm roots'
+        % (2 * w_root * 10, val('root_relief_d') * 10))
     for ang, tag in ((0, 'a'), (1, 'b')):
-        half_span = tval('horn_span') / 2
-        hw = tval('horn_w') / 2
-        if ang == 0:
-            xy_rect('horn_arm_' + tag, -half_span, half_span, -hw, hw,
-                    mm(race_z), TURRET + 'horn_z', CUT)
-        else:
-            xy_rect('horn_arm_' + tag, -hw, hw, -half_span, half_span,
-                    mm(race_z), TURRET + 'horn_z', CUT)
-    # The arm ROOTS: the blade widens from ~3 at the tips to ~5.5-6 near the
-    # hub, and a straight 3.4 slot pinches it inside r ~6.5. One round relief
-    # swallows every root and the screw boss with it - horn audit.
+        # one bowtie per axis: wide at the roots, narrowing to each trim line
+        pts = [(-half_span, -w_tip), (-r_root, -w_root), (r_root, -w_root),
+               (half_span, -w_tip), (half_span, w_tip), (r_root, w_root),
+               (-r_root, w_root), (-half_span, w_tip)]
+        if ang:
+            pts = [(y, x) for (x, y) in pts]
+        sk = sketch(comp.xYConstructionPlane, 'sk_horn_arm_' + tag)
+        lines = sk.sketchCurves.sketchLines
+        for k in range(len(pts)):
+            a = pts[k]
+            b = pts[(k + 1) % len(pts)]
+            lines.addByTwoPoints(mpt(sk, a[0], a[1], 0), mpt(sk, b[0], b[1], 0))
+        extrude(profiles(sk, expected=1), CUT, mm(race_z),
+                TURRET + 'horn_z', 'horn_arm_' + tag)
+    # The arm ROOTS, inboard of horn_r_root: the arm is at its widest there
+    # and the tapered slots stop short of it. One round relief swallows every
+    # root and the screw boss with it.
     xy_circle('horn_root_relief', 0, 0, val('root_relief_d'), mm(race_z),
               TURRET + 'horn_z', CUT)
     xy_circle('horn_screw_bore', 0, 0, tval('screw_bore'), mm(race_z),
@@ -680,9 +727,11 @@ def run(_context: str):
         race_in * 10, race_out * 10, tval('roller_r') * 10))
     print('  ring laps the rim from r %.1f and finishes FLUSH with the boss top' % (
         (tval('boss_d') / 2 + 0.0175) * 10))
-    print('  horn cross %.1f span x %.1f wide x %.2f deep, screw bore %.1f' % (
-        tval('horn_span') * 10, tval('horn_w') * 10, tval('horn_z') * 10,
-        tval('screw_bore') * 10))
+    print('  horn cross %.1f span, TAPERED %.2f wide at r %.1f -> %.2f at the '
+          'trim line, %.2f deep, screw bore %.1f (MEASURED taper 2026-08-28)' % (
+              tval('horn_span') * 10, tval('horn_w_root') * 10,
+              tval('horn_r_root') * 10, tval('horn_w_tip') * 10,
+              tval('horn_z') * 10, tval('screw_bore') * 10))
     print('CLEARANCES:')
     print('  servo pad reaches r %.1f, fork legs r %.1f, journal boss is r %.1f' % (
         pad_r * 10, leg_r * 10, journal_r * 10))

@@ -23,8 +23,10 @@ SG90 pocket (ts_case_w 12.6 -> 12.2, case_l 22.7). v3, same day: the HORN
 audit - hub 3.0 (was 3.8), blade 2.0 (was 1.5) raised the deck 1.4 and
 recut the rotor cross pocket 32.8 x 3.4 x 2.4 with a Ø13 root relief, and
 a lead groove in the plate underside keeps the (now higher) lead clear.
-PRINT v3, NOT v1/v2: v2's deck seats the horn 1.4 low and its blade pocket
-is 0.6 too shallow and 1.4 too narrow.
+v4, 2026-08-28: the horn plate went to the bench and the arms are 4.0 wide
+at their NARROWEST against a 3.4 slot - the cross pocket never accepted the
+horn. Slots are now TAPERED to the measured arm (6.04 at r 6.5 -> 4.84 at
+the trim line). PRINT v4: v1-v3 all have a pocket no real horn enters.
 """
 
 import os
@@ -34,7 +36,7 @@ import adsk.fusion
 
 REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
 EXPORT_DIR = os.path.join(REPO, 'exports', 'robotarm')
-VERSION = 3
+VERSION = 4
 
 # name, print orientation, note
 PARTS = [

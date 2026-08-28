@@ -147,7 +147,11 @@ def run(_context: str):
            '           the roller does not roll, it rubs.')
     turret('axle_d', '7.9 mm', '608 bore 8.0 - 0.1, a press')
     turret('horn_span', '32.8 mm', 'yaw horn LONG-arm pocket span. The real 4-arm\n           horn runs ~33.5 tip to tip (ASYMMETRIC - short axis ~16; slots run\n           full span both ways, a slot longer than its arm is air), and the\n           arms were ALWAYS trimmed at assembly. 32.8 is the ceiling the\n           cable window allows (2 x (cable_ir - wall)) - trim to fit it.\n           2026-08-27 horn audit')
-    turret('horn_w', '3.4 mm', 'arm width over its outer half 3.0 + 0.4 clearance.\n           The old 2.0 was blade THICKNESS 1.6 + 0.4 - thickness-as-width, and\n           no arm would have entered - horn audit')
+    turret('horn_w_root', '6.04 mm',
+           'SHARED tt_ contract - shoulder_bracket cuts the pocket and DERIVES\n           this from lib.servo.micro_arm_w(6.5) + 0.4. Declared here so the\n           two files fail loudly if they ever disagree; the rotor is the\n           authority. 2026-08-28 measured taper.')
+    turret('horn_w_tip', '4.84 mm',
+           'SHARED - micro_arm_w(16.4) + 0.4. THE SLOTS ARE TAPERED.')
+    turret('horn_r_root', '6.5 mm', 'SHARED - where the tapered slots start')
     turret('horn_z', '2.4 mm', 'blade thickness 2.0 + 0.4 seating. At the old 1.8 a\n           real 2.0 blade stood proud and the rotor rode the horn, not the race\n           - horn audit. Pocket depth into the rotor underside')
     turret('screw_bore', '6.0 mm', 'driver access to the horn screw, up the rotor centre')
 
