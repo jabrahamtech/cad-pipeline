@@ -137,3 +137,43 @@ same drop test that caught the fault.
 ## Not yet run
 MG995 STACK with an arm horn, both HUB sweeps, BLADE comb, PIN pairs,
 and every flange-plate station.
+
+
+## SESSION 3 — THE SERVO CANNOT BE FITTED. Found on the flange plate.
+
+Trying to seat the MG90S in the flange plate's lobe station (window
+12.6 x 23.0, the forearm's own window, through a 5.5 stack that IS
+fa_lobe_t): **the servo will not pass through, because of its cable.**
+
+This is not a gauge artefact. `forearm.py` cuts that same window, so a
+servo that cannot pass the gauge cannot be fitted to the arm either.
+
+### The blind spot it exposes
+
+`_check_leads` models the lead as a cylinder leaving the case's far END
+FACE and running 8 mm outward, and asks whether that path is solid. It
+therefore checks the lead's **resting** position and never its
+**assembly** path. A window sized to the bare case passes that check
+and still cannot be assembled, because the cable has to get through the
+window too - and once the case is home, the cable is pinched between
+the case and the window wall with nowhere to sit.
+
+Every servo pocket in the project was cut to case + loc. The same
+question now hangs over the SG90 pockets (wrist_roll, pruner_shell,
+turntable_stator) and the MG995 pad, and only pruner_shell has ever cut
+a deliberate lead notch.
+
+### What is NOT yet known, and blocks the fix
+
+Where the cable actually leaves the case. `lib/servo.py` has carried
+this as an explicit ASSUMED since the file was written - "the leads
+exit the FAR END FACE, centred across the case width and one lead
+diameter up from the case bottom... IT IS NOT MEASURED." The notch
+cannot be placed until that is settled, and placing it wrong is worse
+than not placing it: it would weaken the lobe in the wrong spot AND
+still pinch the cable.
+
+NOT FIXED. NOTHING WITH A SERVO POCKET SHOULD PRINT until the cable
+exit is measured and every pocket gets a lead relief. That is the
+forearm, wrist_roll, turntable_stator, gripper_shell and the MG995
+pad - pruner_shell is the only part already carrying one.
