@@ -171,11 +171,9 @@ def run(_context: str):
 
     # --- lead escape ---------------------------------------------------------
     param('lead_key_d', '%.2f mm' % (CATALOG['SG90'].lead_bundle_dia + 0.2),
-          'lead keyway depth past the pocket wall - one full bundle diameter\n'
-          '           plus a locational fit. Without it the servo cannot be inserted\n'
-          '           at all; see the cut. MEASURED bundle, lib/servo.py.')
-    param('lead_key_l', '6.0 mm',
-          'keyway length in from the SHAFT-end face of the pocket')
+          'lead keyway WIDTH across the case width, centred - one full bundle\n'
+          '           diameter plus a locational fit. Without it the servo cannot be\n'
+          '           inserted at all; see the cut. MEASURED bundle, lib/servo.py.')
     param('lead_d', '3.4 mm',
           'SG90 lead_bundle_dia - lib/servo.py. Typed here like the other\n'
           '           DATASHEET numbers; _check_leads probes with the LIBRARY value,\n'
@@ -184,11 +182,6 @@ def run(_context: str):
           'derived: where the lead leaves the case bottom end face - one lead\n'
           '           diameter up from the case bottom, centred across the width.\n'
           '           The same rule _check_leads places its probe by.')
-    param('lead_ch_d', '5.0 mm',
-          'lead channel bore through the pocket floor and keel - same Ø as\n'
-          '           pruner_shell\'s lead_notch for the same servo. Without it the\n'
-          '           lead was 81 % TRAPPED: below the case bottom end face is floor,\n'
-          '           then keel, solid to z_bot.')
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
 
     # ---- idempotent rebuild --------------------------------------------------
@@ -295,17 +288,21 @@ def run(_context: str):
     r_c = wval('pivot_af') / 2 / math.cos(math.pi / (2 * 3))
     assert r_c + val('wall') <= val('z_top'), 'the hex socket breaks out of the top face'
 
-    # lead channel sanity, in cm. The channel may break out of the keel's 45
-    # deg back bevel partway down - that is a feature, the lead leaves through
-    # the bevel face - but it must never reach the tab slot, which is what the
-    # keel is FOR, and it must pass the bundle.
-    assert val('lead_ch_d') >= val('lead_d') + 2 * loc, (
-        'the lead channel is tighter than the bundle plus a locational fit')
-    assert val('lead_y') + val('lead_ch_d') / 2 + val('wall') <= \
-        val('tab_lo') - loc / 2, (
-        'the lead channel comes within a wall of the lower tab slot')
-    assert val('lead_ch_d') / 2 + val('wall') <= val('keel_half_x'), (
-        'the lead channel leaves less than a wall of keel beside it')
+    # LEAD KEYWAY sanity, in cm. The keyway is a centred slot in the pocket's
+    # +Z END wall - the shaft end, which is where the bundle leaves the case.
+    # It replaces a Ø5 channel bored through the pocket floor and keel at the
+    # -Z end: that channel was sited from the superseded "leads leave the FAR
+    # end" reading and, under the measured datum, drained nothing.
+    # bundle + ONE locational fit, the convention every lead keyway in the
+    # project uses (forearm, turntable_stator, _gauge_verify). The Ø5 channel
+    # this replaces could afford 2 x loc; a 3.6 slot cannot.
+    assert val('lead_key_d') >= val('lead_d') + loc, (
+        'the lead keyway is tighter than the bundle plus a locational fit')
+    assert val('lead_key_d') / 2 + val('wall') <= r_c - val('socket_d'), (
+        'the lead keyway comes within a wall of the J4 hex sockets. The two '
+        'side-wall keyways it replaces DID cut into them, by 1.2 mm.')
+    assert val('lead_y') + val('lead_key_d') / 2 < val('case_top'), (
+        'the keyway runs past the case front face and into the rotator bore')
 
     # The keel's back face is a 45 deg bevel, not a wall: it starts at the bed
     # plane as a knife edge and grows downward one layer per layer, so it needs
@@ -343,44 +340,35 @@ def run(_context: str):
          PREFIX + 'y_back - ' + PREFIX + 'wall',
          PREFIX + 'case_top + ' + PREFIX + 'loc / 2 - ' + PREFIX + 'y_back + ' + PREFIX + 'wall',
          CUT)
-    # LEAD KEYWAY. The bundle leaves a LONG SIDE face near the SHAFT end
-    # (MEASURED 2026-08-28) and the case travels the full pocket depth on
-    # the way in, so without this the SG90 simply will not go in: 15.6 mm
-    # of servo-plus-cable into a 12.4 mm pocket. Both walls, because the
-    # part is handed and the servo can arrive either way up.
-    _kh = val('case_w') / 2 + loc / 2
-    for _sx in (+1, -1):
-        slab('lead_key_%s' % ('p' if _sx > 0 else 'm'),
-             min(_sx * _kh, _sx * (_kh + val('lead_key_d'))),
-             max(_sx * _kh, _sx * (_kh + val('lead_key_d'))),
-             val('case_z_hi') + loc / 2 - val('lead_key_l'),
-             val('case_z_hi') + loc / 2,
-             PREFIX + 'y_back - ' + PREFIX + 'wall',
-             PREFIX + 'case_top + ' + PREFIX + 'loc / 2 - ' + PREFIX + 'y_back + '
-             + PREFIX + 'wall',
-             CUT)
+    # LEAD KEYWAY. The bundle leaves the case's SHORT END FACE at the shaft
+    # end - here the +Z end, since the case lies with its long axis across Z
+    # - dead centre across the width (lib/servo.py lead datum). The case
+    # travels the full pocket depth on the way in, so the cable's exit point
+    # sweeps Y from the pocket mouth to its seated position at lead_y: the
+    # keyway has to span that whole run or the cable is pinched partway.
+    #
+    # ONE notch, centred. The two ±X side-wall notches this replaces were
+    # sited from a misreading of lead_x, and they cut 1.2 mm into the J4 hex
+    # pitch sockets on the way past - a fault nothing caught because the
+    # gate that would have (_check_leads) was itself sited from the same
+    # misreading. It breaks through the roof rather than leaving a 1.04 mm
+    # skin over the slot, which is under wall and would print as two
+    # perimeters and a hope.
+    slab('lead_key', -val('lead_key_d') / 2, val('lead_key_d') / 2,
+         val('case_z_hi') + loc / 2, val('z_top') + 0.1,
+         PREFIX + 'y_back - ' + PREFIX + 'wall',
+         PREFIX + 'lead_y + ' + PREFIX + 'lead_key_d / 2 - ' + PREFIX
+         + 'y_back + ' + PREFIX + 'wall',
+         CUT)
     slab('tab_slots',
          -(val('case_w') / 2 + loc / 2), val('case_w') / 2 + loc / 2,
          val('case_z_lo') - val('tab_over') - loc / 2,
          val('case_z_hi') + val('tab_over') + loc / 2,
          PREFIX + 'tab_lo - ' + PREFIX + 'loc / 2',
          PREFIX + 'tab_thk + ' + PREFIX + 'loc', CUT)
-    v_before = comp.bRepBodies.item(0).volume
-    sk_lead = sketch(comp.xYConstructionPlane, 'sk_lead_channel')
-    sk_lead.sketchCurves.sketchCircles.addByCenterRadius(
-        mpt(sk_lead, 0, val('lead_y'), 0), val('lead_ch_d') / 2)
-    extrude(profiles(sk_lead, expected=1), CUT,
-            PREFIX + 'z_bot - ' + PREFIX + 'wall',
-            PREFIX + 'case_z_lo - ' + PREFIX + 'z_bot + ' + PREFIX + 'wall',
-            'lead_channel')
-    drop = (v_before - comp.bRepBodies.item(0).volume) * 1000
-    # bounds from the geometry itself: a full cylinder through the keel span
-    # is the ceiling; the 45 deg back bevel eats some of it, but never half.
-    ch_full = math.pi * (val('lead_ch_d') / 2) ** 2 \
-        * (val('case_z_lo') - val('z_bot')) * 1000
-    assert ch_full / 2 < drop < ch_full, (
-        'the lead channel removed %.1f mm3 against a %.1f full-cylinder '
-        'ceiling - it is not cutting where the trap was' % (drop, ch_full))
+    # (the Ø5 lead_channel that used to be cut here, down through the pocket
+    # floor and the keel at the -Z end, is gone. It drained the end the
+    # bundle does not leave from.)
     sk_rot = sketch(comp.xZConstructionPlane, 'sk_rotator_bore')
     sk_rot.sketchCurves.sketchCircles.addByCenterRadius(
         mpt(sk_rot, 0, 0, 0), val('rot_bore') / 2)
@@ -443,10 +431,11 @@ def run(_context: str):
     print('keel: y %.1f..%.1f, z %.1f..%.1f, %.1f wide, back face bevelled %.1f' % (
         val('y_back') * 10, val('keel_front') * 10, val('z_bot') * 10,
         val('keel_top') * 10, val('keel_half_x') * 20, keel_drop * 10))
-    print('lead channel: Ø%.1f at (x 0, y %.1f), z %.1f down through the keel '
-          '- the SG90 lead escapes the bay it was 81 %% trapped in'
-          % (val('lead_ch_d') * 10, val('lead_y') * 10,
-             val('case_z_lo') * 10))
+    print('lead keyway: %.1f wide, centred, in the +Z END wall at z %.1f, '
+          'running y %.1f..%.1f and out through the roof at z %.1f'
+          % (val('lead_key_d') * 10, (val('case_z_hi') + loc / 2) * 10,
+             (val('y_back') - val('wall')) * 10,
+             (val('lead_y') + val('lead_key_d') / 2) * 10, val('z_top') * 10))
     print('WORST SWEEP about J4: %s at %.1f mm (forearm allows %.1f)' % (
         worst[0], worst[1] * 10, wval('sweep_r') * 10))
     print('hex socket %.1f af, %.1f deep, leaving %.2f mm of wall beside the servo' % (

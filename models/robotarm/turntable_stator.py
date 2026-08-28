@@ -204,22 +204,25 @@ def run(_context: str):
     param('free', '0.4 mm', 'free fit - design_rules')
     param('plate_t', '4.0 mm', 'base plate thickness')
     param('lead_key_d', '%.2f mm' % (CATALOG['SG90'].lead_bundle_dia + 0.2),
-          'lead keyway depth past the aperture wall. The servo cannot be\n'
-          '           INSERTED without it - a separate problem from lead_groove_*\n'
-          '           below, which only lets the lead escape once it is home.')
-    param('lead_key_l', '6.0 mm', 'keyway length in from the shaft-end face')
+          'lead keyway WIDTH across the case width, centred on the bundle.\n'
+          '           The servo cannot be INSERTED without it: the cable crosses the\n'
+          '           whole aperture on the way down.')
     param('lead_groove_w', '5.0 mm',
           'lead groove width in the plate underside - same Ø-5 convention as\n'
           '           every other lead escape in the project')
     param('lead_groove_d', '1.2 mm',
-          'lead groove depth up into the plate. The 2026-08-27 horn audit\n'
-          '           shortened the horn stack and raised the deck 1.4, and the\n'
-          '           lead - one bundle Ø above the case bottom, now z -1.0 - grazed\n'
-          '           0.7 into the plate over its whole escape run. _check_leads\n'
-          '           caught it; this groove restores the daylight.')
+          'lead groove depth up into the plate underside. The bundle leaves at\n'
+          '           z -1.0 with its top edge at +0.7, and the plate is 0..4.0, so on\n'
+          '           its way out it grazes 0.7 into the plate. _check_leads measured\n'
+          '           exactly that - 2.20 mm3, 3 %% of the escape - after the keyway\n'
+          '           was moved to the -Y end. This is the same groove that used to\n'
+          '           relieve the +Y end, re-sited to the end the lead actually uses.')
     param('lead_escape', '8.0 mm',
           'how far the lead must run clear before bending - MUST MATCH\n'
-          '           _check_leads.ESCAPE_MM, which is the contract this groove serves')
+          '           _check_leads.ESCAPE_MM. The lead_groove_* pair that used to sit\n'
+          '           here went with the datum correction of 2026-08-28: the groove\n'
+          '           relieved the case\'s FAR (+Y) end, and the bundle leaves the -Y\n'
+          '           end, where at z -1.0 it is already clear under the plate.')
     param('plate_ir', '10.0 mm', 'base plate inner radius - the servo comes through here')
     param('plate_or', '50.0 mm', 'base plate outer radius - out to the ring')
     # THE LOOM HAD NO WAY THROUGH THIS PART. The servo well is 12.40 x 22.90
@@ -232,8 +235,12 @@ def run(_context: str):
     # that route and base_lid carries the same slot underneath.
     param('cable_az', '270.0 deg', 'astern of the arm, matching sb_cable_deg\'s\n'
                                    '           centre - the loom is never under the reach', 'deg')
-    param('cable_ir', '13.0 mm', 'inner radius. Clears the 22.90 servo well, which\n'
-                                 '           reaches y -11.40, by 1.60 of wall')
+    param('cable_ir', '13.7 mm',
+          'inner radius. 13.0 -> 13.7 on 2026-08-28: the servo well no longer\n'
+          '           ends at the aperture, it ends at the LEAD KEYWAY, which runs\n'
+          '           5.95 further out to y -12.05. At 13.0 that left 0.95 of plate\n'
+          '           between two through-slots. Costs 0.7 mm of window width; the\n'
+          '           loom needs 45 mm2 and this still gives 126.')
     param('cable_or', '20.0 mm', 'outer radius. The race band starts at r 23.0')
     param('cable_deg', '70.0 deg', 'arc swept. At a 16.5 mean radius that is 20 mm\n'
                                    '           of slot, 7 mm wide - 140 mm2 for a loom that needs 45', 'deg')
@@ -281,6 +288,14 @@ def run(_context: str):
           '           both pilots by 2.5, and the outboard end is ROUNDED to hub_x so\n'
           '           the pad\'s furthest reach is on the axis at r 21.60, not at a\n'
           '           corner. _check_j1 found the corner 2026-08-26.')
+    # DEFINED HERE, not with the other lead params: it reads hub_y, and
+    # Fusion rejects an expression naming a parameter that does not exist
+    # yet. Order is part of the contract.
+    param('lead_key_l', PREFIX + 'hub_y - (' + PREFIX + 'case_l + ' + PREFIX
+          + 'loc) / 2 + 1.0 mm',
+          'keyway length OUT from the shaft-end face. DERIVED to clear the\n'
+          '           servo pad plus 1.0 of overshoot - a keyway that stops inside the\n'
+          '           pad is a blind pocket and traps the cable. Never hardcode it.')
     param('window_ir', '22.0 mm', 'lightening windows, inner radius')
     param('window_or', '37.0 mm',
           'lightening windows, outer radius. Bounded by the posts: at 40 the\n'
@@ -580,45 +595,84 @@ def run(_context: str):
             _soff - (val('case_l') + val('loc')) / 2,
             _soff + (val('case_l') + val('loc')) / 2,
             mm(-1.0), mm(deck_z + 1.0), CUT)
-    # LEAD KEYWAY, both long walls, at the SHAFT end of the aperture. The
-    # SG90's bundle leaves a LONG SIDE face near the shaft (MEASURED
-    # 2026-08-28) and the whole case travels this aperture on the way in,
-    # so 15.6 mm of servo-plus-cable has to pass a 12.4 mm slot. It cannot.
-    # This is a different fault from the lead GROOVE cut in the base plate
-    # below: that one lets the lead escape once the servo is home, this one
-    # lets the servo get home at all.
+    # LEAD KEYWAY: ONE notch, centred, in the aperture's shaft-end END wall,
+    # running OUT through the servo pad to daylight. The bundle leaves the
+    # case's SHORT END FACE at the shaft end, dead centre across the width
+    # (lib/servo.py lead datum), and the whole case travels this aperture on
+    # the way down - so the cable's exit point sweeps the full aperture
+    # height and the notch is cut through it, z -1.0 to deck_z.
+    #
+    # The two ±X side-wall notches this replaces were sited from a misreading
+    # of lead_x. They also cut past the pad's own half-width (hub_x 9.0 <
+    # 9.8), severing it across its full width over 6 mm of its length.
+    #
+    # COST, and it is a real one: this notch destroys servo_pilot_0, the NEAR
+    # tab's screw pilot. The pilot is at (x 0, y _soff - tab_pitch/2), dead on
+    # the notch's centreline, and lead_y = 0 means the notch cannot be moved
+    # off it. The servo keeps ONE tab screw. Decided with Jonathan 2026-08-28:
+    # the aperture is cut to case + loc so it carries the sideways load, and
+    # the horn is bolted to the platter above, so the near end cannot lift far
+    # on one screw. A separate bridge cap carrying the second screw remains
+    # possible later without changing this part.
     _shaft_y = _soff - val('case_l') / 2          # the near/shaft end face
-    _kh = (val('case_w') + val('loc')) / 2
-    for _sx in (+1, -1):
-        xy_rect('lead_key_%s' % ('p' if _sx > 0 else 'm'),
-                min(_sx * _kh, _sx * (_kh + val('lead_key_d'))),
-                max(_sx * _kh, _sx * (_kh + val('lead_key_d'))),
-                _shaft_y - val('loc') / 2,
-                _shaft_y + val('lead_key_l'),
-                mm(-1.0), mm(deck_z + 1.0), CUT)
+    xy_rect('lead_key',
+            -val('lead_key_d') / 2, val('lead_key_d') / 2,
+            _shaft_y - val('lead_key_l'), _shaft_y + val('loc') / 2,
+            mm(-1.0), mm(deck_z + 1.0), CUT)
     # the lead groove: from just before the case's far end face out past the
     # escape run, cut up into the plate underside so the bundle's top edge
     # keeps daylight. Volume-drop asserted below.
-    _far_y = _soff + val('case_l') / 2
-    _v_before_groove = comp.bRepBodies.item(0).volume
+    # LEAD GROOVE, re-sited with the keyway. "At z -1.0 the bundle is already
+    # below the plate" was true of its CENTRE and wrong about the bundle: its
+    # top edge is at -1.0 + 3.4/2 = +0.7, and the plate starts at 0. So it
+    # grazes 0.7 into the plate over the run between the pad and the cable
+    # window - which is what the +Y groove was for, at the wrong end.
+    # From the CASE END FACE, not from the end of the keyway: the plate's
+    # inner rim starts at r plate_ir, which is inboard of where the keyway
+    # ends, so a groove that began at the keyway left 2.15 mm of unrelieved
+    # plate over the bundle. The gate read it as 0.98 mm3 still solid.
+    _v_groove = comp.bRepBodies.item(0).volume
+    _g_a = _shaft_y + 0.1
+    _g_b = _g_a - val('lead_key_l') - val('lead_escape')
     xy_rect('lead_groove',
             -val('lead_groove_w') / 2, val('lead_groove_w') / 2,
-            _far_y - 0.1, _far_y + val('lead_escape') + 0.1,
+            min(_g_a, _g_b) - 0.1, max(_g_a, _g_b) + 0.1,
+            # mm() takes CENTIMETRES, so mm(-0.1) is -1.0 mm and the distance
+            # has to carry that back: groove_d + 1.0 lands the roof at
+            # +groove_d. Written as groove_d + 0.1 it stopped at z +0.3 and
+            # left the bundle's top 0.4 mm still buried in the plate.
             mm(-0.1), PREFIX + 'lead_groove_d + 1.0 mm', CUT)
-    _groove_drop = (_v_before_groove - comp.bRepBodies.item(0).volume) * 1000
-    # ceiling over the cut's FULL span (case-aperture overlap and the roller
-    # relief band both legitimately reduce the real drop)
-    _groove_full = (val('lead_groove_w') * 10) * (val('lead_groove_d') * 10) \
-        * ((val('lead_escape') + 0.2) * 10)
-    assert _groove_full / 3 < _groove_drop <= _groove_full + 1.0, (
+    _g_drop = (_v_groove - comp.bRepBodies.item(0).volume) * 1000
+    # ceiling over the cut's FULL span; the plate's inner rim and the cable
+    # window are both void along part of it, so the real drop is well under.
+    _g_full = (val('lead_groove_w') * 10) * (val('lead_groove_d') * 10) \
+        * ((val('lead_key_l') + val('lead_escape') + 0.2) * 10)
+    assert 1.0 < _g_drop < _g_full, (
         'the lead groove removed %.1f mm3 against a %.1f ceiling - it is not '
-        'where the plate is' % (_groove_drop, _groove_full))
-    assert val('plate_t') - val('lead_groove_d') >= 0.16, (
+        'cutting where the plate is' % (_g_drop, _g_full))
+    assert val('plate_t') - val('lead_groove_d') >= val('wall'), (
         'the lead groove leaves less than a wall of plate above it')
-    for i, sy in enumerate((-1, +1)):
-        xy_circle('servo_pilot_%d' % i, 0.0, _soff + sy * val('tab_pitch') / 2,
-                  val('pilot_d'),
-                  mm(deck_z - val('pilot_depth')), PREFIX + 'pilot_depth', CUT)
+    # deep enough for the bundle's TOP EDGE, not its centre - the distinction
+    # that made this groove necessary in the first place.
+    _sg = CATALOG['SG90']
+    _case_bot_z = (deck_z * 10) - (_sg.case_h - _sg.tab_below_top - _sg.tab_thk)
+    _lead_top = _case_bot_z + _sg.lead_bundle_dia + _sg.lead_bundle_dia / 2
+    assert val('lead_groove_d') * 10 >= _lead_top, (
+        'the bundle\'s top edge reaches z %+.2f and the groove is only %.2f '
+        'deep - the lead is pinched against the plate on its way out'
+        % (_lead_top, val('lead_groove_d') * 10))
+    #
+    # ONE pilot, not two - the near one stood where the cable has to travel.
+    # See the keyway note above for why that is unavoidable and what it costs.
+    xy_circle('servo_pilot_far', 0.0, _soff + val('tab_pitch') / 2,
+              val('pilot_d'),
+              mm(deck_z - val('pilot_depth')), PREFIX + 'pilot_depth', CUT)
+    _near_pilot_y = (_soff - val('tab_pitch') / 2) * 10
+    _key_y0 = (_shaft_y - val('lead_key_l')) * 10
+    assert _key_y0 <= _near_pilot_y <= (_shaft_y + val('loc') / 2) * 10, (
+        'the near pilot at y %.2f is NOT inside the keyway span %.2f..%.2f - '
+        'if it has moved clear, restore it rather than leaving the servo on '
+        'one screw' % (_near_pilot_y, _key_y0, (_shaft_y + val('loc') / 2) * 10))
     # THE WHOLE POINT: the shaft has to be ON the axis.
     _shaft_y_mm = (_soff - val('case_l') / 2 + val('shaft_from_end')) * 10
     assert abs(_shaft_y_mm) < 1e-6, (
@@ -646,10 +700,15 @@ def run(_context: str):
     # wants radians, so they go straight in; only the printout converts.
     _c_ir = val('cable_ir') * 10
     _c_or = val('cable_or') * 10
-    _well_half_y = abs(val('shaft_off') - val('case_l') / 2) * 10
+    # the well now reaches as far as the KEYWAY, not the aperture - deriving
+    # this from the aperture again would leave the guard checking the wrong
+    # number by the length of the keyway.
+    _well_half_y = abs(val('shaft_off') - val('case_l') / 2
+                       - val('lead_key_l')) * 10
     assert _c_ir >= _well_half_y + 1.6, (
-        'the cable window starts at r %.1f mm and the servo well reaches '
-        '%.1f mm - less than a wall between them' % (_c_ir, _well_half_y))
+        'the cable window starts at r %.1f mm and the servo well, keyway '
+        'included, reaches %.1f mm - less than a wall between them'
+        % (_c_ir, _well_half_y))
     _race_ir_mm = tval('race_ir') * 10 if ups.itemByName(TURRET + 'race_ir') else 23.0
     assert _c_or + 1.6 <= _race_ir_mm, (
         'the cable window reaches r %.1f mm and the race band starts at %.1f mm'
@@ -715,11 +774,20 @@ def run(_context: str):
           % (val('shaft_from_end') * 10, val('case_l') * 10))
     print('    case, so centring the CASE would put it %.1f mm off the J1 axis.'
           % (val('shaft_off') * 10))
-    print('  pilots %.1f at y %+.1f / %+.1f, pad %.0f x %.0f centred y %+.2f' % (
-        val('pilot_d') * 10,
-        (val('shaft_off') - val('tab_pitch') / 2) * 10,
-        (val('shaft_off') + val('tab_pitch') / 2) * 10,
-        val('hub_x') * 20, val('hub_y') * 20, val('shaft_off') * 10))
+    print('  ONE pilot %.1f at y %+.1f (FAR tab). The near tab at y %+.1f has '
+          'no screw:' % (val('pilot_d') * 10,
+                         (val('shaft_off') + val('tab_pitch') / 2) * 10,
+                         (val('shaft_off') - val('tab_pitch') / 2) * 10))
+    print('    the lead keyway runs straight through it and lead_y = 0 means '
+          'it cannot')
+    print('    be moved aside. Pocket carries the load, horn holds the near '
+          'end down.')
+    print('  LEAD KEYWAY %.1f wide, centred, END wall at y %+.1f, out to y %+.1f'
+          % (val('lead_key_d') * 10,
+             (val('shaft_off') - val('case_l') / 2) * 10,
+             (val('shaft_off') - val('case_l') / 2 - val('lead_key_l')) * 10))
+    print('  pad %.0f x %.0f centred y %+.2f'
+          % (val('hub_x') * 20, val('hub_y') * 20, val('shaft_off') * 10))
     print('CABLE WINDOW: r %.1f..%.1f, %.0f deg at az %.0f - the fixed half of the'
           % (val('cable_ir') * 10, val('cable_or') * 10,
              val('cable_deg') * 180 / math.pi, val('cable_az') * 180 / math.pi))

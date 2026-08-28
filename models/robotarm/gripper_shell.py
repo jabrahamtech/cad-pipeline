@@ -162,7 +162,10 @@ def run(_context: str):
     param('tab_over', '(' + PREFIX + 'tab_span - ' + PREFIX + 'case_l) / 2',
           'derived: how far one tab stands out past the case')
     param('tab_lo', PREFIX + 'case_bot + ' + PREFIX + 'tab_plane', 'derived tab underside')
-    param('lead_slot', '5.0 mm', 'notch in the back wall for the servo lead - cable_management')
+    param('lead_slot', '5.0 mm',
+          'back-wall notch for the servo lead. Sited OUTBOARD of the case\n'
+          '           end, not on the shaft axis and not straddling the end face -\n'
+          '           see the lead datum in lib/servo.py')
     param('srv_roof', PREFIX + 'case_w / 2 + ' + PREFIX + 'loc / 2 + ' + PREFIX + 'wall',
           'derived: floor of the tail cavity, one wall above the servo')
     param('pocket_inset', '2.5 mm',
@@ -382,9 +385,32 @@ def run(_context: str):
     box('tail_cavity', -(rear_x - val('pocket_inset')), rear_x - val('pocket_inset'),
         back_y + val('pocket_inset'), mid_y - val('wall'),
         PREFIX + 'srv_roof', PREFIX + 'half_z - ' + PREFIX + 'srv_roof - ' + PREFIX + 'wall', CUT)
-    box('lead_notch', -val('lead_slot') / 2, val('lead_slot') / 2,
-        back_y - val('wall'), case_bot + val('wall'),
-        '0.0 mm', PREFIX + 'case_w / 2 + ' + PREFIX + 'loc / 2', CUT)
+    # LEAD NOTCH. The bundle leaves the case's SHORT END FACE at the shaft end
+    # (lib/servo.py lead datum), so it emerges OUTBOARD of the case end, in
+    # the empty 10.6 mm of pocket beyond it. The notch therefore belongs at
+    # x = shaft_end + slot/2 + 0.1 - its inner edge on the case end face,
+    # the whole slot clear of the case body - not at x 0 (the
+    # shaft AXIS, where it sat until 2026-08-28) and not straddling the case
+    # end at x = shaft_end, where half the slot is roofed by the case and the
+    # 3.4 bundle is pinched into 2.5 mm of clear channel. Half-working is
+    # worse than not working: it reads CLEAR to a probe and jams on the bench.
+    #
+    # Two notches, one per end, because the pocket is deliberately symmetric
+    # so the servo drops in either way round. That is NOT the two-side-walls
+    # anti-pattern lib/servo.py warns about - these are the two pocket END
+    # walls, and exactly one of them is in use at a time.
+    #
+    # This shell is a CLAMSHELL: the servo drops in along z and the cable is
+    # laid in by hand before the halves close. There is no insertion jam here
+    # and the notch is purely an exit, which is why it can sit clear of the
+    # case rather than on the cable's insertion path.
+    for _sx in (+1, -1):
+        _cx = _sx * (val('shaft_end') + val('lead_slot') / 2 + 0.1)
+        box('lead_notch_%s' % ('p' if _sx > 0 else 'm'),
+            min(_cx - val('lead_slot') / 2, _cx + val('lead_slot') / 2),
+            max(_cx - val('lead_slot') / 2, _cx + val('lead_slot') / 2),
+            back_y - val('wall'), case_bot + val('wall'),
+            '0.0 mm', PREFIX + 'case_w / 2 + ' + PREFIX + 'loc / 2', CUT)
     group(t2, PH_SERVO)
 
     # ---- phase 4: fasteners + lightening ------------------------------------

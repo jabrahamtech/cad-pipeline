@@ -1,69 +1,54 @@
-"""robotarm/_check_leads - INVALID AS OF 2026-08-28. DO NOT TRUST ITS VERDICT.
+"""robotarm/_check_leads - can each servo be INSTALLED, and can its lead get out?
 
-Every probe in this file is sited from a written assumption that the bench
-disproved: "the leads exit the FAR END FACE, centred across the case width
-and one lead diameter up from the case bottom". Jonathan measured all three
-servos on 2026-08-28 and the bundle leaves at the SHAFT END, at TAB HEIGHT -
-the opposite end of the case, and the top instead of the bottom.
+REPAIRED 2026-08-28, after the file spent a day marked INVALID.
 
-So this gate has been probing empty air at the wrong corner of every servo.
-Its 6/6 CLEAR means nothing, and the J1 lead groove cut into
-turntable_stator on 2026-08-27 was sized and sited from the same error.
+TWO QUESTIONS, and the file used to ask only the second one:
 
-Worse, the fault the bench actually found is one this file CANNOT see even
-once re-sited: it checks whether a lead can escape from its RESTING place,
-never whether the servo can be INSERTED past its own cable. A pocket cut to
-case + loc passes the resting check and still cannot be assembled, because
-the cable crosses the mounting window during insertion and is pinched
-against the wall when the case seats. That is what stopped all three.
+  INSERTION  the case is walked along its fitting path with the lead bundle
+             attached, and at every step the pair is checked against the host.
+             A pocket cut to case + loc passes an escape check and still
+             cannot be assembled, because the cable crosses the mounting
+             window on the way in and is pinched when the case seats. That is
+             what stopped all three servos on the bench.
+  ESCAPE     the bundle, seated, is pushed ESCAPE_MM outward. If it hits the
+             host, the lead is trapped and the servo cannot be wired in place.
+             Modelled square, side = bundle diameter: three wires side by
+             side are a rectangle, not a circle.
 
-TO REPAIR, in order:
-  1. re-site every MOUNTS row from lib.servo's lead_x / lead_z (MEASURED)
-     instead of the per-row lead_at / across typed below - the same
-     "datum only one file reads" trap this project has now hit three times
-  2. add an INSERTION sweep: run the case along its fitting path and ask
-     whether the lead bundle clears the window at every step
-  3. cut lead reliefs where 1 and 2 say they are needed, then re-run
+WHERE THE LEAD LEAVES THE CASE. Not typed here. Read from lib/servo.py:
+lead_x (the SHORT END FACE at the shaft end, = -shaft_from_end), lead_y
+(0.0, centred) and lead_z. Each row below gives only a FRAME - where the
+servo's shaft sits in the host, and which host axis each servo axis maps to -
+and the probe position is computed from that frame and the library.
 
-Until then run() refuses to print a verdict. Set OVERRIDE_INVALID = True
-only to inspect the old numbers, never to clear a gate.
+That is the whole repair. The old rows carried hand-typed lead_at / across
+coordinates, and every one of them was written from a sentence in the
+library's comment rather than its numbers. The sentence said the leads left
+the FAR end face; the numbers said -shaft_from_end, which is the NEAR one.
+Six rows, six wrong probes, one 6/6 CLEAR that meant nothing - and then five
+parts notched on the strength of it. A datum that each consumer re-types in
+its own coordinates is not a contract, it is six copies of a rumour.
 
----- original header, preserved ----
+If a row is wrong now, it is wrong in its FRAME - a rotation or an origin -
+which is a claim about how the servo sits in the part, visible in a
+screenshot. It can no longer be wrong about where a cable leaves a servo.
 
-robotarm/_check_leads - can each servo's own lead actually get out?
+THE CONTROL. gripper_shell and pruner_shell are clamshells: the servo is
+laid in and the halves close, so they have NO insertion path and only the
+escape question applies. Their rows are marked clamshell=True and are the
+control for the escape half - both cut a deliberate outboard lead notch, so
+both must read CLEAR. If they do not, the method is wrong and no other row
+means anything.
 
-THE GAP THIS CLOSES. lib/servo.py carries `lead_bundle_dia` for all three
-servos - SG90 3.4, MG90S 3.4, MG995 4.2 - and until this file existed
-NOTHING IN THE PROJECT READ IT. Defined, documented, never used.
+WHAT IT STILL DOES NOT CHECK. Whether an escaped lead can then REACH the
+cable duct. That needs the loom modelled, and nothing models it.
 
-_assembly.md already wrote the lesson, about a different field: "a datum in a
-shared library which only one file reads is not a contract, it is a
-decoration." shaft_from_end was read by exactly one file and the yaw servo
-ended up 5.2 mm off the axis. lead_bundle_dia was read by none. This file
-makes it load-bearing.
-
-WHAT IT CHECKS. For every servo in the arm, a Ø lead_bundle_dia cylinder is
-built at the case's LEAD END and pushed ESCAPE_MM outward. If it interferes
-with the host part, the lead is trapped and the servo cannot be wired in
-place. If it clears, the lead has somewhere to go.
-
-WHERE THE LEAD LEAVES THE CASE - AND THIS IS THE ASSUMPTION IN THIS FILE.
-lib/servo.py's frame says "+X runs along the case length away from the shaft,
-toward the lead end", so the leads exit the FAR END FACE, opposite the output
-shaft. Within that face they are modelled as centred across the case width and
-sitting one lead-diameter up from the case bottom. That is where they sit on
-a real SG90 and MG90S. IT IS NOT MEASURED. A servo whose leads leave from a
-side face instead would need this file changed, not the parts.
-
-WHAT IT DOES NOT CHECK. Whether the lead, having escaped its pocket, can then
-REACH the cable duct. That is a routing question and it needs the loom modelled,
-which nothing does yet.
-
-Run after _check_ledger, in the same document. It builds scratch lead bundles
-and deletes them; occurrence count and timeline length come back unchanged.
+Run after _check_ledger, in the same document. It builds scratch probe
+bodies and deletes them; occurrence count and timeline length come back
+unchanged.
 """
 
-import math
+
 import os
 import sys
 
@@ -71,86 +56,117 @@ import adsk.core
 import adsk.fusion
 
 REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
-OVERRIDE_INVALID = False   # see the header - this gate is not repaired
 ESCAPE_MM = 8.0     # how far a lead must run clear before it can be bent away
+STEPS = 12          # insertion-path samples, seated last
+JAM_MM3 = 0.5       # interference below this is meshing noise, not a jam
 
-# One entry per servo in the arm. `axis` is which way the case's LONG axis
-# runs in the HOST's frame, and `lead_at` is the coordinate of the far end
-# face along that axis. Both come from the host part's own printed
-# diagnostics and are asserted against live parameters where one exists.
+# One entry per servo in the arm. Each row is a FRAME, not a coordinate:
 #
-#   host          the printed part the servo pocket is cut into
-#   servo         lib/servo.py catalogue name
-#   axis          'x' | 'y' | 'z' - the case's long axis in the host frame
-#   sign          +1 if the lead end is at the HIGH end of that axis
-#   lead_at       coordinate of the far end face, mm
-#   across        the other two coords of the lead centre, mm
+#   shaft    where the servo's output shaft axis meets its TAB PLANE, in host
+#            mm. This is the origin of lib/servo.py's servo frame.
+#   xa       which host axis (and sign) the servo's +x maps to, as
+#            ('x'|'y'|'z', +1|-1). Servo +x runs along the case length AWAY
+#            from the shaft end.
+#   za       likewise for servo +z, which points up out of the tab plane
+#            toward the horn. The third axis is COMPUTED as za x xa, so a row
+#            cannot accidentally describe a left-handed servo.
+#   insert   host-frame unit vector the servo TRAVELS along as it is fitted,
+#            or None for a clamshell that has no insertion path.
+#   travel   how far back along -insert the case starts, mm.
+#
+# Everything else - the lead position, the case envelope, the escape
+# direction - is computed from these and lib/servo.py.
 MOUNTS = [
-    # J1 yaw. Case y -6.10..+16.60 (shaft on the axis, ts_shaft_off +5.25
-    # after the 2026-08-27 flange audit set ts_case_l 22.7). The horn audit
-    # moved the deck: case bottom is now z -4.40, so the lead sits at
-    # -4.4 + 3.4 = -1.0 - still below the stator's 0..4 base plate,
-    # z -5.80..+17.90. Lead end +Y, and it sits BELOW the stator's 0..4 base
-    # plate - which is the whole question for this one.
     dict(tag='J1 yaw', host='turntable_stator', servo='SG90',
-         axis='y', sign=+1, lead_at=16.60, across=(0.0, -1.0)),
-    # J2 shoulder. The MG995 runs DOWN along Z, case z -30.9..+10.0 (case_l
-    # 40.9, TowerPro B), mounted on a pad whose outer face is at
-    # x = sb_plate_out + sb_lobe_t = 29.6 (lobe_t 9.7 = the tab stack;
-    # horn_standoff went back to 0.0 on 2026-08-28 when the MG995 hub
-    # measured 8.7 and the obstruction it dodged proved not to exist). Lead end is the BOTTOM, -Z. The first
-    # across here was the CASE CENTRE - not where a lead lives; the rule
-    # puts it one dia up from the case bottom, outboard: pad face + F 26.8
-    # - dia 4.2 = pad face + 22.6.
+         shaft=(0.0, 0.0, 12.60),
+         xa=('y', +1), za=('z', +1),
+         insert=(0.0, 0.0, -1.0), travel=30.0),
     dict(tag='J2 shoulder', host='shoulder_bracket', servo='MG995',
-         axis='z', sign=-1, lead_at=-30.9, across=(29.6 + 22.6, 0.0)),
-    # J3 elbow. MG90S in the forearm's -X lobe, case y -51.0..-28.2 with the
-    # elbow at y -45.0, so the near end is -51.0 and the lead end is -28.2
-    # (case_l 24.0 -> 22.8, TowerPro B, 2026-08-27 flange audit).
-    #
-    # THE FIRST across HERE WAS (-19.0, -3.5) AND IT REPORTED 39 % TRAPPED.
-    # That x put the lead INBOARD of the lobe's inner face, clipping the lobe
-    # end wall - but the MG90S hangs OUTBOARD: fa_lobe_t = tab_below_top +
-    # tab_thk exactly, tabs on the outer face, shaft inboard as the pivot, so
-    # the case body (below_tab = 20.0, DATASHEET) is all outside the lobe and
-    # the lead-end bottom corner sits at |x| 43.9 in free air. Same error
-    # class the effector control caught: a per-part coordinate typed with the
-    # height and width axes swapped. x = plate_out 19.9 + lobe_t 5.5 +
-    # below_tab (= TowerPro F) 18.5 - lead dia 3.4 = 40.5; centred across
-    # the width -> z 0. (plate_out + case_h - dia: the flange audit moved
-    # lobe_t and F by equal and opposite amounts, so x stands.)
+         shaft=(29.6, 0.0, 0.0),
+         xa=('z', -1), za=('x', -1),
+         insert=(-1.0, 0.0, 0.0), travel=45.0),
     dict(tag='J3 elbow', host='forearm', servo='MG90S',
-         axis='y', sign=+1, lead_at=-28.2, across=(-40.5, 0.0)),
-    # J4 wrist pitch. MG90S in the +X lobe, case y -16.8..+6.0, shaft at 0,
-    # near end +6.0, lead end -16.8. Mirror of J3 - same fix, same reason.
+         shaft=(-25.4, -45.0, 0.0),
+         xa=('y', +1), za=('x', +1),
+         insert=(1.0, 0.0, 0.0), travel=30.0),
     dict(tag='J4 wrist', host='forearm', servo='MG90S',
-         axis='y', sign=-1, lead_at=-16.8, across=(40.5, 0.0)),
-    # J5 roll. SG90 on its side, long axis along Z, case z -16.6..+6.1 with
-    # the shaft at 0 (case_l 22.7 after the flange audit). Lead end is the
-    # BOTTOM, -Z, down in the keel.
-    #
-    # First across was (0.0, 0.0) - case mid-height, not where a lead lives.
-    # The rule this file states puts it one lead dia up from the case bottom:
-    # case_bot y -12.0 + 3.4 = -8.6. Both placements are in the keel, so
-    # unlike J3/J4 the correction does NOT clear this row by itself - the
-    # keel really did trap the lead, and wrist_roll.py now cuts a Ø5 lead
-    # channel through the pocket floor and keel at exactly this position
-    # (wro_lead_y, derived from the same rule). This row verifies that cut.
+         shaft=(25.4, 0.0, 0.0),
+         xa=('y', -1), za=('x', -1),
+         insert=(-1.0, 0.0, 0.0), travel=30.0),
     dict(tag='J5 roll', host='wrist_roll', servo='SG90',
-         axis='z', sign=-1, lead_at=-16.6, across=(0.0, -8.6)),
-    # Effector. THE CONTROL, and the only mount that already models a lead
-    # escape: pruner_shell cuts a 5.0 mm lead_notch through its back wall at
-    # x +-2.5, z 0 .. (case_w/2 + loc/2) = 0..6.40. The lead centre is the
-    # middle of that, z 3.2 - NOT 8.0, which was the first guess here and put
-    # the probe just ABOVE the notch and into solid wall. It reported the one
-    # part that deliberately solved this problem as TRAPPED, which is how the
-    # guess was caught. If this row is not CLEAR, the whole file is wrong and
-    # no other row means anything.
+         shaft=(0.0, 5.00, 0.0),
+         xa=('z', -1), za=('y', +1),
+         insert=(0.0, 1.0, 0.0), travel=30.0),
+    dict(tag='gripper', host='gripper_shell', servo='SG90',
+         shaft=(0.0, -14.90, 0.0),
+         xa=('x', +1), za=('y', +1),
+         insert=None, travel=0.0, clamshell=True),
     dict(tag='effector', host='pruner_shell', servo='SG90',
-         axis='y', sign=-1, lead_at=-31.9, across=(0.0, 3.2)),
+         shaft=(0.0, -14.90, 0.0),
+         xa=('x', +1), za=('y', +1),
+         insert=None, travel=0.0, clamshell=True),
 ]
 
 ENV = 'robotarm_lead_probe'
+
+AXES = {'x': 0, 'y': 1, 'z': 2}
+
+
+def _unit(spec):
+    v = [0.0, 0.0, 0.0]
+    v[AXES[spec[0]]] = float(spec[1])
+    return v
+
+
+def _cross(a, b):
+    return [a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0]]
+
+
+def _frame(m):
+    """Servo axes as host unit vectors. +y is COMPUTED (za x xa), so a row
+    cannot describe a left-handed servo however it is typed."""
+    ex = _unit(m['xa'])
+    ez = _unit(m['za'])
+    ey = _cross(ez, ex)
+    assert abs(sum(a * b for a, b in zip(ex, ez))) < 1e-9, (
+        '%s: xa and za are the same host axis' % m['tag'])
+    return ex, ey, ez
+
+
+def _to_host(m, p):
+    ex, ey, ez = _frame(m)
+    s = m['shaft']
+    return [s[i] + p[0] * ex[i] + p[1] * ey[i] + p[2] * ez[i] for i in range(3)]
+
+
+def _aabb(m, lo, hi):
+    """Host-frame AABB of a servo-frame box. The frame is a signed
+    permutation, so the mapped box is still axis-aligned - no hull needed."""
+    pts = []
+    for cx in (lo[0], hi[0]):
+        for cy in (lo[1], hi[1]):
+            for cz in (lo[2], hi[2]):
+                pts.append(_to_host(m, (cx, cy, cz)))
+    return ([min(p[i] for p in pts) for i in range(3)],
+            [max(p[i] for p in pts) for i in range(3)])
+
+
+def _sweep(box, insert, travel):
+    """Extend an AABB backwards along the insertion path. Every insert vector
+    in MOUNTS is axis-aligned, so the swept volume of the box IS a box - the
+    check is exact, not sampled."""
+    lo, hi = [list(b) for b in box]
+    if insert is None or travel <= 0:
+        return lo, hi
+    for i in range(3):
+        d = -insert[i] * travel
+        if d < 0:
+            lo[i] += d
+        else:
+            hi[i] += d
+    return lo, hi
 
 
 def run(_context: str):
@@ -165,11 +181,12 @@ def run(_context: str):
         sys.path.insert(0, REPO)
     from lib.servo import CATALOG
 
-    comps = {}
+    comps, host_occ = {}, {}
     for occ in root.occurrences:
         n = occ.component.name
         if n.startswith('robotarm_') and n not in comps:
             comps[n] = occ.component
+            host_occ[n] = occ
 
     M3 = adsk.core.Matrix3D.create
     P3 = adsk.core.Point3D.create
@@ -192,130 +209,161 @@ def run(_context: str):
             % occ.component.name)
         return occ
 
-    if not OVERRIDE_INVALID:
-        print('GATE leads : INVALID - NOT RUN')
-        print('  Every probe here is sited from the pre-2026-08-28 assumption')
-        print('  that leads leave the FAR END at the case BOTTOM. The bench')
-        print('  says SHAFT END at TAB HEIGHT, on all three servos. Re-site')
-        print('  the rows from lib.servo lead_x/lead_z, add the INSERTION')
-        print('  sweep, then delete this guard. See the file header.')
-        return
-    print('=== servo lead escape check ===')
-    print('a lead must run %.1f mm clear of its own host before it can bend'
-          % ESCAPE_MM)
-    print('lead diameters are lib/servo.py lead_bundle_dia, read here for the')
-    print('first time in this project.')
-    print('')
-    print('%-13s %-18s %-7s %6s   %s'
-          % ('mount', 'host', 'servo', 'Ø lead', 'verdict'))
-
-    fails, skipped = [], []
     probe_occ = fresh(ENV)
     probe = probe_occ.component
-    bodies = []
+    ext = probe.features.extrudeFeatures
 
-    for m in MOUNTS:
-        host_name = 'robotarm_' + m['host']
-        if host_name not in comps:
-            skipped.append('%s (%s not in document)' % (m['tag'], m['host']))
-            continue
-        spec = CATALOG[m['servo']]
-        d = spec.lead_bundle_dia
+    def mmv(x):
+        return V('%.5f mm' % x)
 
-        # a cylinder on the case's long axis, starting at the far end face
-        # and running ESCAPE_MM further out.
-        ax = m['axis']
-        lo = m['lead_at']
-        hi = lo + m['sign'] * ESCAPE_MM
-        a, b = min(lo, hi), max(lo, hi)
-        c0, c1 = m['across']
-        if ax == 'y':
-            plane, centre = probe.xZConstructionPlane, (c0, c1)
-        elif ax == 'z':
-            plane, centre = probe.xYConstructionPlane, (c0, c1)
-        else:
-            plane, centre = probe.yZConstructionPlane, (c0, c1)
-
-        sk = probe.sketches.add(plane)
-        sk.name = 'sk_lead_' + m['tag'].replace(' ', '_')
-        if ax == 'y':
-            pt = sk.modelToSketchSpace(P3(centre[0] / 10.0, 0, centre[1] / 10.0))
-        elif ax == 'z':
-            pt = sk.modelToSketchSpace(P3(centre[0] / 10.0, centre[1] / 10.0, 0))
-        else:
-            pt = sk.modelToSketchSpace(P3(0, centre[0] / 10.0, centre[1] / 10.0))
-        sk.sketchCurves.sketchCircles.addByCenterRadius(pt, d / 20.0)
-        assert sk.profiles.count == 1, m['tag']
+    def box(name, lo, hi):
+        sk = probe.sketches.add(probe.xYConstructionPlane)
+        sk.name = 'sk_' + name
+        sk.sketchCurves.sketchLines.addTwoPointRectangle(
+            sk.modelToSketchSpace(P3(lo[0] / 10.0, lo[1] / 10.0, 0)),
+            sk.modelToSketchSpace(P3(hi[0] / 10.0, hi[1] / 10.0, 0)))
+        assert sk.profiles.count == 1, name
         col = adsk.core.ObjectCollection.create()
         col.add(sk.profiles.item(0))
-        inp = probe.features.extrudeFeatures.createInput(col, NEWB)
-        inp.startExtent = adsk.fusion.OffsetStartDefinition.create(
-            V('%.4f mm' % a))
-        inp.setDistanceExtent(False, V('%.4f mm' % (b - a)))
-        body = probe.features.extrudeFeatures.add(inp).bodies.item(0)
-        body.name = 'lead_' + m['tag'].replace(' ', '_')
-        bodies.append((m, spec, body))
+        inp = ext.createInput(col, NEWB)
+        inp.startExtent = adsk.fusion.OffsetStartDefinition.create(mmv(lo[2]))
+        inp.setDistanceExtent(False, mmv(hi[2] - lo[2]))
+        b = ext.add(inp).bodies.item(0)
+        b.name = name
+        return b
 
-    # interference, one lead against its own host
-    host_occ = {}
-    for occ in root.occurrences:
-        n = occ.component.name
-        if n.startswith('robotarm_') and n not in host_occ:
-            host_occ[n] = occ
+    found = []
 
-    for m, spec, body in bodies:
-        host = host_occ['robotarm_' + m['host']]
-        hb = host.component.bRepBodies.item(0).createForAssemblyContext(host)
+    def hits(body, host_name, label=''):
+        occ = host_occ[host_name]
         col = adsk.core.ObjectCollection.create()
         col.add(body)
-        col.add(hb)
+        for i in range(occ.component.bRepBodies.count):
+            col.add(occ.component.bRepBodies.item(i).createForAssemblyContext(occ))
         inp = design.createInterferenceInput(col)
         inp.areCoincidentFacesIncluded = False
         res = design.analyzeInterference(inp)
-        vol = sum(res.item(i).interferenceBody.volume * 1000
-                  for i in range(res.count))
-        free = math.pi * (spec.lead_bundle_dia / 2.0) ** 2 * ESCAPE_MM
-        blocked_pct = 100.0 * vol / free if free else 0.0
-        if vol < 0.05:
-            verdict = 'CLEAR'
-        elif blocked_pct < 25.0:
-            verdict = 'TIGHT - %.0f%% of the lead path is solid' % blocked_pct
+        vol, blobs = 0.0, []
+        for i in range(res.count):
+            b = res.item(i).interferenceBody
+            bb = b.boundingBox
+            vol += b.volume * 1000
+            blobs.append('%.2f mm3 at X %.2f..%.2f Y %.2f..%.2f Z %.2f..%.2f'
+                         % (b.volume * 1000,
+                            bb.minPoint.x * 10, bb.maxPoint.x * 10,
+                            bb.minPoint.y * 10, bb.maxPoint.y * 10,
+                            bb.minPoint.z * 10, bb.maxPoint.z * 10))
+        found.extend('    %s: %s' % (label, t) for t in blobs)
+        return vol
+
+    print('=== servo INSERTION + lead ESCAPE ===')
+    print('probe positions are computed from lib/servo.py lead_x/lead_y/lead_z')
+    print('and each row\'s frame. Nothing about the lead is typed in this file.')
+    print('')
+    print('%-12s %-19s %-6s %9s %9s %9s  %s'
+          % ('mount', 'host', 'servo', 'seated', 'insert', 'escape', 'verdict'))
+
+    fails, skipped, rows = [], [], []
+    for m in MOUNTS:
+        host = 'robotarm_' + m['host']
+        if host not in comps:
+            skipped.append('%s (%s not in document)' % (m['tag'], m['host']))
+            continue
+        sp = CATALOG[m['servo']]
+        d = sp.lead_bundle_dia
+        tab_top = sp.tab_thk + sp.tab_below_top
+
+        case = _aabb(m,
+                     (-sp.shaft_from_end, -sp.case_w / 2, tab_top - sp.case_h),
+                     (sp.case_l - sp.shaft_from_end, sp.case_w / 2, tab_top))
+        # the bundle, as a square stub running OUTWARD from the end face
+        lead = _aabb(m,
+                     (sp.lead_x - d, sp.lead_y - d / 2, sp.lead_z - d / 2),
+                     (sp.lead_x, sp.lead_y + d / 2, sp.lead_z + d / 2))
+
+        b_seat = box('seat_' + m['tag'].replace(' ', '_'), case[0], case[1])
+        seated = hits(b_seat, host, m['tag'] + ' seated case')
+
+        ins = None
+        if m['insert'] is not None:
+            c_lo, c_hi = _sweep(case, m['insert'], m['travel'])
+            l_lo, l_hi = _sweep(lead, m['insert'], m['travel'])
+            tag = m['tag'].replace(' ', '_')
+            ins = (hits(box('swc_' + tag, c_lo, c_hi), host,
+                        m['tag'] + ' swept case')
+                   + hits(box('swl_' + tag, l_lo, l_hi), host,
+                          m['tag'] + ' swept lead'))
+
+        # the escape run: the same stub, extended ESCAPE_MM outward. SQUARE
+        # section, side = bundle diameter. Three wires lying side by side are
+        # closer to a rectangle than to a circle, so this is honest rather
+        # than merely conservative - and it reuses box(), the primitive every
+        # seated check proves at 0.00. The cylinder that used to be here
+        # stacked its start offset onto its sketch plane and sited every
+        # probe lead_x too far out; it called two correct parts TIGHT.
+        esc_box = _aabb(m,
+                        (sp.lead_x - ESCAPE_MM, sp.lead_y - d / 2, sp.lead_z - d / 2),
+                        (sp.lead_x, sp.lead_y + d / 2, sp.lead_z + d / 2))
+        p0 = _to_host(m, (sp.lead_x, sp.lead_y, sp.lead_z))
+        esc = hits(box('esc_' + m['tag'].replace(' ', '_'),
+                       esc_box[0], esc_box[1]), host, m['tag'] + ' escape')
+        print('  lead point (%.2f, %.2f, %.2f), escape run X %.2f..%.2f '
+              'Y %.2f..%.2f Z %.2f..%.2f'
+              % tuple(list(p0) + [esc_box[0][0], esc_box[1][0],
+                                  esc_box[0][1], esc_box[1][1],
+                                  esc_box[0][2], esc_box[1][2]]))
+        free = d * d * ESCAPE_MM
+
+        if seated > 1.0:
+            verdict = 'FRAME WRONG - the case alone overlaps %.1f mm3' % seated
+            fails.append('%s: %s' % (m['tag'], verdict))
+        elif ins is not None and ins > JAM_MM3:
+            verdict = 'JAMS ON INSERTION - %.1f mm3 in the path' % ins
+            fails.append('%s: %s' % (m['tag'], verdict))
+        elif esc > 0.05:
+            pct = 100.0 * esc / free
+            verdict = ('TRAPPED - %.0f%% solid' % pct if pct >= 25
+                       else 'TIGHT - %.0f%% of the escape is solid' % pct)
             fails.append('%s: %s' % (m['tag'], verdict))
         else:
-            verdict = 'TRAPPED - %.0f%% solid' % blocked_pct
-            fails.append('%s: %s' % (m['tag'], verdict))
-        print('%-13s %-18s %-7s %6.1f   %s'
-              % (m['tag'], m['host'], spec.name, spec.lead_bundle_dia, verdict))
+            verdict = 'CLEAR'
+        rows.append((m, verdict))
+        print('%-12s %-19s %-6s %9.2f %9s %9.2f  %s'
+              % (m['tag'], m['host'], sp.name, seated,
+                 'clamshell' if ins is None else '%.2f' % ins, esc, verdict))
 
     for occ in list(root.occurrences):
         if occ.component.name == ENV:
             occ.deleteMe()
 
     print('')
+    if found:
+        print('WHERE, for every overlap found - a gate that only reports a')
+        print('volume sends you hunting through the part for it:')
+        for line in found:
+            print(line)
+        print('')
     if skipped:
         print('NOT CHECKED - host not in this document:')
-        for s in skipped:
-            print('  %s' % s)
+        for s2 in skipped:
+            print('  %s' % s2)
         print('')
+    ctl = [(m, v) for m, v in rows if m.get('clamshell')]
+    if ctl:
+        bad = [m['tag'] for m, v in ctl if v != 'CLEAR']
+        print('CONTROL: the two clamshells cut a deliberate outboard lead')
+        print('  notch and have no insertion path, so both must read CLEAR.')
+        print('  %s' % ('they do, so the escape method works' if not bad
+                        else 'FAIL (%s) - THIS FILE IS WRONG, ignore every row'
+                             % ', '.join(bad)))
+        print('')
+    print('SEATED is the frame self-check: every pocket is cut to case + loc,')
+    print('so the case alone must overlap ~0. A large number means the ROW is')
+    print('wrong - a rotation or an origin - not that the part is.')
+    print('')
     print('GATE leads : %s' % ('PASS' if not fails else 'FAIL'))
     for f in fails:
         print('   %s' % f)
     print('')
-    ctl = [r for r in bodies if r[0]['tag'] == 'effector']
-    if ctl:
-        ctl_failed = any(f.startswith('effector') for f in fails)
-        print('CONTROL: pruner_shell has a DELIBERATE lead notch, so the')
-        print('  effector row must read CLEAR. It reads %s.'
-              % ('FAIL - THIS FILE IS WRONG, ignore every row above'
-                 if ctl_failed else 'CLEAR, so the method works'))
-        print('')
-    print('EVERY OTHER ROW\'S LEAD POSITION IS STILL A PER-PART GUESS. The')
-    print('control proves the METHOD, not the five placements. A TRAPPED row')
-    print('below means "go look at that pocket", not "that part is broken".')
-    print('')
-    print('ASSUMED, and it is the one assumption here: the leads leave the FAR')
-    print('END FACE, centred across the case and one diameter up from the case')
-    print('bottom. lib/servo.py\'s frame says the lead end is +X, away from the')
-    print('shaft. Nobody has measured where they actually emerge.')
     print('NOT CHECKED: whether an escaped lead can then REACH the duct. That')
     print('needs the loom modelled, and nothing models it.')
