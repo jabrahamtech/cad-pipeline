@@ -43,9 +43,19 @@ lib/servo.py horn values to MEASURED and re-run the gates.
 """
 
 import math
+import os
+import sys
+
+REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
+if REPO not in sys.path:
+    sys.path.insert(0, REPO)
+for _stale in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.')]:
+    del sys.modules[_stale]
 
 import adsk.core
 import adsk.fusion
+
+from lib.servo import CATALOG  # noqa: E402
 
 COMPONENT = 'robotarm_gauge_horn'
 PREFIX = 'gh_'
@@ -68,23 +78,46 @@ CROSS_RELIEF_D = 13.0
 CROSS_SCREW_D = 6.0
 CROSS_TRIM_R = 16.4           # tt_horn_span / 2
 # shoulder_hub MG995 interface
-SH_HUB_BORE = 14.2
+SH_HUB_BORE = 9.10   # tracks shoulder_hub after the MEASURED 8.7 hub
+                     # (was 14.2, for a modelled 13.8 - 5 mm out)
 SH_HUB_DEPTH = 3.9            # hub 3.8 + 0.1
 SH_ARM_W = 6.65
-SH_ARM_DEPTH = 2.6
+SH_ARM_DEPTH = 2.30  # MEASURED MG995 blade 2.2 + 0.1 (was 2.5 + 0.1)
 SH_TRIM_R = 7.6
 # wrist_rotator / gripper_pinion micro interface
-WR_HUB_BORE = 8.15
+WR_HUB_BORE = 6.95   # tracks wrist_rotator/gripper_pinion after
+                     # the MEASURED 6.8 hub (was 8.15, for a modelled 8.0)
 WR_HUB_DEPTH = 3.2            # hub 3.0 + 0.1 + a hair for the drop test
 WR_ARM_W = 5.65
 WR_ARM_DEPTH = 2.1
 WR_TRIM_R = 6.0
 # sweeps
-HUB_U = [7.4, 7.8, 8.2, 8.6]      # micro hub, audit says 8.0
-HUB_M = [13.2, 13.8, 14.4]        # MG995 hub, audit says 13.8
+HUB_U = [6.2, 6.6, 7.0, 7.4]      # RE-CENTRED on the MEASURED 6.8. The old
+                                  # 7.4-8.6 row overshot every bore - still an
+                                  # answer, but a slower one than a bracket.
+HUB_M = [8.2, 8.7, 9.2]           # RE-CENTRED on the MEASURED 8.7 (was 13.2-14.4,
+                                  # bracketing a hub that does not exist)
 BLADE_W = [1.8, 2.0, 2.2, 2.5, 2.7]
 PIN_PAIRS = [(2.0, 1.2, 'micro'), (2.3, 1.3, 'mg995')]
 PIN_H = 4.0
+
+
+# A SWEEP THAT DOES NOT BRACKET ITS TARGET IS A WASTED PLATE. Both hub
+# rows overshot on 2026-08-28 - every bore took its hub loosely - which
+# was still an answer, but a slower one than a bracketing sweep. Assert
+# the brackets against the library so a stale sweep cannot be printed.
+_MICRO_HUB = CATALOG['SG90'].horn_hub_dia
+_M9_HUB = CATALOG['MG995'].horn_hub_dia
+_M9_BLADE = CATALOG['MG995'].horn_blade_thk
+assert min(HUB_U) <= _MICRO_HUB <= max(HUB_U), (
+    'the micro hub sweep %s does not bracket the MEASURED hub %.2f - it '
+    'cannot answer anything' % (HUB_U, _MICRO_HUB))
+assert min(HUB_M) <= _M9_HUB <= max(HUB_M), (
+    'the MG995 hub sweep %s does not bracket the MEASURED hub %.2f'
+    % (HUB_M, _M9_HUB))
+assert min(BLADE_W) <= _M9_BLADE <= max(BLADE_W), (
+    'the blade comb %s does not bracket the MEASURED MG995 blade %.2f'
+    % (BLADE_W, _M9_BLADE))
 
 
 def run(_context: str):
@@ -363,13 +396,13 @@ def run(_context: str):
         return len(items)
 
     n_lab = engrave('lab', [
-        (16.0, 41.5, 'HORN V1'),
+        (16.0, 41.5, 'HORN V3'),
         (CR_X, CR_Y - cr_half - 3.5, 'CROSS 34 24'),
         (ST_X, ST_Y - st_pad_d / 2 - 3.5, 'MG995 STACK'),
         (WRI_X, WRI_Y - wri_pad_d / 2 - 3.5, 'WRIST'),
-        (HU_X, HU_Y - 10.0, 'HUB 74-86'),
+        (HU_X, HU_Y - 10.0, 'HUB 62-74'),
         (33.0, BL_Y - 8.5, 'BL 18-27'),
-        (HM_X, HM_Y - 11.5, 'HUB 132-144'),
+        (HM_X, HM_Y - 11.5, 'HUB 82-92'),
         (PIN_X, PIN_Y - 11.5, 'PIN 20 23'),
     ], base_t)
     group(t3, PH_LABELS)

@@ -316,3 +316,40 @@ STILL OUTSTANDING: _check_leads remains INVALID. Its probes are re-datumed
 in lib/servo.py but the file itself is not yet re-sited, and it still has
 no insertion sweep - the check that would have caught this class of fault
 by itself rather than by a servo refusing to go into a printed plate.
+
+
+## SESSION 7 — the gauge scripts audited. Two more faults, both mine.
+
+After Jonathan spotted the MG995 window bug on sight, both gauge files
+were swept for numbers that should have been derived. Two real faults:
+
+**1. The gauge constants were a hand-copied mirror of lib/servo.py.**
+Every servo dimension at the top of `_gauge_flange.py` was retyped. That
+is the same "datum in two places" trap this project has now been bitten
+by four times, except worse: a GAUGE that has drifted from the library
+certifies the wrong number and you believe it. Both files now import
+CATALOG and derive; a stale plate is impossible rather than unlikely.
+
+**2. Both hub sweeps on the horn plate were stale, and a bracket assert
+now catches it.** After the 2026-08-28 measurements the rows no longer
+contained their own targets:
+
+| sweep | was | brackets the MEASURED value? |
+|---|---|---|
+| micro hub | 7.4 / 7.8 / 8.2 / 8.6 | NO - hub is 6.8 |
+| MG995 hub | 13.2 / 13.8 / 14.4 | NO - hub is 8.7 |
+
+Re-centred to 6.2-7.4 and 8.2-9.2. `_gauge_horn.py` now asserts at import
+that every sweep brackets its library value, so a row that cannot answer
+its own question refuses to build.
+
+**3. The horn plate's replica stations had drifted too** - WRIST hub bore
+still 8.15 and MG995 STACK still 14.2/2.6, from before the hub
+measurements moved the parts to 6.95 and 9.10/2.30. A plate that
+replicates a part has to track it; these now do.
+
+### Exports
+
+`gauge_flange_v3.3mf` and `gauge_horn_v3.3mf`. Print BOTH; the earlier
+plates are superseded and each contains at least one fault we have since
+fixed.

@@ -68,9 +68,19 @@ DERIVED/ASSUMED to MEASURED and re-run the gates.
 """
 
 import math
+import os
+import sys
+
+REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
+if REPO not in sys.path:
+    sys.path.insert(0, REPO)
+for _stale in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.')]:
+    del sys.modules[_stale]
 
 import adsk.core
 import adsk.fusion
+
+from lib.servo import CATALOG, MG995_TAB_SLOT_X_MM  # noqa: E402
 
 COMPONENT = 'robotarm_gauge_flange'
 PREFIX = 'gfl_'
@@ -84,34 +94,43 @@ MATERIAL_NAME = 'PET Plastic'
 PETG_FILAMENT_DENSITY = 1.27
 SOLID_FRACTION = 0.65
 
-# ---- the numbers under test, lib/servo.py after the flange audit ----------
-LOC = 0.2                     # locational fit - design_rules
+# ---- the numbers under test, READ from lib/servo.py, never retyped -------
+#
+# This block used to be hand-copied values. That is the exact trap this
+# project has now been bitten by four times - a datum living in two places,
+# one of which quietly goes stale. A GAUGE that has drifted from the library
+# is worse than no gauge: it certifies the wrong number and you believe it.
+# Everything servo-owned below is now derived, and a stale plate is
+# impossible rather than merely unlikely.
+_SG, _MG, _M9 = CATALOG['SG90'], CATALOG['MG90S'], CATALOG['MG995']
+
+LOC = 0.2                     # locational fit - design_rules, ours not theirs
 # MG995 (shoulder_bracket's slot pattern, verbatim)
-MG995_CASE_W = 20.2           # MEASURED 2026-08-28 (was the datasheet
-                              # 20.0, which made this bed line-to-line)
-MG995_CASE_L = 40.9
-MG995_SLOT_L = 5.6            # MG995_TAB_SLOT_X_MM
-MG995_SLOT_W = 2.5
-MG995_PITCH_X = 47.8          # drawing B - the slots absorb 47.5..49.5
-MG995_PITCH_Y = 10.2
-# SG90
-LEAD_DIA_MICRO = 3.4          # lib/servo.py, MEASURED bundle
-MG995_LEAD_DIA = 4.2
-KEY_D = LEAD_DIA_MICRO + 0.2  # keyway depth past the window wall
+MG995_CASE_W = _M9.case_w
+MG995_CASE_L = _M9.case_l
+MG995_SLOT_L = MG995_TAB_SLOT_X_MM
+MG995_SLOT_W = _M9.tab_thk
+MG995_PITCH_X = _M9.tab_hole_pitch
+MG995_PITCH_Y = 10.2          # MG995_TAB_HOLE_PITCH_Y - across the case
+# leads
+LEAD_DIA_MICRO = _SG.lead_bundle_dia
+MG995_LEAD_DIA = _M9.lead_bundle_dia
+KEY_D = LEAD_DIA_MICRO + LOC  # keyway depth past the window wall
 KEY_L = 6.0                   # keyway length in from the shaft-end face
-SG90_CASE_W = 12.2
-SG90_CASE_L = 22.7
-SG90_SPAN = 32.3
-SG90_TAB_THK = 2.4
-SG90_PITCH = 27.8
+# SG90
+SG90_CASE_W = _SG.case_w
+SG90_CASE_L = _SG.case_l
+SG90_SPAN = _SG.tab_span
+SG90_TAB_THK = _SG.tab_thk
+SG90_PITCH = _SG.tab_hole_pitch
 # MG90S
-MG90S_CASE_W = 12.4
-MG90S_CASE_L = 22.8
-MG90S_PITCH = 27.5            # DERIVED - the bet this plate settles
+MG90S_CASE_W = _MG.case_w
+MG90S_CASE_L = _MG.case_l
+MG90S_PITCH = _MG.tab_hole_pitch   # DERIVED in lib - the bet this plate settles
 MG90S_PITCH_OLD = 29.0        # the drawing TowerPro's table contradicts
-MG90S_LOBE_T = 5.5            # fa_lobe_t = tab_below_top 3.0 + tab_thk 2.5
-PILOT_D = 1.8                 # fa_pilot_d
-TAB_HOLE_D = 2.1
+MG90S_LOBE_T = _MG.tab_below_top + _MG.tab_thk   # == fa_lobe_t, by construction
+PILOT_D = 1.8                 # fa_pilot_d - a design rule, not a servo dim
+TAB_HOLE_D = _MG.tab_hole_dia
 # combs and horn
 COMB_W = [2.0, 2.4, 2.5, 2.6, 2.8]   # 2.0 doubles as the horn BLADE check
 HORN_HUB_D = [7.2, 8.0, 8.8]  # brackets the horn audit's hub Ø8.0
