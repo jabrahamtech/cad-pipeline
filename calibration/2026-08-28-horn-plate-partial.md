@@ -247,3 +247,40 @@ Parts needing it: forearm (x2, J3 and J4), wrist_roll, turntable_stator,
 gripper_shell, and the MG995 pad on shoulder_bracket. pruner_shell has a
 notch already but it was sited from the far-end assumption and must be
 re-placed to the shaft end.
+
+
+## SESSION 5 — case widths, and the cable is on a LONG SIDE face
+
+Jonathan, calipering: MG995 case **20.2** wide (file said 20.0) and
+**40.9** long (confirms the TowerPro table). SG90 and MG90S case
+dimensions are correct as filed - "all the other ones are right... without
+the cable, on the length side".
+
+Two things fall out.
+
+**1. The MG995 bed had zero clearance.** Its window is cut case_w + loc =
+20.0 + 0.2 = 20.2, and the case measures 20.2. Not a fit - an exact
+line-to-line. That is why the entry reads "really small" on the plate,
+and it is a second, independent fault sitting underneath the cable one.
+case_w corrected to 20.2, so the window wants 20.4 for the case alone and
+**24.6** to pass the case plus its bundle.
+
+**2. The cable leaves a LONG SIDE face.** Not the end wall. So the bundle
+adds to the case's WIDTH - which is the very direction every window
+pinches, and it makes the earlier arithmetic exact rather than indicative:
+
+| servo | case W | + bundle | window cut at | short by |
+|---|---|---|---|---|
+| SG90 | 12.2 | 15.6 | 12.4 | 3.2 |
+| MG90S | 12.4 | 15.8 | 12.6 | 3.2 |
+| MG995 | 20.2 | 24.4 | 20.2 | 4.2 |
+
+So the keyway goes in the window's LONG WALL, at the shaft end, running
+the full depth. Its width is lead_bundle_dia + clearance and it only has
+to be as tall as the case travel, which is the whole window depth.
+
+### Confirmed-correct, and worth stating
+
+SG90 12.2 and MG90S 12.4 case widths, and MG995 40.9 length, all stand as
+filed. After a day in which nearly every inherited number moved, three
+did not.

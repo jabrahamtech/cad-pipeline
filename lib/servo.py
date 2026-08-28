@@ -192,7 +192,8 @@ MG90S = ServoSpec(
 # full size — this is the standing bench item that blocks the shoulder.
 MG995 = ServoSpec(
     name="MG995",
-    case_l=40.9, case_w=20.0, case_h=36.5,
+    case_l=40.9, case_w=20.2, case_h=36.5,   # l CONFIRMED, w MEASURED
+                                            # 2026-08-28 (was 20.0)
     tab_span=54.0, tab_thk=2.5, tab_hole_dia=4.8, tab_hole_pitch=47.8,
     tab_below_top=7.2, shaft_from_end=10.0,
     boss_dia=13.0, boss_h=3.0, spline_dia=5.9, spline_h=3.6,
