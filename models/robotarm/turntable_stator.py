@@ -43,9 +43,19 @@ instead and the bearing seat gets a seam down its side.
 """
 
 import math
+import os
+import sys
+
+REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
+if REPO not in sys.path:
+    sys.path.insert(0, REPO)
+for _stale in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.')]:
+    del sys.modules[_stale]
 
 import adsk.core
 import adsk.fusion
+
+from lib.servo import CATALOG  # noqa: E402 - MEASURED lead bundle
 
 COMPONENT = 'robotarm_turntable_stator'
 BODY_NAME = 'turntable_stator'
@@ -193,6 +203,11 @@ def run(_context: str):
     param('loc', '0.2 mm', 'locational fit - design_rules')
     param('free', '0.4 mm', 'free fit - design_rules')
     param('plate_t', '4.0 mm', 'base plate thickness')
+    param('lead_key_d', '%.2f mm' % (CATALOG['SG90'].lead_bundle_dia + 0.2),
+          'lead keyway depth past the aperture wall. The servo cannot be\n'
+          '           INSERTED without it - a separate problem from lead_groove_*\n'
+          '           below, which only lets the lead escape once it is home.')
+    param('lead_key_l', '6.0 mm', 'keyway length in from the shaft-end face')
     param('lead_groove_w', '5.0 mm',
           'lead groove width in the plate underside - same Ø-5 convention as\n'
           '           every other lead escape in the project')
@@ -565,6 +580,22 @@ def run(_context: str):
             _soff - (val('case_l') + val('loc')) / 2,
             _soff + (val('case_l') + val('loc')) / 2,
             mm(-1.0), mm(deck_z + 1.0), CUT)
+    # LEAD KEYWAY, both long walls, at the SHAFT end of the aperture. The
+    # SG90's bundle leaves a LONG SIDE face near the shaft (MEASURED
+    # 2026-08-28) and the whole case travels this aperture on the way in,
+    # so 15.6 mm of servo-plus-cable has to pass a 12.4 mm slot. It cannot.
+    # This is a different fault from the lead GROOVE cut in the base plate
+    # below: that one lets the lead escape once the servo is home, this one
+    # lets the servo get home at all.
+    _shaft_y = _soff - val('case_l') / 2          # the near/shaft end face
+    _kh = (val('case_w') + val('loc')) / 2
+    for _sx in (+1, -1):
+        xy_rect('lead_key_%s' % ('p' if _sx > 0 else 'm'),
+                min(_sx * _kh, _sx * (_kh + val('lead_key_d'))),
+                max(_sx * _kh, _sx * (_kh + val('lead_key_d'))),
+                _shaft_y - val('loc') / 2,
+                _shaft_y + val('lead_key_l'),
+                mm(-1.0), mm(deck_z + 1.0), CUT)
     # the lead groove: from just before the case's far end face out past the
     # escape run, cut up into the plate underside so the bundle's top edge
     # keeps daylight. Volume-drop asserted below.

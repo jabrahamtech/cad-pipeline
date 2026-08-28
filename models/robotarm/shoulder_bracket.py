@@ -272,7 +272,7 @@ def run(_context: str):
 
     # ---- MG995, DATASHEET (lib/servo.py) ------------------------------------
     param('case_l', '40.9 mm', 'MG995 case length - runs DOWN along Z, see the\n           docstring. 40.0 -> 40.9 on TowerPro B, 2026-08-27 flange audit')
-    param('case_w', '20.0 mm', 'MG995 case width - lies along Y')
+    param('case_w', '20.2 mm', 'MG995 case width - lies along Y. MEASURED\n           2026-08-28 (was the datasheet 20.0). The gauge bed cut at\n           20.0 + 0.2 loc was line-to-line on the real case - not a fit.')
     param('shaft_end', '10.0 mm', 'shaft axis to the near end of the case, along Z')
     param('tab_thk', '2.5 mm', 'MG995 tab thickness - the pad is this proud, it is the datum')
     param('tab_below_top', '7.2 mm', 'case top to the tab TOP, along X - DERIVED from\n           TowerPro F 26.8: case_h - F - tab_thk. Was 7.5')

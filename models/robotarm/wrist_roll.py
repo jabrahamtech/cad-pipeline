@@ -40,9 +40,19 @@ wrist_fork.py. SG90 dimensions are DATASHEET (lib/servo.py).
 """
 
 import math
+import os
+import sys
+
+REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
+if REPO not in sys.path:
+    sys.path.insert(0, REPO)
+for _stale in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.')]:
+    del sys.modules[_stale]
 
 import adsk.core
 import adsk.fusion
+
+from lib.servo import CATALOG  # noqa: E402 - MEASURED lead bundle
 
 COMPONENT = 'robotarm_wrist_roll'
 BODY_NAME = 'wrist_roll'
@@ -160,6 +170,12 @@ def run(_context: str):
     param('rot_bore', '11.0 mm', 'clearance bore for the boss and the rotator hub')
 
     # --- lead escape ---------------------------------------------------------
+    param('lead_key_d', '%.2f mm' % (CATALOG['SG90'].lead_bundle_dia + 0.2),
+          'lead keyway depth past the pocket wall - one full bundle diameter\n'
+          '           plus a locational fit. Without it the servo cannot be inserted\n'
+          '           at all; see the cut. MEASURED bundle, lib/servo.py.')
+    param('lead_key_l', '6.0 mm',
+          'keyway length in from the SHAFT-end face of the pocket')
     param('lead_d', '3.4 mm',
           'SG90 lead_bundle_dia - lib/servo.py. Typed here like the other\n'
           '           DATASHEET numbers; _check_leads probes with the LIBRARY value,\n'
@@ -327,6 +343,22 @@ def run(_context: str):
          PREFIX + 'y_back - ' + PREFIX + 'wall',
          PREFIX + 'case_top + ' + PREFIX + 'loc / 2 - ' + PREFIX + 'y_back + ' + PREFIX + 'wall',
          CUT)
+    # LEAD KEYWAY. The bundle leaves a LONG SIDE face near the SHAFT end
+    # (MEASURED 2026-08-28) and the case travels the full pocket depth on
+    # the way in, so without this the SG90 simply will not go in: 15.6 mm
+    # of servo-plus-cable into a 12.4 mm pocket. Both walls, because the
+    # part is handed and the servo can arrive either way up.
+    _kh = val('case_w') / 2 + loc / 2
+    for _sx in (+1, -1):
+        slab('lead_key_%s' % ('p' if _sx > 0 else 'm'),
+             min(_sx * _kh, _sx * (_kh + val('lead_key_d'))),
+             max(_sx * _kh, _sx * (_kh + val('lead_key_d'))),
+             val('case_z_hi') + loc / 2 - val('lead_key_l'),
+             val('case_z_hi') + loc / 2,
+             PREFIX + 'y_back - ' + PREFIX + 'wall',
+             PREFIX + 'case_top + ' + PREFIX + 'loc / 2 - ' + PREFIX + 'y_back + '
+             + PREFIX + 'wall',
+             CUT)
     slab('tab_slots',
          -(val('case_w') / 2 + loc / 2), val('case_w') / 2 + loc / 2,
          val('case_z_lo') - val('tab_over') - loc / 2,

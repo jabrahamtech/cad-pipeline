@@ -284,3 +284,35 @@ to be as tall as the case travel, which is the whole window depth.
 SG90 12.2 and MG90S 12.4 case widths, and MG995 40.9 length, all stand as
 filed. After a day in which nearly every inherited number moved, three
 did not.
+
+
+## SESSION 6 — fixed. Keyways cut, everything re-gated.
+
+**forearm** (J3 and J4), **wrist_roll**, **turntable_stator**: lead keyway
+cut into the window's long wall at the SHAFT end, full depth, width
+lead_bundle_dia + 0.2, length 6.0 in from the end face. **Both** long
+walls in each, because these mounts are handed - J3 and J4 are mirrored
+about the arm, and a keyway on one wall would fit exactly half the arm.
+
+**pruner_shell**: no insertion jam (it is a clamshell, the servo drops in
+along z) but its existing lead_notch was centred on x 0 - the shaft AXIS -
+and the cable is at the shaft END, so it missed by ~3.6 mm. Re-sited, and
+doubled to +-shaft_end because that pocket is deliberately symmetric "so
+the servo drops in either way round".
+
+**shoulder_bracket**: MG995 case_w 20.0 -> 20.2 MEASURED. No keyway: the
+MG995 bolts to a solid pad rather than threading a window, so the cable
+never crosses anything.
+
+**forearm carries a new assert** that the window plus its keyway passes
+the real MG90S plus its real bundle, read from lib.servo. It is the check
+that would have caught this on day one, and it is now impossible to
+regress silently.
+
+Gates, all re-run after: wrist PASS, pruner PASS, shoulder PASS eight
+pitches, J1 full sweep 0.000 mm3 PASS. Turret exported **v6**.
+
+STILL OUTSTANDING: _check_leads remains INVALID. Its probes are re-datumed
+in lib/servo.py but the file itself is not yet re-sited, and it still has
+no insertion sweep - the check that would have caught this class of fault
+by itself rather than by a servo refusing to go into a printed plate.

@@ -436,9 +436,26 @@ def run(_context: str):
     box('tail_cavity', -(rear_x - val('pocket_inset')), rear_x - val('pocket_inset'),
         back_y + val('pocket_inset'), mid_y - val('wall'),
         PREFIX + 'srv_roof', PREFIX + 'half_z - ' + PREFIX + 'srv_roof - ' + PREFIX + 'wall', CUT)
-    box('lead_notch', -val('lead_slot') / 2, val('lead_slot') / 2,
-        back_y - val('wall'), case_bot + val('wall'),
-        '0.0 mm', PREFIX + 'case_w / 2 + ' + PREFIX + 'loc / 2', CUT)
+    # LEAD NOTCH, RE-SITED 2026-08-28. It was centred on x 0 - the shaft
+    # AXIS - because lib/servo.py said the bundle left the FAR END FACE
+    # centred across the width. The bench says it leaves a LONG SIDE face
+    # near the SHAFT END, so the old notch missed the cable by ~3.6 mm and
+    # this part's CLEAR reading in _check_leads was measuring empty wall.
+    #
+    # Two notches, because the pocket above is deliberately symmetric "so
+    # the servo drops in either way round": the shaft end lands at x
+    # -shaft_end or +shaft_end depending on which way it goes, and a notch
+    # at one end only would silently halve that freedom.
+    #
+    # This shell is a CLAMSHELL - the servo drops in along z, it does not
+    # thread through a window - so unlike the forearm/wrist/stator pockets
+    # there is no insertion jam here. The notch is purely an exit.
+    for _sx in (+1, -1):
+        _cx = _sx * val('shaft_end')
+        box('lead_notch_%s' % ('p' if _sx > 0 else 'm'),
+            _cx - val('lead_slot') / 2, _cx + val('lead_slot') / 2,
+            back_y - val('wall'), case_bot + val('wall'),
+            '0.0 mm', PREFIX + 'case_w / 2 + ' + PREFIX + 'loc / 2', CUT)
     group(t2, PH_SERVO)
 
     # ---- phase 4: fasteners + lightening ------------------------------------

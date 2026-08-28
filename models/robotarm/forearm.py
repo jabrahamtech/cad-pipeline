@@ -45,9 +45,19 @@ plane is the datum, the case pocket is only clearance.
 """
 
 import math
+import os
+import sys
+
+REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
+if REPO not in sys.path:
+    sys.path.insert(0, REPO)
+for _stale in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.')]:
+    del sys.modules[_stale]
 
 import adsk.core
 import adsk.fusion
+
+from lib.servo import CATALOG  # noqa: E402 - MEASURED lead bundle
 
 COMPONENT = 'robotarm_forearm'
 BODY_NAME = 'forearm'
@@ -196,6 +206,24 @@ def run(_context: str):
           '           are non-manifold and the fillet fails later - see PLAYBOOK.')
     param('lobe_z', PREFIX + 'case_w / 2 + ' + PREFIX + 'wall + 1.0 mm', 'derived lobe half height')
     param('lobe_pad', '3.5 mm', 'material past the outermost tab screw')
+    # ---- LEAD KEYWAY -------------------------------------------------------
+    # The servo cannot be installed without this. The whole case travels
+    # through this window during assembly (the tabs land on the FAR face), so
+    # the cable has to traverse it too - and the bundle leaves a LONG SIDE
+    # face near the SHAFT end, MEASURED 2026-08-28. At that height the servo
+    # is case_w + bundle wide against a case_w + loc window: 15.8 into 12.6.
+    # No sweep in this project could see it, because every gate models the
+    # servo as its case envelope and a cable is not in that envelope.
+    _LEAD = CATALOG['MG90S'].lead_bundle_dia
+    param('lead_key_d', '%.2f mm' % (_LEAD + 0.2),
+          'how far the keyway reaches past the window wall - one full bundle\n'
+          '           diameter plus a locational fit, because the bundle sits wholly\n'
+          '           outside the case width')
+    param('lead_key_l', '6.0 mm',
+          'keyway length measured IN from the shaft-end face. Generous on\n'
+          '           purpose: the exit is known to be near that end but not to the\n'
+          '           millimetre, and a keyway that is too short traps the cable\n'
+          '           exactly as the solid wall did.')
     param('pilot_d', '1.8 mm', 'servo screw pilot - design_rules, self-tapping into PETG')
     param('pilot_depth', '3.5 mm',
           'engagement. Must not break into the flange counterbore behind it - asserted.')
@@ -362,6 +390,12 @@ def run(_context: str):
     assert val('pilot_depth') <= val('lobe_t') + val('lobe_over'), (
         'the servo pilot holes break through the lobe into the flange counterbore')
     assert wval('reach') > val('gap'), 'the hub hex does not reach across the running gap'
+    _need = CATALOG['MG90S'].case_w + CATALOG['MG90S'].lead_bundle_dia
+    _have = val('case_w') * 10 + val('loc') * 10 + val('lead_key_d') * 10
+    assert _have >= _need, (
+        'the window plus its keyway passes %.1f mm and the MG90S with its '
+        'cable is %.1f mm across at the lead - the servo cannot be installed'
+        % (_have, _need))
 
     def plate(sx):
         """(start expression, distance expression) for one side wall."""
@@ -447,6 +481,20 @@ def run(_context: str):
                 c0 - val('loc') / 2, c1 + val('loc') / 2,
                 -(val('case_w') + val('loc')) / 2, (val('case_w') + val('loc')) / 2,
                 win0, wind, CUT)
+        # LEAD KEYWAY, both long walls, at the SHAFT end. Both walls because
+        # J3 and J4 are mirrored about the arm and a servo that is the right
+        # way up in one is upside down in the other - a keyway on one wall
+        # only would fit exactly half the arm.
+        near_y = y_p - run * val('shaft_end')
+        k_half = (val('case_w') + val('loc')) / 2
+        k_d, k_l = val('lead_key_d'), val('lead_key_l')
+        ka, kb = sorted((near_y, near_y + run * k_l))
+        for sz in (+1, -1):
+            yz_rect('lead_key_%s_%s' % (jnt, 'p' if sz > 0 else 'm'),
+                    ka, kb,
+                    min(sz * k_half, sz * (k_half + k_d)),
+                    max(sz * k_half, sz * (k_half + k_d)),
+                    win0, wind, CUT)
         for i, ys in enumerate(screws):
             yz_circle('pilot_%s_%d' % (jnt, i), ys, 0.0, val('pilot_d'),
                       pil0, PREFIX + 'pilot_depth', CUT)
