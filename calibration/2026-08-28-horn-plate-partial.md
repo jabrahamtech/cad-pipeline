@@ -204,3 +204,46 @@ exit is measured and every pocket gets a lead relief. That is the
 forearm, wrist_roll, turntable_stator, gripper_shell and the MG995
 pad - pruner_shell is the only part already carrying one, and its notch
 was placed from the same bad assumption.
+
+
+## SESSION 4 — the cable exit, pinned. And why every pocket jams.
+
+Jonathan, in words then a sketch: the bundle leaves at the **SHAFT END**
+(the same end as the flange nearest the horn), **near the case BOTTOM**.
+I first read his description as tab height; the sketch corrected it. The
+END was right, the HEIGHT was not.
+
+`lib/servo.py` previously said "the FAR END FACE, one lead diameter up
+from the case bottom". The HEIGHT was right all along. The END was
+wrong, and the end is what matters.
+
+### The arithmetic, which needed no gate to see
+
+| servo | case width | + bundle | window cut at |
+|---|---|---|---|
+| SG90 | 12.2 | **15.6** | 12.4 |
+| MG90S | 12.4 | **15.8** | 12.6 |
+| MG995 | 20.0 | **24.2** | 20.2 |
+
+The whole case passes through its mounting window during assembly - the
+tabs land on the FAR face, so the case travels the full window depth and
+keeps going. At the height the cable leaves, the servo is ~3.4 mm wider
+than the window it must pass. Every pocket in the project is cut to
+case + 0.2. **None of the three servos can be installed in any of them.**
+
+This was arithmetic available from day one. No sweep was needed and no
+sweep would have found it, because every gate models the servo as its
+CASE ENVELOPE and the cable is not part of that envelope.
+
+### The fix, chosen
+
+Snug pocket everywhere, with one channel down the inside of the window
+at the shaft end - a keyway for the cable to slide in as the case goes
+through. Sized lead_bundle_dia + clearance, cut the full depth of the
+lobe/wall so the cable can travel. Nothing else loosens, all four walls
+keep locating the case.
+
+Parts needing it: forearm (x2, J3 and J4), wrist_roll, turntable_stator,
+gripper_shell, and the MG995 pad on shoulder_bracket. pruner_shell has a
+notch already but it was sited from the far-end assumption and must be
+re-placed to the shaft end.

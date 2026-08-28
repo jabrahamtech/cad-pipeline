@@ -82,7 +82,11 @@ class ServoSpec:
     #
     # Expressed in this frame (origin at the shaft axis on the tab plane):
     #   lead_x  along the length toward the SHAFT end, so NEGATIVE
-    #   lead_z  relative to the tab plane, so ~0 (at tab height)
+    #   lead_z  relative to the tab plane. The case BOTTOM sits at
+    #           tab_thk + tab_below_top - case_h, and the bundle leaves one
+    #           bundle-diameter up from it, so lead_z is strongly NEGATIVE.
+    # Corrected within the session: first read as tab height, then Jonathan
+    # sketched it and confirmed BOTTOM. Shaft END was right, height was not.
     # Both are the CASE-WALL exit point; the bundle runs outward from there.
     lead_x: float
     lead_z: float
@@ -135,7 +139,8 @@ SG90 = ServoSpec(
     horn_arm_len=17.0, horn_hole_dia=1.4, horn_hole_pitch=2.0,
     horn_screw_dia=2.5,
     lead_bundle_dia=3.4,
-    lead_x=-6.1, lead_z=0.0,   # MEASURED 2026-08-28: shaft end, tab height
+    lead_x=-6.1, lead_z=-13.6,  # shaft end, one bundle up from the case
+                            # bottom: 2.4 + 4.3 - 23.7 = -17.0, +3.4
     mass_g=9.0,
     stall_kgcm=1.6,
 )
@@ -164,7 +169,7 @@ MG90S = ServoSpec(
     horn_arm_len=17.0, horn_hole_dia=1.4, horn_hole_pitch=2.0,
     horn_screw_dia=2.5,
     lead_bundle_dia=3.4,
-    lead_x=-6.0, lead_z=0.0,   # MEASURED 2026-08-28: shaft end, tab height
+    lead_x=-6.0, lead_z=-15.1,  # 2.5 + 3.0 - 24.0 = -18.5, +3.4
     mass_g=13.4,
     stall_kgcm=2.0,
 )
@@ -195,7 +200,7 @@ MG995 = ServoSpec(
     horn_arm_len=16.5, horn_hole_dia=1.5, horn_hole_pitch=2.3,
     horn_screw_dia=3.0,
     lead_bundle_dia=4.2,
-    lead_x=-10.0, lead_z=0.0,  # MEASURED 2026-08-28: shaft end, tab height
+    lead_x=-10.0, lead_z=-22.6, # 2.5 + 7.2 - 36.5 = -26.8, +4.2
     mass_g=55.0,
     stall_kgcm=9.4,
 )
