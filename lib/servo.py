@@ -71,6 +71,21 @@ class ServoSpec:
     horn_screw_dia: float   # the retaining screw through the hub
     # electrical / mechanical
     lead_bundle_dia: float
+    # WHERE THE LEADS LEAVE THE CASE - MEASURED 2026-08-28, and the previous
+    # written assumption was wrong at BOTH ends of its own description.
+    # It said "the FAR END FACE, centred across the case width and one lead
+    # diameter up from the case bottom". Jonathan's bench, all three servos:
+    # the bundle leaves at the SHAFT END, up at TAB HEIGHT. Wrong end, wrong
+    # height. It is the difference between a lead that dangles in free air
+    # and one that sits exactly in the band a mounting window grips - which
+    # is why not one of the three can be pushed into its own pocket.
+    #
+    # Expressed in this frame (origin at the shaft axis on the tab plane):
+    #   lead_x  along the length toward the SHAFT end, so NEGATIVE
+    #   lead_z  relative to the tab plane, so ~0 (at tab height)
+    # Both are the CASE-WALL exit point; the bundle runs outward from there.
+    lead_x: float
+    lead_z: float
     mass_g: float
     stall_kgcm: float       # conservative end of the published range
 
@@ -120,6 +135,7 @@ SG90 = ServoSpec(
     horn_arm_len=17.0, horn_hole_dia=1.4, horn_hole_pitch=2.0,
     horn_screw_dia=2.5,
     lead_bundle_dia=3.4,
+    lead_x=-6.1, lead_z=0.0,   # MEASURED 2026-08-28: shaft end, tab height
     mass_g=9.0,
     stall_kgcm=1.6,
 )
@@ -148,6 +164,7 @@ MG90S = ServoSpec(
     horn_arm_len=17.0, horn_hole_dia=1.4, horn_hole_pitch=2.0,
     horn_screw_dia=2.5,
     lead_bundle_dia=3.4,
+    lead_x=-6.0, lead_z=0.0,   # MEASURED 2026-08-28: shaft end, tab height
     mass_g=13.4,
     stall_kgcm=2.0,
 )
@@ -178,6 +195,7 @@ MG995 = ServoSpec(
     horn_arm_len=16.5, horn_hole_dia=1.5, horn_hole_pitch=2.3,
     horn_screw_dia=3.0,
     lead_bundle_dia=4.2,
+    lead_x=-10.0, lead_z=0.0,  # MEASURED 2026-08-28: shaft end, tab height
     mass_g=55.0,
     stall_kgcm=9.4,
 )

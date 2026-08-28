@@ -1,4 +1,36 @@
-"""robotarm/_check_leads - can each servo's own lead actually get out?
+"""robotarm/_check_leads - INVALID AS OF 2026-08-28. DO NOT TRUST ITS VERDICT.
+
+Every probe in this file is sited from a written assumption that the bench
+disproved: "the leads exit the FAR END FACE, centred across the case width
+and one lead diameter up from the case bottom". Jonathan measured all three
+servos on 2026-08-28 and the bundle leaves at the SHAFT END, at TAB HEIGHT -
+the opposite end of the case, and the top instead of the bottom.
+
+So this gate has been probing empty air at the wrong corner of every servo.
+Its 6/6 CLEAR means nothing, and the J1 lead groove cut into
+turntable_stator on 2026-08-27 was sized and sited from the same error.
+
+Worse, the fault the bench actually found is one this file CANNOT see even
+once re-sited: it checks whether a lead can escape from its RESTING place,
+never whether the servo can be INSERTED past its own cable. A pocket cut to
+case + loc passes the resting check and still cannot be assembled, because
+the cable crosses the mounting window during insertion and is pinched
+against the wall when the case seats. That is what stopped all three.
+
+TO REPAIR, in order:
+  1. re-site every MOUNTS row from lib.servo's lead_x / lead_z (MEASURED)
+     instead of the per-row lead_at / across typed below - the same
+     "datum only one file reads" trap this project has now hit three times
+  2. add an INSERTION sweep: run the case along its fitting path and ask
+     whether the lead bundle clears the window at every step
+  3. cut lead reliefs where 1 and 2 say they are needed, then re-run
+
+Until then run() refuses to print a verdict. Set OVERRIDE_INVALID = True
+only to inspect the old numbers, never to clear a gate.
+
+---- original header, preserved ----
+
+robotarm/_check_leads - can each servo's own lead actually get out?
 
 THE GAP THIS CLOSES. lib/servo.py carries `lead_bundle_dia` for all three
 servos - SG90 3.4, MG90S 3.4, MG995 4.2 - and until this file existed
@@ -39,6 +71,7 @@ import adsk.core
 import adsk.fusion
 
 REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
+OVERRIDE_INVALID = False   # see the header - this gate is not repaired
 ESCAPE_MM = 8.0     # how far a lead must run clear before it can be bent away
 
 # One entry per servo in the arm. `axis` is which way the case's LONG axis
@@ -159,6 +192,14 @@ def run(_context: str):
             % occ.component.name)
         return occ
 
+    if not OVERRIDE_INVALID:
+        print('GATE leads : INVALID - NOT RUN')
+        print('  Every probe here is sited from the pre-2026-08-28 assumption')
+        print('  that leads leave the FAR END at the case BOTTOM. The bench')
+        print('  says SHAFT END at TAB HEIGHT, on all three servos. Re-site')
+        print('  the rows from lib.servo lead_x/lead_z, add the INSERTION')
+        print('  sweep, then delete this guard. See the file header.')
+        return
     print('=== servo lead escape check ===')
     print('a lead must run %.1f mm clear of its own host before it can bend'
           % ESCAPE_MM)
