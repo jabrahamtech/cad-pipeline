@@ -61,9 +61,16 @@ SOLID = 0.65
 
 _SG, _MG, _M9 = CATALOG['SG90'], CATALOG['MG90S'], CATALOG['MG995']
 LOC = 0.2
-KEY_L = 6.0
+KEY_OUT = 2.0          # how far the notch runs PAST the pad edge, to daylight
 KEY_D_MICRO = _SG.lead_bundle_dia + LOC
 KEY_D_M9 = _M9.lead_bundle_dia + LOC
+
+# THE LEAD LEAVES THE SHORT END FACE, centred (lib/servo.py lead datum).
+# v1 of this plate notched the two LONG walls either side of that face, at
+# both ends - which is what made every window read as a capital I, and what
+# Jonathan caught: "thats not on the right side its on the short side".
+# One notch per station now, in the END wall, centred, running out to
+# daylight. Insert each servo with its OUTPUT SHAFT toward the notch.
 
 MG90S_LOBE_T = _MG.tab_below_top + _MG.tab_thk      # == fa_lobe_t
 MG90S_PITCH_OLD = 29.0
@@ -208,18 +215,33 @@ def run(_context: str):
 
     FX0, FY0 = -14.0, -56.0
 
+    # Where each end-wall notch STOPS: past the raised pad (or past the MG995
+    # rails, which is the only raised thing that station has) by KEY_OUT, so
+    # the cable always reaches daylight. A notch that ends inside the pad is a
+    # blind pocket and traps the cable exactly as a solid wall would.
+    m9_key_out = -26.0 - KEY_OUT
+    sg_key_out = sg_pad[0] - KEY_OUT
+    mg_key_out = mg_pad[2] - KEY_OUT
+
     # ---- sanity ------------------------------------------------------------
     GAP = 2.0
-    assert 2 * mg_wx + KEY_D_MICRO >= _MG.case_w + _MG.lead_bundle_dia, (
-        'the MG90S station passes %.1f, the servo with its cable is %.1f'
-        % (2 * mg_wx + KEY_D_MICRO, _MG.case_w + _MG.lead_bundle_dia))
-    assert 2 * sg_wy + KEY_D_MICRO >= _SG.case_w + _SG.lead_bundle_dia, (
-        'the SG90 station passes %.1f, the servo with its cable is %.1f'
-        % (2 * sg_wy + KEY_D_MICRO, _SG.case_w + _SG.lead_bundle_dia))
-    assert 2 * m9_wy + KEY_D_M9 >= _M9.case_w + _M9.lead_bundle_dia, (
-        'the MG995 station passes %.1f, the servo with its cable is %.1f'
-        % (2 * m9_wy + KEY_D_M9, _M9.case_w + _M9.lead_bundle_dia))
+    # The cable leaves the END face, so it costs LENGTH, not width. The v1
+    # asserts charged it against case_w and passed while the notches were on
+    # the wrong walls entirely - an assert on the wrong axis is worse than no
+    # assert, because it reads like proof.
+    for tag, win_len, notch_len, spec in (
+            ('MG995', 2 * m9_wx, -m9_wx - m9_key_out, _M9),
+            ('SG90', 2 * sg_wx, -sg_wx - sg_key_out, _SG),
+            ('MG90S', 2 * mg_wy, (MG_Y - mg_wy) - mg_key_out, _MG)):
+        assert win_len + notch_len >= spec.case_l + spec.lead_bundle_dia, (
+            'the %s station passes %.1f along the case and the servo with its '
+            'cable is %.1f long - it cannot be threaded in'
+            % (tag, win_len + notch_len, spec.case_l + spec.lead_bundle_dia))
+        assert notch_len >= KEY_OUT, '%s notch does not clear its pad' % tag
     assert 2 * m9_wx >= _M9.case_l + LOC - 1e-9, 'MG995 window shorter than the case'
+    assert 2 * m9_wy >= _M9.case_w + LOC - 1e-9, 'MG995 window narrower than the case'
+    assert 2 * sg_wy >= _SG.case_w + LOC - 1e-9, 'SG90 window narrower than the case'
+    assert 2 * mg_wx >= _MG.case_w + LOC - 1e-9, 'MG90S window narrower than the case'
     assert abs(mg_pad_h + base_t - MG90S_LOBE_T) < 1e-9, 'the MG90S pad is not fa_lobe_t'
     assert _MG.tab_hole_pitch / 2 > mg_wy + PILOT_D / 2 + 0.4, 'pilots break into the window'
     assert M9_Y + m9_wy + 3.0 < BASE_Y / 2 - 1.0, 'MG995 bed off the top'
@@ -254,14 +276,9 @@ def run(_context: str):
                  M9_Y + sy * m9_slot_cy - _M9.tab_thk / 2,
                  M9_Y + sy * m9_slot_cy + _M9.tab_thk / 2,
                  -1.0, base_t + 2.0, CUT, [plate])
-    for sy in (+1, -1):
-        for exd in (-1, +1):
-            x0 = exd * m9_wx
-            rect('m9_key_%s%s' % ('p' if sy > 0 else 'm', 'a' if exd > 0 else 'b'),
-                 min(x0, x0 - exd * KEY_L), max(x0, x0 - exd * KEY_L),
-                 min(M9_Y + sy * m9_wy, M9_Y + sy * (m9_wy + KEY_D_M9)),
-                 max(M9_Y + sy * m9_wy, M9_Y + sy * (m9_wy + KEY_D_M9)),
-                 -1.0, base_t + 2.0, CUT, [plate])
+    rect('m9_key', m9_key_out, -m9_wx,
+         M9_Y - KEY_D_M9 / 2, M9_Y + KEY_D_M9 / 2,
+         -1.0, base_t + 2.0, CUT, [plate])
 
     # SG90 seat
     rect('sg_pad', sg_pad[0], sg_pad[1], sg_pad[2], sg_pad[3],
@@ -270,14 +287,9 @@ def run(_context: str):
          base_t + sg_seat_h, -sg_seat_h, CUT, [plate])
     rect('sg_window', -sg_wx, sg_wx, SG_Y - sg_wy, SG_Y + sg_wy,
          base_t, -base_t - 1.0, CUT, [plate])
-    for sy in (+1, -1):
-        for exd in (-1, +1):
-            x0 = exd * sg_wx
-            rect('sg_key_%s%s' % ('p' if sy > 0 else 'm', 'a' if exd > 0 else 'b'),
-                 min(x0, x0 - exd * KEY_L), max(x0, x0 - exd * KEY_L),
-                 min(SG_Y + sy * sg_wy, SG_Y + sy * (sg_wy + KEY_D_MICRO)),
-                 max(SG_Y + sy * sg_wy, SG_Y + sy * (sg_wy + KEY_D_MICRO)),
-                 base_t, -base_t - 1.0, CUT, [plate])
+    rect('sg_key', sg_key_out, -sg_wx,
+         SG_Y - KEY_D_MICRO / 2, SG_Y + KEY_D_MICRO / 2,
+         base_t + sg_seat_h + 1.0, -base_t - sg_seat_h - 2.0, CUT, [plate])
     for sx in (+1, -1):
         rect('sg_sight_%s' % ('p' if sx > 0 else 'm'),
              sx * _SG.tab_hole_pitch / 2 - 0.2, sx * _SG.tab_hole_pitch / 2 + 0.2,
@@ -289,14 +301,9 @@ def run(_context: str):
     mg_top = base_t + mg_pad_h
     rect('mg_window', MG_X - mg_wx, MG_X + mg_wx, MG_Y - mg_wy, MG_Y + mg_wy,
          mg_top, -mg_top - 1.0, CUT, [plate])
-    for sx in (+1, -1):
-        for ey in (-1, +1):
-            y0 = MG_Y + ey * mg_wy
-            rect('mg_key_%s%s' % ('p' if sx > 0 else 'm', 'a' if ey > 0 else 'b'),
-                 min(MG_X + sx * mg_wx, MG_X + sx * (mg_wx + KEY_D_MICRO)),
-                 max(MG_X + sx * mg_wx, MG_X + sx * (mg_wx + KEY_D_MICRO)),
-                 min(y0, y0 - ey * KEY_L), max(y0, y0 - ey * KEY_L),
-                 mg_top, -mg_top - 1.0, CUT, [plate])
+    rect('mg_key', MG_X - KEY_D_MICRO / 2, MG_X + KEY_D_MICRO / 2,
+         mg_key_out, MG_Y - mg_wy,
+         mg_top + 1.0, -mg_top - 2.0, CUT, [plate])
     for sy in (+1, -1):
         circle('mg_pilot_%s' % ('p' if sy > 0 else 'm'),
                MG_X, MG_Y + sy * _MG.tab_hole_pitch / 2, PILOT_D,
@@ -410,9 +417,9 @@ def run(_context: str):
     # room below them: the first draft ran MG90S off the edge and drove
     # VERIFY V1 straight through the MG995 rails.
     LABELS = [
-        (-36.0, M9_Y, 'MG995'),
+        (-38.0, M9_Y - 7.0, 'MG995'),
         (-36.0, SG_Y, 'SG90'),
-        (MG_X, mg_pad[2] - 3.5, 'MG90S 27.5'),
+        (MG_X + 16.0, mg_pad[2] - 3.5, 'MG90S 27.5'),
         (CR_X, CR_Y - cr_half - 3.5, 'CROSS'),
         (FX0 + 12.0, FY0 - 5.0, 'FLEX 0 25 45'),
         (30.0, -50.0, 'VERIFY V1'),
@@ -422,6 +429,12 @@ def run(_context: str):
              ('MG90S pad', mg_pad[0], mg_pad[1], mg_pad[2], mg_pad[3]),
              ('cross pad', CR_X - cr_half, CR_X + cr_half,
               CR_Y - cr_half, CR_Y + cr_half)]
+    _PADS += [('MG995 keyway', m9_key_out, -m9_wx,
+               M9_Y - KEY_D_M9 / 2, M9_Y + KEY_D_M9 / 2),
+              ('SG90 keyway', sg_key_out, -sg_wx,
+               SG_Y - KEY_D_MICRO / 2, SG_Y + KEY_D_MICRO / 2),
+              ('MG90S keyway', MG_X - KEY_D_MICRO / 2, MG_X + KEY_D_MICRO / 2,
+               mg_key_out, MG_Y - mg_wy)]
     for lx, ly, txt in LABELS:
         half_w = 1.35 * len(txt)      # measured from the v1 render, per char
         assert abs(lx) + half_w < BASE_X / 2 - 1.0, txt + ' runs off the plate'
@@ -444,13 +457,16 @@ def run(_context: str):
     bb = plate.boundingBox
     vol = plate.volume * 1000
     print('component: %r | FIVE stations, every one untested AND blocking' % comp.name)
-    print('  MG995 KEY  window %.1f x %.1f (case %.1f x %.1f MEASURED) + keyway %.1f'
-          % (2 * m9_wx, 2 * m9_wy, _M9.case_l, _M9.case_w, KEY_D_M9))
-    print('  SG90 KEY   window %.1f x %.1f + keyway %.1f, tab recess %.1f deep'
-          % (2 * sg_wx, 2 * sg_wy, KEY_D_MICRO, sg_seat_h))
-    print('  MG90S KEY  window %.1f x %.1f through %.2f (= fa_lobe_t) + keyway %.1f, '
-          'pilots %.1f at the DERIVED %.1f'
-          % (2 * mg_wx, 2 * mg_wy, MG90S_LOBE_T, KEY_D_MICRO, PILOT_D, _MG.tab_hole_pitch))
+    print('  MG995 KEY  window %.1f x %.1f (case %.1f x %.1f MEASURED), END notch '
+          '%.1f wide x %.1f long'
+          % (2 * m9_wx, 2 * m9_wy, _M9.case_l, _M9.case_w, KEY_D_M9,
+             -m9_wx - m9_key_out))
+    print('  SG90 KEY   window %.1f x %.1f, END notch %.1f x %.1f, tab recess %.1f deep'
+          % (2 * sg_wx, 2 * sg_wy, KEY_D_MICRO, -sg_wx - sg_key_out, sg_seat_h))
+    print('  MG90S KEY  window %.1f x %.1f through %.2f (= fa_lobe_t), END notch '
+          '%.1f x %.1f, pilots %.1f at the DERIVED %.1f'
+          % (2 * mg_wx, 2 * mg_wy, MG90S_LOBE_T, KEY_D_MICRO,
+             (MG_Y - mg_wy) - mg_key_out, PILOT_D, _MG.tab_hole_pitch))
     print('  CROSS      TAPERED %.2f at r %.1f -> %.2f at the trim line, %.1f deep'
           % (CROSS_W_ROOT, CROSS_R_ROOT, CROSS_W_TIP, CROSS_Z))
     print('  FLEX       t %.1f x w %.1f hairpin, marks at %s (0.67-0.99 N = 68-101 g)'

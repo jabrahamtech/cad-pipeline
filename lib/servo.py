@@ -80,15 +80,35 @@ class ServoSpec:
     # and one that sits exactly in the band a mounting window grips - which
     # is why not one of the three can be pushed into its own pocket.
     #
+    # WHICH FACE. This is the part every consumer got wrong, so it is stated
+    # first and in one sentence: the bundle leaves the SHORT END FACE - the
+    # case's case_w x case_h end, the one the output shaft is nearest - dead
+    # CENTRE across the width, near the bottom.
+    #
+    # It does NOT leave a long side wall. lead_x below equals -shaft_from_end,
+    # which IS that end face (the shaft sits shaft_from_end in from it), but
+    # five parts read it as a point ON a long wall and notched the two walls
+    # either side of the face instead of the face itself. Jonathan, at the
+    # bench, 2026-08-28: "thats not on the right side its on the short side
+    # specifically the side where the motor is closer to that short side",
+    # and then, asked whether it was centred across that face: "centre".
+    #
+    # A keyway cut from this datum is therefore ONE notch, centred, in the
+    # END wall of the pocket, running outward until it breaks daylight. Not
+    # two notches in the side walls. If you are writing `for sz in (+1, -1)`
+    # around a lead keyway, you have misread this block.
+    #
     # Expressed in this frame (origin at the shaft axis on the tab plane):
-    #   lead_x  along the length toward the SHAFT end, so NEGATIVE
+    #   lead_x  the END FACE the bundle leaves, = -shaft_from_end, NEGATIVE
+    #   lead_y  across the width. MEASURED 0.0 - centred, all three servos
     #   lead_z  relative to the tab plane. The case BOTTOM sits at
     #           tab_thk + tab_below_top - case_h, and the bundle leaves one
     #           bundle-diameter up from it, so lead_z is strongly NEGATIVE.
     # Corrected within the session: first read as tab height, then Jonathan
-    # sketched it and confirmed BOTTOM. Shaft END was right, height was not.
-    # Both are the CASE-WALL exit point; the bundle runs outward from there.
+    # sketched it and confirmed BOTTOM. Shaft END was right, height was not,
+    # and the FACE was not either.
     lead_x: float
+    lead_y: float
     lead_z: float
     mass_g: float
     stall_kgcm: float       # conservative end of the published range
@@ -139,8 +159,9 @@ SG90 = ServoSpec(
     horn_arm_len=17.0, horn_hole_dia=1.4, horn_hole_pitch=2.0,
     horn_screw_dia=2.5,
     lead_bundle_dia=3.4,
-    lead_x=-6.1, lead_z=-13.6,  # shaft end, one bundle up from the case
-                            # bottom: 2.4 + 4.3 - 23.7 = -17.0, +3.4
+    lead_x=-6.1, lead_y=0.0, lead_z=-13.6,  # shaft END FACE (= -shaft_from_end),
+                            # centred, one bundle up from the case bottom:
+                            # 2.4 + 4.3 - 23.7 = -17.0, +3.4
     mass_g=9.0,
     stall_kgcm=1.6,
 )
@@ -169,7 +190,7 @@ MG90S = ServoSpec(
     horn_arm_len=17.0, horn_hole_dia=1.4, horn_hole_pitch=2.0,
     horn_screw_dia=2.5,
     lead_bundle_dia=3.4,
-    lead_x=-6.0, lead_z=-15.1,  # 2.5 + 3.0 - 24.0 = -18.5, +3.4
+    lead_x=-6.0, lead_y=0.0, lead_z=-15.1,  # 2.5 + 3.0 - 24.0 = -18.5, +3.4
     mass_g=13.4,
     stall_kgcm=2.0,
 )
@@ -201,7 +222,7 @@ MG995 = ServoSpec(
     horn_arm_len=16.5, horn_hole_dia=1.5, horn_hole_pitch=2.3,
     horn_screw_dia=3.0,
     lead_bundle_dia=4.2,
-    lead_x=-10.0, lead_z=-22.6, # 2.5 + 7.2 - 36.5 = -26.8, +4.2
+    lead_x=-10.0, lead_y=0.0, lead_z=-22.6, # 2.5 + 7.2 - 36.5 = -26.8, +4.2
     mass_g=55.0,
     stall_kgcm=9.4,
 )
@@ -297,3 +318,24 @@ INVENTORY = {"MG995": 1, "MG90S": 2, "SG90": 3}
 
 # Servo-kit self-tapping screw: pilot per knowledge/fasteners_inserts.md.
 SERVO_SCREW_PILOT_MM = 1.8
+
+
+# The lead datum, guarded. lead_x is the SHORT END FACE at the shaft end,
+# which is exactly -shaft_from_end; lead_y is centred on that face. Five
+# parts once read lead_x as a point on a long side wall and notched the
+# wrong wall, so the relationship is asserted rather than described.
+for _s in CATALOG.values():
+    assert abs(_s.lead_x + _s.shaft_from_end) < 1e-9, (
+        '%s: lead_x %.2f is not the shaft-end face (-shaft_from_end %.2f). '
+        'The bundle leaves that FACE - if this is being changed, the five '
+        'pocket keyways that derive from it have to move with it.'
+        % (_s.name, _s.lead_x, -_s.shaft_from_end))
+    assert _s.lead_y == 0.0, '%s: the bundle is centred on the end face' % _s.name
+    assert _s.lead_z < 0.0, '%s: the bundle leaves below the tab plane' % _s.name
+del _s
+
+
+def lead_keyway_w(spec: ServoSpec, clearance: float = 0.2) -> float:
+    """Width of the END-WALL keyway, across the case width, centred on
+    lead_y. ONE notch - see the lead datum block above."""
+    return spec.lead_bundle_dia + clearance

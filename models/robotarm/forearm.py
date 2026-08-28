@@ -209,21 +209,25 @@ def run(_context: str):
     # ---- LEAD KEYWAY -------------------------------------------------------
     # The servo cannot be installed without this. The whole case travels
     # through this window during assembly (the tabs land on the FAR face), so
-    # the cable has to traverse it too - and the bundle leaves a LONG SIDE
-    # face near the SHAFT end, MEASURED 2026-08-28. At that height the servo
-    # is case_w + bundle wide against a case_w + loc window: 15.8 into 12.6.
-    # No sweep in this project could see it, because every gate models the
-    # servo as its case envelope and a cable is not in that envelope.
+    # the cable has to traverse it too - and the bundle leaves the SHORT END
+    # FACE at the shaft end, dead centre across the width (lib/servo.py lead
+    # datum, MEASURED 2026-08-28). Along the length the servo-plus-cable is
+    # case_l + bundle = 26.2 against a 23.0 window: it does not go.
+    #
+    # The first repair notched the two LONG walls either side of that face -
+    # right station, wrong walls, and it would have printed. Jonathan, at the
+    # bench: "thats not on the right side its on the short side". ONE notch,
+    # centred, in the END wall.
     _LEAD = CATALOG['MG90S'].lead_bundle_dia
     param('lead_key_d', '%.2f mm' % (_LEAD + 0.2),
-          'how far the keyway reaches past the window wall - one full bundle\n'
-          '           diameter plus a locational fit, because the bundle sits wholly\n'
-          '           outside the case width')
-    param('lead_key_l', '6.0 mm',
-          'keyway length measured IN from the shaft-end face. Generous on\n'
-          '           purpose: the exit is known to be near that end but not to the\n'
-          '           millimetre, and a keyway that is too short traps the cable\n'
-          '           exactly as the solid wall did.')
+          'keyway WIDTH across the case width, centred on the bundle - one\n'
+          '           bundle diameter plus a locational fit')
+    param('lead_key_l', '%slobe_pad + (%stab_pitch - %scase_l) / 2 + 1.0 mm'
+          % (PREFIX, PREFIX, PREFIX),
+          'keyway length OUT from the shaft-end face. DERIVED to reach the\n'
+          '           lobe edge plus 1.0 of overshoot: a keyway that stops inside the\n'
+          '           lobe is a blind pocket and traps the cable exactly as the solid\n'
+          '           wall did. Never hardcode this - it moves with lobe_pad.')
     param('pilot_d', '1.8 mm', 'servo screw pilot - design_rules, self-tapping into PETG')
     param('pilot_depth', '3.5 mm',
           'engagement. Must not break into the flange counterbore behind it - asserted.')
@@ -390,12 +394,20 @@ def run(_context: str):
     assert val('pilot_depth') <= val('lobe_t') + val('lobe_over'), (
         'the servo pilot holes break through the lobe into the flange counterbore')
     assert wval('reach') > val('gap'), 'the hub hex does not reach across the running gap'
-    _need = CATALOG['MG90S'].case_w + CATALOG['MG90S'].lead_bundle_dia
-    _have = val('case_w') * 10 + val('loc') * 10 + val('lead_key_d') * 10
+    # The cable leaves the END face, so it steals LENGTH, not width. The
+    # superseded form of this assert charged it against case_w and passed
+    # happily while the keyway was on the wrong wall entirely.
+    _need = CATALOG['MG90S'].case_l + CATALOG['MG90S'].lead_bundle_dia
+    _have = val('case_l') * 10 + val('loc') * 10 + val('lead_key_l') * 10
     assert _have >= _need, (
-        'the window plus its keyway passes %.1f mm and the MG90S with its '
-        'cable is %.1f mm across at the lead - the servo cannot be installed'
-        % (_have, _need))
+        'the window plus its end keyway passes %.1f mm along the case and the '
+        'MG90S with its cable is %.1f mm long at the lead - it cannot be '
+        'threaded through' % (_have, _need))
+    _to_edge = (val('tab_pitch') - val('case_l')) / 2 + val('lobe_pad')
+    assert val('lead_key_l') >= _to_edge, (
+        'the keyway runs %.2f mm from the case face but the lobe edge is '
+        '%.2f mm away - it would end blind inside the lobe and trap the cable'
+        % (val('lead_key_l') * 10, _to_edge * 10))
 
     def plate(sx):
         """(start expression, distance expression) for one side wall."""
@@ -481,20 +493,15 @@ def run(_context: str):
                 c0 - val('loc') / 2, c1 + val('loc') / 2,
                 -(val('case_w') + val('loc')) / 2, (val('case_w') + val('loc')) / 2,
                 win0, wind, CUT)
-        # LEAD KEYWAY, both long walls, at the SHAFT end. Both walls because
-        # J3 and J4 are mirrored about the arm and a servo that is the right
-        # way up in one is upside down in the other - a keyway on one wall
-        # only would fit exactly half the arm.
+        # LEAD KEYWAY: ONE notch, centred across the width, cut into the END
+        # wall at the shaft end and running OUTWARD to daylight. Being centred
+        # it is symmetric under the J3/J4 mirror, so one notch serves both
+        # lobes and the servo may arrive either way up - which is what the
+        # two-wall version was reaching for and got wrong.
         near_y = y_p - run * val('shaft_end')
-        k_half = (val('case_w') + val('loc')) / 2
         k_d, k_l = val('lead_key_d'), val('lead_key_l')
-        ka, kb = sorted((near_y, near_y + run * k_l))
-        for sz in (+1, -1):
-            yz_rect('lead_key_%s_%s' % (jnt, 'p' if sz > 0 else 'm'),
-                    ka, kb,
-                    min(sz * k_half, sz * (k_half + k_d)),
-                    max(sz * k_half, sz * (k_half + k_d)),
-                    win0, wind, CUT)
+        ka, kb = sorted((near_y, near_y - run * k_l))
+        yz_rect('lead_key_' + jnt, ka, kb, -k_d / 2, k_d / 2, win0, wind, CUT)
         for i, ys in enumerate(screws):
             yz_circle('pilot_%s_%d' % (jnt, i), ys, 0.0, val('pilot_d'),
                       pil0, PREFIX + 'pilot_depth', CUT)
