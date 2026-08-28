@@ -96,6 +96,7 @@ MG995_PITCH_X = 47.8          # drawing B - the slots absorb 47.5..49.5
 MG995_PITCH_Y = 10.2
 # SG90
 LEAD_DIA_MICRO = 3.4          # lib/servo.py, MEASURED bundle
+MG995_LEAD_DIA = 4.2
 KEY_D = LEAD_DIA_MICRO + 0.2  # keyway depth past the window wall
 KEY_L = 6.0                   # keyway length in from the shaft-end face
 SG90_CASE_W = 12.2
@@ -233,7 +234,12 @@ def run(_context: str):
 
     # MG995 bed, top row
     M9_Y = 44.0
-    m9_win_x = 15.0                        # half-length of the body window
+    # DERIVED, not typed. It was a hardcoded 15.0 - a 30 mm window under a
+    # 40.9 mm case, so the servo bridged the hole with 5.5 mm of itself
+    # resting on the plate at each end and never actually entered. Jonathan
+    # spotted it on sight. Same fault as everything else today: a literal
+    # that did not read its own datum.
+    m9_win_x = (MG995_CASE_L + LOC) / 2    # 20.55 - half-length of the window
     m9_win_y = (MG995_CASE_W + LOC) / 2    # 10.1 - THE width test
     m9_stop_x0 = MG995_CASE_L / 2 + LOC / 2   # 20.55 - the end stop face
     m9_rail_h = 3.0
@@ -345,6 +351,10 @@ def run(_context: str):
     assert 2 * mg_win_x + KEY_D >= MG90S_CASE_W + LEAD_DIA_MICRO, (
         'the MG90S station passes %.1f and the servo with its cable is %.1f'
         % (2 * mg_win_x + KEY_D, MG90S_CASE_W + LEAD_DIA_MICRO))
+    assert 2 * m9_win_x >= MG995_CASE_L + LOC - 1e-9, (
+        'the MG995 window is %.1f long and the MEASURED case is %.1f - the '
+        'servo bridges it instead of entering'
+        % (2 * m9_win_x, MG995_CASE_L))
     assert 2 * m9_win_y >= MG995_CASE_W + LOC - 1e-9, (
         'the MG995 bed is %.1f and the MEASURED case is %.1f - line-to-line '
         'again' % (2 * m9_win_y, MG995_CASE_W))
@@ -366,6 +376,19 @@ def run(_context: str):
              base_t, m9_rail_h, JOIN, [plate])
     rect('m9_stop', m9_stop_x0, m9_stop_x0 + 3.0, M9_Y - 2.5, M9_Y + 2.5,
          base_t, m9_rail_h, JOIN, [plate])
+    # LEAD KEYWAYS here too - all three servos carry the cable at the shaft
+    # end, so the bed gets the same treatment as the micro stations. Both
+    # ends and both walls, for the same no-pivot reason.
+    _m9_key_d = MG995_LEAD_DIA + 0.2
+    for _sy in (+1, -1):
+        for _ex in (-1, +1):
+            _x0 = _ex * m9_win_x
+            rect('m9_key_%s%s' % ('p' if _sy > 0 else 'm',
+                                  'a' if _ex > 0 else 'b'),
+                 min(_x0, _x0 - _ex * KEY_L), max(_x0, _x0 - _ex * KEY_L),
+                 min(M9_Y + _sy * m9_win_y, M9_Y + _sy * (m9_win_y + _m9_key_d)),
+                 max(M9_Y + _sy * m9_win_y, M9_Y + _sy * (m9_win_y + _m9_key_d)),
+                 -1.0, base_t + 2.0, CUT, [plate])
     for sx in (+1, -1):
         for sy in (+1, -1):
             rect('m9_slot_%s%s' % ('p' if sx > 0 else 'm', 'p' if sy > 0 else 'm'),
