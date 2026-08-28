@@ -40,6 +40,45 @@ the width taper agreed within ~0.5.
   `MICRO_HORN_CROSS_LONG` 33.5 → 34.4, `_CROSS_SHORT` 16.0 → 17.0 in
   lib/servo.py, all promoted MODEL → MEASURED.
 
+## SESSION 2 — the hub sweeps, and both hubs were badly over-modelled
+
+Every bore in BOTH hub rows accepted its hub loosely on the first drop.
+A sweep that overshoots entirely is still an answer, and a fast one.
+
+| what | model | MEASURED | note |
+|---|---|---|---|
+| micro horn hub Ø | 8.0 | **6.8** | the PRE-audit value was 7.0 — the "correction" made it worse |
+| MG995 horn hub Ø | 13.8 | **8.7** | 5.1 mm out |
+| MG995 arm width @ r8 | 6.5 | **6.5** | the one model number the bench confirmed |
+| MG995 blade thickness | 2.5 | **2.2** | BL comb, middle slot |
+| MG995 disc horn Ø | 22.0 (drawing) | **20.6** | plastic clone, not the alu disc |
+
+### THE STANDOFF WAS DODGING A HUB THAT DOES NOT EXIST
+
+`sb_horn_standoff` 2.0 was invented on 2026-08-27 because a Ø13.95 relief
+left 0.93 mm of wall to the 16.0 af hex flats. At the real Ø8.7 the bore
+is 9.10 and the wall is **5.45 mm**. The standoff is retired to 0.0 (kept
+as a named zero so the history stays legible) and the shoulder gets its
+2 mm of width back.
+
+Retiring it moved the servo 2 mm inboard, which pushed the output boss
+2 mm deeper into shoulder_hub than its mouth was cut for — `_check_shoulder`
+caught that immediately as 75.59 mm³ of `MG995_output^shoulder_hub`, and
+`sh_boss_depth` went back to 2.5 with `sh_horn_hub_depth` to 6.40.
+
+### Applied, and all gates re-run
+
+wrist_hub / wrist_rotator / gripper_pinion hub pockets 8.15 → **6.95**
+(at 8.15 they were 1.35 loose — no press at all); shoulder_hub bore
+14.2 → **9.10**, blade slot 2.6 → **2.30**; `_check_j1`'s hub envelope
+8.0 → **6.8**.
+
+**J1 is no longer BLOCKED.** That gate has reported on a guessed hub
+diameter since the day it was written — first an invented 6.30, then a
+community-model 8.0. It now runs on 6.8 MEASURED: full sweep 0.000 mm³,
+PASS. Shoulder PASS all eight pitches, wrist PASS, pruner PASS, leads
+6/6 CLEAR. Turret exported **v5**.
+
 ## MG995 horns — the bag, photographed 2026-08-28
 
 FOUR horns ship with it: a 4-arm cross, a 6-arm star, a long double arm,
@@ -51,10 +90,10 @@ arms. The station is wrong for the disc, not the servo.
 |---|---|---|
 | disc horn outer Ø | 22.0 (drawing) | **20.6** — the black plastic clone disc, not the alu one |
 
-Arm-horn numbers for the MG995 (hub Ø, arm width at the r 7.6 trim,
-blade thickness) are STILL UNMEASURED — the HUB 132-144 sweep, the BL
-comb and the STACK station with an ARM horn will settle them.
-shoulder_hub MUST NOT PRINT until they are.
+Arm-horn numbers for the MG995 were settled in session 2 above. The ONE
+horn number still model-grade anywhere in the project is the **hub
+HEIGHT** (micro 3.0, MG995 3.8) — it sets how deep the reliefs go, not
+whether anything fits, so it is a comfort item rather than a blocker.
 
 ## THE STRUCTURAL LESSON, and it is bigger than one number
 

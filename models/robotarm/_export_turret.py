@@ -26,7 +26,10 @@ a lead groove in the plate underside keeps the (now higher) lead clear.
 v4, 2026-08-28: the horn plate went to the bench and the arms are 4.0 wide
 at their NARROWEST against a 3.4 slot - the cross pocket never accepted the
 horn. Slots are now TAPERED to the measured arm (6.04 at r 6.5 -> 4.84 at
-the trim line). PRINT v4: v1-v3 all have a pocket no real horn enters.
+the trim line). v5, same day: the hub sweeps overshot too - the micro horn hub measures
+6.8, not the modelled 8.0 (and the PRE-audit 7.0 was closer). The rotor's
+screw bore and the stator deck follow it. PRINT v5. v1-v3 have a cross
+pocket no real horn enters; v4 has the taper but the old hub.
 """
 
 import os
@@ -36,7 +39,7 @@ import adsk.fusion
 
 REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
 EXPORT_DIR = os.path.join(REPO, 'exports', 'robotarm')
-VERSION = 4
+VERSION = 5
 
 # name, print orientation, note
 PARTS = [

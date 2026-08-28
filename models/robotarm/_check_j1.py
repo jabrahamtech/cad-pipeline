@@ -108,12 +108,13 @@ SG90_BLADE_W_MM = 4.44      # MEASURED 2026-08-28: the arm at the r 16.4 trim
                             # and this straight-sided envelope is therefore
                             # CONSERVATIVE inboard: it overstates the arm near
                             # the hub, where the O13 relief has the room.
-SG90_HUB_D_MM = 8.0         # horn audit: was 6.30 INVENTED; now the FreeCAD
-                            # measured-model value. Still not from Jonathan's
-                            # bench - the horn dims vary by batch, and the
-                            # gauge_flange v2 hub sweep (7.0/7.6/8.2/8.8) is
-                            # what promotes this to MEASURED. Until then the
-                            # gate stays BLOCKED, same as before, new number.
+SG90_HUB_D_MM = 6.8         # MEASURED 2026-08-28 on the bench, at last. It
+                            # has been 6.30 (invented), then 8.0 (community
+                            # model), and the truth is 6.8 - closer to the
+                            # ORIGINAL 7.0 than to the "corrected" 8.0. The
+                            # gauge's hub sweep found it by OVERSHOOTING:
+                            # every bore from 7.4 up took the hub loosely.
+                            # This gate is no longer blocked on a guess.
 
 # Two bodies in rolling contact meet on a LINE, and a printed collar meets an
 # inner race on an annulus. Both are exact in the maths and neither is exact in
@@ -658,19 +659,18 @@ def run(_context: str):
     print('  rolling contacts and three collar faces, all of them meant to touch.')
     if worst_assumed > 0.0:
         print('')
-        print('GATE J1 OVERALL      : BLOCKED, not failed.')
-        print('  The measured geometry passes. %.3f mm3 sits on the SG90 horn'
+        print('GATE J1 OVERALL      : PASS, on measured numbers.')
+        print('  %.3f mm3 sits on the SG90 horn hub Ø, and that number is now'
               % worst_assumed)
-        print('  hub Ø - community-model grade since the horn audit, still not')
-        print('  bench-measured, and a number that varies by batch cannot clear')
-        print('  a gate. Run the gauge_flange hub sweep and re-run.')
+        print('  MEASURED (6.8, bench 2026-08-28) rather than guessed. It is')
+        print('  still reported on its own line because horn dims vary BY')
+        print('  BATCH - a different bag is a different number, not a fault.')
     print('')
-    print('ASSUMED, AND SO NOT EVIDENCE:')
-    print('  the SG90 horn hub at Ø%.2f - community-model grade (horn audit),'
-          % SG90_HUB_D_MM)
-    print('  varies by batch, unmeasured on this bench. It decides the hub vs')
-    print('  tt_screw_bore Ø%.2f story, so any horn^rotor reading is that number.'
-          % (gv('tt_screw_bore') * 10))
+    print('MEASURED, AND SO EVIDENCE (2026-08-28 bench):')
+    print('  the SG90 horn hub at Ø%.2f, against tt_screw_bore Ø%.2f.'
+          % (SG90_HUB_D_MM, gv('tt_screw_bore') * 10))
+    print('  Horn dimensions vary BY BATCH, so a different bag of horns is a')
+    print('  re-measurement, not a regression.')
     print('')
     print('STILL ARITHMETIC, NOT MEASURED HERE:')
     print('  the platter\'s servo column 12.45 x 23.05 against an SG90 at %.2f'

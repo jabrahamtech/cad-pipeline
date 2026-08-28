@@ -127,14 +127,14 @@ def run(_context: str):
     param('lead_in', '0.6 mm', 'chamfer on the hex nose - joints_tolerances, every mating edge')
 
     # --- MG90S horn, DATASHEET (lib/servo.py) -------------------------------
-    param('horn_hub_d', '14.2 mm',
-          'MG995 horn hub 13.8 (2026-08-27 horn audit, Futaba 25T family\n           model) + 0.4 free - the arms drive, the hub only needs to clear.\n           The disc-horn option died on geometry: Ø22 cannot pass the\n           Ø20.35 fork journal bore. Instead sb_horn_standoff 2.0 pulls the\n           stack outboard so this bore stops inside the body - asserted\n           below, replacing the old blanket radial check.')
-    param('horn_hub_depth', '6.90 mm',
-          'boss 3.0 + audited hub 3.8 = 6.8 of stack above the case top, less\n           the 2.5 this face stands off it (0.5 flange slack +\n           sb_horn_standoff 2.0), + blade 2.5 between, + 0.1 seating:\n           blade 0.5..3.0, hub 3.0..6.8 from this face - horn audit')
+    param('horn_hub_d', '9.10 mm',
+          'MG995 horn hub MEASURED 8.7 (2026-08-28 bench) + 0.4 free. The\n           model said 13.8 and it was 5.1 mm out - the whole reason the J2\n           standoff was invented was to keep a 13.95 relief out of the hex\n           root, and at 9.10 there is 3.35 mm of wall to the hex flats. The\n           standoff is therefore GONE (sb_horn_standoff 0.0).')
+    param('horn_hub_depth', '6.40 mm',
+          'boss 3.0 + MEASURED hub 3.8 = 6.8 of stack above the case top,\n           less the 0.5 this face stands off that top, + 0.1 seating.\n           Hub HEIGHT 3.8 is the last horn number still model-grade.')
     param('boss_d', '15.6 mm',
           'the mouth. Sized by the horn ARMS, not the 13.0 output boss it also\n           clears: the arms are trimmed to r 7.6 (horn audit) and have to pass\n           down this hole to reach their slot, so it is 2 x horn_arm_r + 0.4\n           free. On the 13.0 boss alone it would be 13.4 and the servo\n           could never be fitted.')
-    param('boss_depth', '0.5 mm',
-          'the MG995 output boss stands 3.0 proud of the case top and this face\n           sits 2.5 outboard of it (0.5 flange slack + sb_horn_standoff 2.0),\n           so only 0.5 of boss lands inside the hub - horn audit')
+    param('boss_depth', '2.50 mm',
+          'the MG995 output boss stands 3.0 proud of the case top and this\n           face sits 0.5 outboard of it, so 2.5 of boss lands inside the hub.\n           Was 0.5 while sb_horn_standoff held the case 2.0 further out;\n           retiring the standoff (the O13.8 hub it dodged does not exist)\n           put the boss back 2.0 deeper - _check_shoulder caught it as\n           75.59 mm3 of MG995_output^shoulder_hub. 2026-08-28.')
     param('arm_start', PREFIX + 'boss_depth',
           'derived: the blade plane is one boss height down from this face,\n'
           '           because the horn is fitted BLADE TOWARD THE SERVO')
@@ -142,7 +142,8 @@ def run(_context: str):
           'horn arm width AT the r 7.6 trim: ~6.5 + press 0.15. The old 2.65\n           was the blade THICKNESS misread as width - no MG995 horn arm\n           would have entered - 2026-08-27 horn audit')
     param('horn_arm_r', '7.6 mm',
           'horn arms TRIMMED to this radius at assembly. Was 8.0; the audited\n           6.65 slot corner at hypot(8, 3.3) = 8.66 left 1.34 of collar wall,\n           7.6 restores 1.7. Still past the wrist hub 6.0 - this joint\n           carries the whole arm.')
-    param('horn_arm_depth', '2.6 mm', 'horn blade 2.5 DATASHEET + 0.1 seating clearance')
+    param('horn_arm_depth', '2.30 mm',
+          'MG995 blade MEASURED 2.2 (BL comb, middle slot) + 0.1 seating.\n           The model said 2.5. 2026-08-28 bench.')
     param('screw_d', '6.5 mm',
           'driver access to the horn screw on the drive side; on the idler side '
           'the M3 retaining screw passes through the same bore')

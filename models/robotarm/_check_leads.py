@@ -63,13 +63,14 @@ MOUNTS = [
          axis='y', sign=+1, lead_at=16.60, across=(0.0, -1.0)),
     # J2 shoulder. The MG995 runs DOWN along Z, case z -30.9..+10.0 (case_l
     # 40.9, TowerPro B), mounted on a pad whose outer face is at
-    # x = sb_plate_out + sb_lobe_t = 31.6 (lobe_t 11.7 = tab stack 9.7 +
-    # horn_standoff 2.0, horn audit). Lead end is the BOTTOM, -Z. The first
+    # x = sb_plate_out + sb_lobe_t = 29.6 (lobe_t 9.7 = the tab stack;
+    # horn_standoff went back to 0.0 on 2026-08-28 when the MG995 hub
+    # measured 8.7 and the obstruction it dodged proved not to exist). Lead end is the BOTTOM, -Z. The first
     # across here was the CASE CENTRE - not where a lead lives; the rule
     # puts it one dia up from the case bottom, outboard: pad face + F 26.8
     # - dia 4.2 = pad face + 22.6.
     dict(tag='J2 shoulder', host='shoulder_bracket', servo='MG995',
-         axis='z', sign=-1, lead_at=-30.9, across=(31.6 + 22.6, 0.0)),
+         axis='z', sign=-1, lead_at=-30.9, across=(29.6 + 22.6, 0.0)),
     # J3 elbow. MG90S in the forearm's -X lobe, case y -51.0..-28.2 with the
     # elbow at y -45.0, so the near end is -51.0 and the lead end is -28.2
     # (case_l 24.0 -> 22.8, TowerPro B, 2026-08-27 flange audit).

@@ -116,7 +116,7 @@ SG90 = ServoSpec(
     tab_span=32.3, tab_thk=2.4, tab_hole_dia=2.1, tab_hole_pitch=27.8,
     tab_below_top=4.3, shaft_from_end=6.1,
     boss_dia=5.0, boss_h=4.2, spline_dia=4.9, spline_h=2.5,
-    horn_hub_dia=8.0, horn_hub_h=3.0, horn_blade_thk=2.0,
+    horn_hub_dia=6.8, horn_hub_h=3.0, horn_blade_thk=2.0,
     horn_arm_len=17.0, horn_hole_dia=1.4, horn_hole_pitch=2.0,
     horn_screw_dia=2.5,
     lead_bundle_dia=3.4,
@@ -144,7 +144,7 @@ MG90S = ServoSpec(
     tab_span=32.1, tab_thk=2.5, tab_hole_dia=2.1, tab_hole_pitch=27.5,
     tab_below_top=3.0, shaft_from_end=6.0,
     boss_dia=6.0, boss_h=6.0, spline_dia=5.0, spline_h=4.0,
-    horn_hub_dia=8.0, horn_hub_h=3.0, horn_blade_thk=2.0,
+    horn_hub_dia=6.8, horn_hub_h=3.0, horn_blade_thk=2.0,
     horn_arm_len=17.0, horn_hole_dia=1.4, horn_hole_pitch=2.0,
     horn_screw_dia=2.5,
     lead_bundle_dia=3.4,
@@ -174,7 +174,7 @@ MG995 = ServoSpec(
     tab_span=54.0, tab_thk=2.5, tab_hole_dia=4.8, tab_hole_pitch=47.8,
     tab_below_top=7.2, shaft_from_end=10.0,
     boss_dia=13.0, boss_h=3.0, spline_dia=5.9, spline_h=3.6,
-    horn_hub_dia=13.8, horn_hub_h=3.8, horn_blade_thk=2.5,
+    horn_hub_dia=8.7, horn_hub_h=3.8, horn_blade_thk=2.2,
     horn_arm_len=16.5, horn_hole_dia=1.5, horn_hole_pitch=2.3,
     horn_screw_dia=3.0,
     lead_bundle_dia=4.2,
@@ -207,6 +207,17 @@ MG995_TAB_SLOT_X_MM = 5.6
 # width - and no real horn would have entered any of them. Slot widths
 # now come from the width AT THE TRIM RADIUS below.
 #
+# HUB DIAMETERS, MEASURED 2026-08-28, and this is the correction that
+# matters most: the FreeCAD community model over-stated BOTH hubs badly.
+#   micro  model 8.0  -> MEASURED 6.8   (and the PRE-AUDIT value was 7.0,
+#                                        so the "correction" made it worse)
+#   MG995  model 13.8 -> MEASURED 8.7   (5.1 mm out; the 2.0 J2 standoff
+#                                        was invented to dodge a hub that
+#                                        does not exist at that size)
+# Both were caught by the gauge's hub sweeps overshooting on the FIRST drop:
+# every bore accepted every hub loosely. A sweep that is entirely too big
+# is still an answer, and a faster one than a caliper.
+#
 # deshipu's warning stands: horn dimensions VARY BY BATCH. Everything in
 # this block is COMMUNITY-MODEL grade, one step above the old numbers
 # and one below the bench. gauge_flange v2 carries the arm comb and hub
@@ -223,7 +234,8 @@ MICRO_HORN_ARM_W_OUTER = 4.0   # MEASURED at the last hole (~r 17), was 3.0.
                                # a 3.4 slot anywhere. The turret cross pocket
                                # never accepted the horn - gauge_horn v1
                                # CROSS station, first drop.
-MG995_HORN_ARM_W_AT_8 = 6.5    # still MODEL - the MG995 arm horn is unmeasured
+MG995_HORN_ARM_W_AT_8 = 6.5    # MEASURED 2026-08-28 (6-7 at r 8) - the one
+                               # model number the bench CONFIRMED
 
 # The micro arm TAPERS, and the taper is now measured at both ends:
 #   w(r) ~= 5.7 - 0.121 * (r - 6)   for r 6 .. 17

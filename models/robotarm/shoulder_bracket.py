@@ -287,14 +287,8 @@ def run(_context: str):
     param('slot_depth', '5.0 mm',
           'blind. Must stay inside the pad or the screws break through into the\n'
           '           straddle - asserted below.')
-    param('horn_standoff', '2.0 mm',
-          'the MG995 case stands this far off plate_out (it used to land flush).\n'
-          '           2026-08-27 horn audit: the real horn hub is \u00d813.8 x 3.8, and\n'
-          '           swallowing it at the old depth tunnelled a 0.8 mm tube through\n'
-          '           the shoulder_hub hex root. Standing the servo off 2.0 pulls the\n'
-          '           whole horn stack outboard so the hub bore stops at the hub\n'
-          '           part\'s body and never enters the hex. shoulder_hub derives its\n'
-          '           interface depths from the same 2.0 - the two files must agree.')
+    param('horn_standoff', '0.0 mm',
+          'RETIRED 2026-08-28, kept as a named zero so the history is legible.\n           It was 2.0 to stand the MG995 case off plate_out, because a horn\n           hub modelled at O13.8 could not pass behind the 16.0 af hex. The\n           bench says the hub is O8.7 - the obstruction never existed, and\n           the shoulder gets its 2 mm of width back. If a future horn really\n           is fat, raise this rather than thinning the hex.')
     param('lobe_t', PREFIX + 'tab_below_top + ' + PREFIX + 'tab_thk + '
           + PREFIX + 'horn_standoff',
           'derived: tab stack + horn_standoff, so the case top stands exactly\n'

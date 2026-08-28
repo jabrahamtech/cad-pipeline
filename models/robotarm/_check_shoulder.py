@@ -225,12 +225,14 @@ def run(_context: str):
     out = out_occ.component
     out.name = OUT
     env, out = out, env          # env_box/env_cyl close over `env`
-    # horn audit 2026-08-27: hub Ø13.8 x 3.8 (was Ø12 x 5.0 - old numbers),
-    # arms modelled AT THE TRIM radius sh_horn_arm_r = 7.6 (was 8.0; the
-    # envelope is the trimmed horn, and the slot length is what drives the
-    # trim - an untrimmed tip here reads as phantom mm3 in the slot ends)
-    horn_hub_d, horn_hub_h = 1.38, 0.38
-    blade_thk, arm_r = 0.25, 0.76
+    # MEASURED 2026-08-28: hub Ø8.7 (the 13.8 this replaces was a community
+    # model 5.1 mm out), blade 2.2 (was 2.5). Hub HEIGHT 3.8 is still model
+    # grade - unmeasured, and the only horn number left that is. Arms are
+    # modelled AT THE TRIM radius sh_horn_arm_r = 7.6, because the envelope
+    # is the TRIMMED horn - an untrimmed tip reads as phantom mm3 in the
+    # slot ends, which is exactly what it did at r 8.0.
+    horn_hub_d, horn_hub_h = 0.87, 0.38
+    blade_thk, arm_r = 0.22, 0.76
     horn_seat = case_top - boss_h                  # the boss top
     env_cyl('output_boss', 0.0, 0.0, boss_d, horn_seat, case_top, NEWB)
     # The horn is fitted BLADE TOWARD THE SERVO, which is the assumption

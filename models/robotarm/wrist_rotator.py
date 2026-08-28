@@ -108,7 +108,7 @@ def run(_context: str):
 
     # --- SG90 horn + boss, DATASHEET (lib/servo.py) ---------------------------
     param('boss_h', '4.2 mm', 'SG90 output boss height above the case top')
-    param('horn_hub_d', '8.15 mm', 'SG90 horn hub 8.0 + press 0.15 - 2026-08-27 horn audit, lib/servo.py')
+    param('horn_hub_d', '6.95 mm', 'SG90 horn hub 8.0 + press 0.15 - 2026-08-27 horn audit, lib/servo.py\n           MEASURED 2026-08-28: hub is 6.8, not the modelled 8.0 - at 8.15 this pocket was 1.35 loose and no press at all.')
     param('horn_arm_w', '5.85 mm', 'horn arm width AT THE r 6 trim: 5.5 + press\n           0.15. The arm TAPERS 5.5 -> 3; the old 3.95 read the blade\n           thickness as its width and no horn would have entered - 2026-08-27 horn audit, lib/servo.py\n           MEASURED 2026-08-28: the arm is 5.7 at the r 6 trim, so 5.65 was 0.05 UNDER it - an interference, not a press fit.')
     param('horn_arm_r', '6.0 mm', 'horn arm TRIMMED to this radius at assembly')
     param('relief_d', PREFIX + 'boss_h + '

@@ -77,7 +77,7 @@ def run(_context: str):
     shared('offset', SHARED + 'r_pitch + ' + SHARED + 'backlash', 'pinion axis to rack PITCH LINE - the centre distance')
     shared('stroke', '20.0 mm', 'travel of ONE rack; jaw opening is twice this')
     param('tooth_sink', '0.5 mm', 'how far a tooth profile reaches inside the root circle')
-    param('hub_d', '8.15 mm', 'SG90 horn hub 8.0 + press 0.15 - 2026-08-27 horn audit')
+    param('hub_d', '6.95 mm', 'SG90 horn hub 8.0 + press 0.15 - 2026-08-27 horn audit\n           MEASURED 2026-08-28: hub is 6.8, not the modelled 8.0 - at 8.15 this pocket was 1.35 loose and no press at all.')
     param('hub_depth', '3.1 mm', 'horn hub 3.0 + 0.1 so the shells set the axial gap - horn audit')
     param('arm_w', '5.85 mm', 'horn arm width AT the r 6 trim: 5.5 + press 0.15.\n           The arm tapers 5.5 -> 3; 3.95 was thickness-as-width - horn audit\n           MEASURED 2026-08-28: the arm is 5.7 at the r 6 trim, so 5.65 was 0.05 UNDER it - an interference, not a press fit.')
     param('arm_r', '6.0 mm', 'horn arm TRIMMED to this radius at assembly - see spec')
