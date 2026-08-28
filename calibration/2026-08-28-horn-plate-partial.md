@@ -173,7 +173,34 @@ cannot be placed until that is settled, and placing it wrong is worse
 than not placing it: it would weaken the lobe in the wrong spot AND
 still pinch the cable.
 
+**ALL THREE SERVOS DO THIS** (Jonathan, same session). So it is not one
+servo's quirk and not one part's bug - it is the same fault repeated in
+every pocket the project cuts.
+
+### Where the cable must be, for this to happen at all
+
+Worth reasoning through, because it narrows the fix. The lobe is only
+5.5 thick and the case is 24 tall: the case's TOP 5.5 mm sits in the
+window, the tabs land on the lobe's outer face, and the remaining
+~18.5 mm hangs in free air outboard. A cable leaving the case near its
+BOTTOM would therefore hang clear and never touch the window.
+
+It jams anyway - so the cable must leave the case within roughly the
+top 5.5 mm, i.e. up at the OUTPUT SHAFT end, inside the band the window
+grips. That also matches the photo. lib/servo.py's written assumption
+("far end face, one lead-diameter up from the case bottom") is wrong at
+BOTH ends of the description: wrong face, wrong height.
+
+### Consequence for _check_leads
+
+The gate probes from the case's far end face at the bottom. If the real
+exit is the shaft end, every probe in that file is in the wrong place
+and its 6/6 CLEAR is measuring nothing. The J1 lead groove cut into
+turntable_stator on 2026-08-27 was sized and sited from that same wrong
+assumption.
+
 NOT FIXED. NOTHING WITH A SERVO POCKET SHOULD PRINT until the cable
 exit is measured and every pocket gets a lead relief. That is the
 forearm, wrist_roll, turntable_stator, gripper_shell and the MG995
-pad - pruner_shell is the only part already carrying one.
+pad - pruner_shell is the only part already carrying one, and its notch
+was placed from the same bad assumption.
