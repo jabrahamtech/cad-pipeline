@@ -87,13 +87,17 @@ SOLID_FRACTION = 0.65
 # ---- the numbers under test, lib/servo.py after the flange audit ----------
 LOC = 0.2                     # locational fit - design_rules
 # MG995 (shoulder_bracket's slot pattern, verbatim)
-MG995_CASE_W = 20.0
+MG995_CASE_W = 20.2           # MEASURED 2026-08-28 (was the datasheet
+                              # 20.0, which made this bed line-to-line)
 MG995_CASE_L = 40.9
 MG995_SLOT_L = 5.6            # MG995_TAB_SLOT_X_MM
 MG995_SLOT_W = 2.5
 MG995_PITCH_X = 47.8          # drawing B - the slots absorb 47.5..49.5
 MG995_PITCH_Y = 10.2
 # SG90
+LEAD_DIA_MICRO = 3.4          # lib/servo.py, MEASURED bundle
+KEY_D = LEAD_DIA_MICRO + 0.2  # keyway depth past the window wall
+KEY_L = 6.0                   # keyway length in from the shaft-end face
 SG90_CASE_W = 12.2
 SG90_CASE_L = 22.7
 SG90_SPAN = 32.3
@@ -331,6 +335,20 @@ def run(_context: str):
     assert anchor[0] > mg_pad[1] - 40.0 or anchor[0] > -12.0, (
         'the coupon anchor drifted back under the MG90S station')
 
+    # THE CHECK THAT SHOULD HAVE EXISTED FIRST. A window cut to case + loc
+    # passes every sweep in this project and still cannot be assembled,
+    # because a cable is not part of a case envelope. Assert it here, on the
+    # gauge, in the same terms the parts now assert it in.
+    assert 2 * sg_recess_y + KEY_D >= SG90_CASE_W + LEAD_DIA_MICRO, (
+        'the SG90 station passes %.1f and the servo with its cable is %.1f'
+        % (2 * sg_recess_y + KEY_D, SG90_CASE_W + LEAD_DIA_MICRO))
+    assert 2 * mg_win_x + KEY_D >= MG90S_CASE_W + LEAD_DIA_MICRO, (
+        'the MG90S station passes %.1f and the servo with its cable is %.1f'
+        % (2 * mg_win_x + KEY_D, MG90S_CASE_W + LEAD_DIA_MICRO))
+    assert 2 * m9_win_y >= MG995_CASE_W + LOC - 1e-9, (
+        'the MG995 bed is %.1f and the MEASURED case is %.1f - line-to-line '
+        'again' % (2 * m9_win_y, MG995_CASE_W))
+
     # ---- phase 1: plate -----------------------------------------------------
     t0 = design.timeline.count
     rect('base', -BASE_X / 2, BASE_X / 2, -BASE_Y / 2, BASE_Y / 2, 0.0, base_t, NEW)
@@ -367,6 +385,26 @@ def run(_context: str):
     rect('sg_window', SG_X - sg_win_x, SG_X + sg_win_x,
          SG_Y - sg_recess_y, SG_Y + sg_recess_y,
          base_t, -base_t - 1.0, CUT, [plate])
+    # LEAD KEYWAY - the whole point of v3. Without it the SG90 cannot be
+    # pushed into this window at all: the bundle leaves a LONG SIDE face at
+    # the SHAFT end, so the servo is 15.6 across there against a 12.4 slot.
+    # Same cut wrist_roll / turntable_stator / pruner_shell now carry, so
+    # this station tests the FIX, not just the hole.
+    # BOTH ends as well as both walls, and only on the GAUGE. The parts cut
+    # one end, because a pivot fixes which way the servo faces. This plate
+    # has no pivot, so a servo offered up the other way round would jam and
+    # read as the fix having failed - a false alarm costing a round trip.
+    # Both ends still proves the only thing this station is for: that the
+    # keyway DIMENSION passes a real servo and its real cable.
+    for _sy in (+1, -1):
+        for _ex in (-1, +1):
+            _x0 = SG_X + _ex * sg_win_x
+            rect('sg_key_%s%s' % ('p' if _sy > 0 else 'm',
+                                  'a' if _ex > 0 else 'b'),
+                 min(_x0, _x0 - _ex * KEY_L), max(_x0, _x0 - _ex * KEY_L),
+                 min(SG_Y + _sy * sg_recess_y, SG_Y + _sy * (sg_recess_y + KEY_D)),
+                 max(SG_Y + _sy * sg_recess_y, SG_Y + _sy * (sg_recess_y + KEY_D)),
+                 base_t, -base_t - 1.0, CUT, [plate])
     for sx in (+1, -1):
         rect('sg_sight_%s' % ('p' if sx > 0 else 'm'),
              SG_X + sx * SG90_PITCH / 2 - 0.2, SG_X + sx * SG90_PITCH / 2 + 0.2,
@@ -387,6 +425,17 @@ def run(_context: str):
         % (mg_pad_h, base_t, MG90S_LOBE_T))
     rect('mg_window', MG_X - mg_win_x, MG_X + mg_win_x,
          MG_Y - mg_win_y, MG_Y + mg_win_y, mg_top, -mg_top - 1.0, CUT, [plate])
+    # LEAD KEYWAY, both long walls - the forearm's own cut, at 1:1. This
+    # station IS fa_lobe_t thick, so a servo that seats here seats in the arm.
+    for _sx in (+1, -1):
+        for _ey in (-1, +1):
+            _y0 = MG_Y + _ey * mg_win_y
+            rect('mg_key_%s%s' % ('p' if _sx > 0 else 'm',
+                                  'a' if _ey > 0 else 'b'),
+                 min(MG_X + _sx * mg_win_x, MG_X + _sx * (mg_win_x + KEY_D)),
+                 max(MG_X + _sx * mg_win_x, MG_X + _sx * (mg_win_x + KEY_D)),
+                 min(_y0, _y0 - _ey * KEY_L), max(_y0, _y0 - _ey * KEY_L),
+                 mg_top, -mg_top - 1.0, CUT, [plate])
     for sy in (+1, -1):
         circle('mg_pilot_%s' % ('p' if sy > 0 else 'm'),
                MG_X, MG_Y + sy * MG90S_PITCH / 2, PILOT_D,
@@ -474,7 +523,7 @@ def run(_context: str):
         return len(items)
 
     n_lab = engrave('lab', [
-        (0.0, 64.0, 'FLANGE V2'),
+        (0.0, 64.0, 'FLANGE V3 KEY'),
         (0.0, 28.0, 'MG995 P47.8'),
         (SG_X, SG_Y - 13.0, 'SG90 P27.8'),
         (HORN_X, HORN_Y - 10.5, 'HUB 72 80 88'),
@@ -501,6 +550,11 @@ def run(_context: str):
           '+-%.2f / +-%.2f THROUGH the plate - daylight in all four = bolts up'
           % (2 * m9_win_y, m9_stop_x0, MG995_SLOT_L, MG995_SLOT_W,
              m9_slot_cx, m9_slot_cy))
+    print('LEAD KEYWAYS: %.1f deep x %.1f long at the SHAFT end, both long '
+          'walls, on the SG90 and MG90S stations. WITHOUT THESE NO SERVO '
+          'GOES IN - the bundle leaves a long side face at the shaft end and '
+          'the case is %.1f wide there, not %.1f.'
+          % (KEY_D, KEY_L, MG90S_CASE_W + LEAD_DIA_MICRO, MG90S_CASE_W))
     print('SG90 seat: window %.1f x %.1f, tab recess %.1f x %.1f x %.1f deep - '
           'the servo should sit FLUSH; sight lines at +-%.2f'
           % (2 * sg_win_x, 2 * sg_recess_y, 2 * sg_recess_x, 2 * sg_recess_y,

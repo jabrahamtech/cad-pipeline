@@ -99,3 +99,59 @@ together. The pins are 4 mm PETG — a gauge, not a handle.
 A replica that REFUSES your horn is the plate doing its job: note which
 station and which way it fails, and the parts re-derive before anything
 structural prints.
+
+
+---
+
+# gauge_flange v3 — THE PRE-PRINT CHECK. Do this before any part prints.
+
+`exports/robotarm/gauge_flange_v3.3mf`, ~30 g, same profile as always:
+PETG, 0.2 layers, 3 walls, **supports OFF**. This supersedes v1 and v2.
+
+## Why it exists
+
+On 2026-08-28 the bench found that **not one of the three servos could be
+installed in any pocket in the project**. The bundle leaves a long side
+face at the shaft end, so at that height the servo is ~3.4 mm wider than
+the window it has to pass, and every pocket was cut to case + 0.2. No
+gate in this project could see it: they all model the servo as its case
+envelope, and a cable is not in that envelope.
+
+Lead keyways are now cut into forearm (J3+J4), wrist_roll,
+turntable_stator, and pruner_shell's notch is re-sited. **That fix has
+never been printed.** This plate tests it for 30 g instead of finding out
+in a part.
+
+## The three tests that matter
+
+**SG90 station** — push an SG90 into the window. It must now pass, cable
+and all, and sit flush with its tabs on the recess. Before v3 it could
+not go in at all.
+
+**MG90S station** — same, and this one is 1:1 with the forearm: the pad
+plus base is exactly `fa_lobe_t`, so a servo that seats here seats in the
+arm. Then sight through the tab holes for the Ø1.8 pilots at the DERIVED
+27.5 pitch — still the last derived number in the project.
+
+**MG995 bed** — the window is now 20.4 (case MEASURED 20.2, was cut 20.2
+from a datasheet 20.0 and came out line-to-line, which is why the entry
+read "really small"). The case should now enter, and all four tab slots
+should show daylight.
+
+The keyways here are cut at **both ends** of each window; the parts cut
+only the shaft end, because a pivot fixes which way the servo faces. This
+plate has no pivot, so both ends means a servo offered up either way
+round still proves the thing being tested — that the keyway DIMENSION
+passes a real servo and its real cable.
+
+## If a station still refuses
+
+Say which one and which way it binds. A keyway that is too shallow is a
+one-number fix; a keyway in the wrong place is a re-site. Either is far
+cheaper found here.
+
+## Also on this plate, still unrun
+
+TAB comb, ARM comb, and the FLEX coupon (kitchen-scale grip force, gates
+the gripcut fingers). Skip the HUB row - the horn plate settled both hubs
+and these bores were cut for the old wrong guess.
