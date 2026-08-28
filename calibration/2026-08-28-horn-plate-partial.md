@@ -40,13 +40,53 @@ the width taper agreed within ~0.5.
   `MICRO_HORN_CROSS_LONG` 33.5 → 34.4, `_CROSS_SHORT` 16.0 → 17.0 in
   lib/servo.py, all promoted MODEL → MEASURED.
 
-## MG995 stations — NOT MEASURED
+## MG995 horns — the bag, photographed 2026-08-28
 
-Blocked: unclear what horns came with the MG995. Question outstanding —
-does that servo's bag contain horns at all, and is the "round horn"
-Jonathan mentions the Ø22 disc type or something else. shoulder_hub's
-whole interface (hub Ø14.2 bore, 6.65 slots, the 2.0 J2 standoff) rests
-on this and MUST NOT PRINT until it is answered.
+FOUR horns ship with it: a 4-arm cross, a 6-arm star, a long double arm,
+and a ROUND DISC. The disc is why the MG995 STACK station read as
+impossible: that station is an arm-in-slot interface and a disc has no
+arms. The station is wrong for the disc, not the servo.
+
+| what | on file | MEASURED |
+|---|---|---|
+| disc horn outer Ø | 22.0 (drawing) | **20.6** — the black plastic clone disc, not the alu one |
+
+Arm-horn numbers for the MG995 (hub Ø, arm width at the r 7.6 trim,
+blade thickness) are STILL UNMEASURED — the HUB 132-144 sweep, the BL
+comb and the STACK station with an ARM horn will settle them.
+shoulder_hub MUST NOT PRINT until they are.
+
+## THE STRUCTURAL LESSON, and it is bigger than one number
+
+Every arm slot in this project was cut from a MODELLED arm width, and
+the model was 1.0 mm narrow. The measured taper is now known:
+
+    w(r) ≈ 5.7 − 0.121·(r − 6)      micro horn, r 6 … 17
+
+The turret's cross pocket engages r 6.5 … 16.4, over which the real arm
+runs **5.64 down to 4.44**. No CONSTANT-width slot fits that: 3.4 (what
+shipped) fits nowhere, and even a corrected 4.4 would only accept the
+arm outboard of r ≈ 13.5. The pocket needs one of:
+
+  (a) a TAPERED slot cut to the measured taper + 0.4 — full engagement,
+      matches the arm exactly, small modelling change;
+  (b) SHORT engagement — trim the arms to r 8 and cut a 6.0 constant
+      slot over r 6.5…8, accepting ~1.5 mm of bearing per arm (the yaw
+      SG90 only carries 0.8 kg·cm, so this is not obviously too little);
+  (c) BOLT THROUGH THE HOLES instead of slotting the arms at all —
+      batch-independent, zero backlash, and every horn in the bag has
+      holes. Costs a redesign of the rotor's horn interface.
+
+DECISION OUTSTANDING. Nothing in the turret prints until it is made.
+
+## Applied from this session
+- lib/servo.py micro horn: arm width 5.5→**5.7** at r 6, 3.0→**4.0** at
+  r 17, cross long 33.5→**34.4**, short 16.0→**17.0**, all MODEL→MEASURED;
+  new `micro_arm_w(r)` so slots are cut at their own engagement radius.
+- MG995_DISC_HORN disc_dia 22.0 → **20.6** MEASURED.
+- micro arm slots 5.65 → **5.85** in wrist_hub, wrist_rotator,
+  gripper_pinion (they trim at r 6, where the arm is 5.7).
 
 ## Not yet run
-HUB sweeps, BLADE comb, PIN pairs, and every flange-plate station.
+MG995 STACK with an arm horn, both HUB sweeps, BLADE comb, PIN pairs,
+and every flange-plate station.

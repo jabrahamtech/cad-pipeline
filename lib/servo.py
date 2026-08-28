@@ -211,18 +211,41 @@ MG995_TAB_SLOT_X_MM = 5.6
 # this block is COMMUNITY-MODEL grade, one step above the old numbers
 # and one below the bench. gauge_flange v2 carries the arm comb and hub
 # sweep that promote these to MEASURED.
-MICRO_HORN_ARM_W_AT_6 = 5.5    # arm width where the wrist parts trim (r 6)
-MICRO_HORN_CROSS_LONG = 33.5   # 4-arm horn, long axis tip to tip (ASYMMETRIC)
-MICRO_HORN_CROSS_SHORT = 16.0  # short axis tip to tip - it is NOT a sym cross
-MICRO_HORN_ARM_W_OUTER = 3.0   # width over the outer half of a long arm
-MG995_HORN_ARM_W_AT_8 = 6.5    # arm width where shoulder_hub trims (r 8)
+# MEASURED 2026-08-28 on Jonathan's bench horns (calibration/2026-08-28-*).
+# The community model was right about the shape and wrong about the WIDTH,
+# and the width is what every slot in this project is cut from.
+MICRO_HORN_ARM_W_AT_6 = 5.7    # MEASURED at the first hole (~r 6), was 5.5
+MICRO_HORN_CROSS_LONG = 34.4   # MEASURED, was 33.5. Long axis tip to tip
+MICRO_HORN_CROSS_SHORT = 17.0  # MEASURED 16-18, was 16.0 - NOT a sym cross
+MICRO_HORN_ARM_W_OUTER = 4.0   # MEASURED at the last hole (~r 17), was 3.0.
+                               # THE ONE THAT BIT: tt_horn_w was 3.0 + 0.4
+                               # clearance = 3.4, and a 4.0 arm cannot enter
+                               # a 3.4 slot anywhere. The turret cross pocket
+                               # never accepted the horn - gauge_horn v1
+                               # CROSS station, first drop.
+MG995_HORN_ARM_W_AT_8 = 6.5    # still MODEL - the MG995 arm horn is unmeasured
+
+# The micro arm TAPERS, and the taper is now measured at both ends:
+#   w(r) ~= 5.7 - 0.121 * (r - 6)   for r 6 .. 17
+# A CONSTANT-WIDTH slot therefore cannot fit a trimmed arm over any long
+# span: at the turret's r 6.5..16.4 engagement the arm runs 5.3 down to 4.1.
+# Slots must be cut to the width AT THEIR OWN ENGAGEMENT RADIUS, or tapered.
+MICRO_HORN_TAPER_PER_MM = 0.121
+
+
+def micro_arm_w(r_mm: float) -> float:
+    """MEASURED micro horn arm width at radius r, mm. Clamped to the
+    measured span - do not extrapolate a linear fit past its data."""
+    r = max(6.0, min(17.0, r_mm))
+    return MICRO_HORN_ARM_W_AT_6 - MICRO_HORN_TAPER_PER_MM * (r - 6.0)
 
 # --- MG995 round horn (the Oe22 aluminium disc), DATASHEET -------------
 # Supplied drawing: Oe22 disc, 4 holes on a Oe16 bolt circle (2 tapped M4,
 # 2 clearance Oe4), Oe3 central retaining screw, 8 mm overall hub height,
 # ~3 mm disc thickness. This is what drives the shoulder link.
 MG995_DISC_HORN = {
-    "disc_dia": 22.0,
+    "disc_dia": 20.6,   # MEASURED 2026-08-28 (the drawing said 22.0 -
+                         # this is the black plastic clone disc, not alu)
     "disc_thk": 3.0,
     "hub_h": 8.0,              # total height incl. the splined hub
     "bolt_circle_dia": 16.0,

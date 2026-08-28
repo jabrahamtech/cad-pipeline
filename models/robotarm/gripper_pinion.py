@@ -79,7 +79,7 @@ def run(_context: str):
     param('tooth_sink', '0.5 mm', 'how far a tooth profile reaches inside the root circle')
     param('hub_d', '8.15 mm', 'SG90 horn hub 8.0 + press 0.15 - 2026-08-27 horn audit')
     param('hub_depth', '3.1 mm', 'horn hub 3.0 + 0.1 so the shells set the axial gap - horn audit')
-    param('arm_w', '5.65 mm', 'horn arm width AT the r 6 trim: 5.5 + press 0.15.\n           The arm tapers 5.5 -> 3; 3.95 was thickness-as-width - horn audit')
+    param('arm_w', '5.85 mm', 'horn arm width AT the r 6 trim: 5.5 + press 0.15.\n           The arm tapers 5.5 -> 3; 3.95 was thickness-as-width - horn audit\n           MEASURED 2026-08-28: the arm is 5.7 at the r 6 trim, so 5.65 was 0.05 UNDER it - an interference, not a press fit.')
     param('arm_r', '6.0 mm', 'horn arm TRIMMED to this radius at assembly - see spec')
     param('arm_depth', '2.1 mm', 'horn blade 2.0 + 0.1 seating - horn audit')
     param('screw_d', '5.5 mm', 'driver access to the horn retaining screw - fasteners_inserts')
