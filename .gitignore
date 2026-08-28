@@ -17,3 +17,4 @@ _to_delete/
 # Mirrors the public layout: private/{specs,models,exports,docs}/<project>/
 # Tests still discover private/models/ locally.
 private/
+.fusion_log.txt
