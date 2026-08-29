@@ -62,9 +62,7 @@ CLUSTER = [
     ('SG90 J5 roll',      9.0,    0.0,   True),
     ('SG90 effector',     9.0,   32.0,   True),
 ]
-HEAD_OFFSET_MM = 45.5        # head centre of mass, past the wrist end.
-                             # 47.0 -> 45.5 with the 2026-08-29 head diet;
-                             # see the derivation in _check_loads.py.
+HEAD_OFFSET_MM = 47.0        # head centre of mass, past the wrist end
 
 # --- the links -------------------------------------------------------------
 # mass per mm of length at the CURRENT section, back-calculated from the

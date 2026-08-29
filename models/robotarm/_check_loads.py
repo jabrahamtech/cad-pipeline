@@ -90,17 +90,21 @@ HUB_SPIN_DEG = 90.0          # matches _check_wrist - every socket in this arm
 # What actually moved, and by how much - the head is NOT rigid-shifted by
 # the 9.0 mm, because its tail (the SG90 bay, half its mass) did not move:
 #
-#   HEAD_OFFSET   mass-weighted from the rebuilt COMs. shell COM -4.1 ->
-#                 -5.6 (2 x 11.24 g), blade -5.8 -> -3.1 but placed on a
-#                 pivot that moved -6.5, so net -3.8 (2 x 1.26 g), rack
-#                 5.9 -> 5.3 (2 x 2.79 g), pinion unchanged (1.33 g).
-#                 Weighted: -1.46 mm. 47.0 -> 45.5.
+#   HEAD_OFFSET   mass-weighted from the rebuilt COMs. With tail_r reverted
+#                 the only surviving change is ps_cheek_front's pad, 6.0 ->
+#                 3.5: that removes 2 x 0.26 g of cheek nose about 3 mm
+#                 ahead of the head COM, which moves it under 0.1 mm - below
+#                 what a typed constant resolves. So 47.0 stands, and it
+#                 stands because it was CHECKED, not because nobody looked.
 #   PAYLOAD       the stem sits in the jaw, and the jaw is the crossing
-#                 point, which rides on CHOSEN.pivot_y. That moved
-#                 42.0 -> 35.5, so this moves with it: 68.0 -> 61.5.
-HEAD_OFFSET_MM = 45.5        # pruner head centre of mass, past the wrist end
+#                 point, which rides on CHOSEN.pivot_y. pivot_y is back at
+#                 42.0, so this is back at 68.0.
+#
+# The shortening that made this note necessary is documented in
+# lib/pruner_linkage.py, along with why it was reverted.
+HEAD_OFFSET_MM = 47.0        # pruner head centre of mass, past the wrist end
 PAYLOAD_G = 25.0             # rated payload, _assembly.md
-PAYLOAD_OFFSET_MM = 61.5     # asm_l3 - wrist axis to the jaw faces
+PAYLOAD_OFFSET_MM = 68.0     # asm_l3 - wrist axis to the jaw faces
 
 # HOW MANY OF EACH. The head is a CLAMSHELL: _check_pruner places
 # pruner_shell twice (M3() and `turned`) and so does _preview_arm. This file
