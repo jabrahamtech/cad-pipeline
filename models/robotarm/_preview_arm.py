@@ -275,17 +275,43 @@ def run(_context: str):
         'the stator says the roller is Ø%.2f and lib/bearings says Ø%.2f'
         % (gv('tt_roller_od') * 10, b608.od))
     race_z = axle_z + b608.od / 2.0
+    # RENAME FIRST, THEN DELETE - the project's idempotent-rebuild pattern.
+    # Without it Fusion hands the second run 'preview_608ZZ_rollers (1)' and
+    # the stale one stays in the document, hidden. That is not cosmetic: the
+    # first check of this very fix measured the STALE rollers and reported the
+    # bug as unfixed. A hidden wrong copy is worse than no copy.
+    ROLL_ENV = 'preview_608ZZ_rollers'
+    for i in range(design.allComponents.count):
+        c = design.allComponents.item(i)
+        if c.name == ROLL_ENV or c.name.startswith(ROLL_ENV + ' ('):
+            c.name = ROLL_ENV + '_stale_' + str(i)
+    for o in list(root.occurrences):
+        if o.component.name.startswith(ROLL_ENV + '_stale_'):
+            o.deleteMe()
     roll_occ = root.occurrences.addNewComponent(M3())
-    roll_occ.component.name = 'preview_608ZZ_rollers'
+    roll_occ.component.name = ROLL_ENV
+    assert roll_occ.component.name == ROLL_ENV, (
+        'Fusion handed back %s - a stale roller component reserves the name'
+        % roll_occ.component.name)
     rc = roll_occ.component
     for i, az in enumerate((90.0, 210.0, 330.0)):
         a = math.radians(az)
         cx, cy = roller_r * math.cos(a), roller_r * math.sin(a)
-        # RADIAL axle: the disc's own axis is horizontal, pointing outward,
-        # so the sketch plane is the vertical one containing that radius.
+        # RADIAL axle. The roller has to ROLL, and the rotor above it moves
+        # TANGENTIALLY, so the axis must be perpendicular to that motion and
+        # parallel to the contact face - i.e. pointing straight out from the
+        # J1 axis, like a trolley wheel. _check_j1 does this by drawing the
+        # disc on XY and tipping it 90 deg about Y.
+        #
+        # So the sketch plane is the vertical one PERPENDICULAR to the radius
+        # (it contains the tangent and Z), which is yZ swung to the azimuth -
+        # NOT xZ, which contains the radius and puts the axle tangential. The
+        # first version of this did exactly that: at az 90 the roller measured
+        # 7 along X and 22 along Y, the wrong way round, and it would have
+        # scrubbed rather than rolled. Jonathan caught it in the render.
         pl = rc.constructionPlanes.createInput()
         pl.setByAngle(rc.zConstructionAxis, adsk.core.ValueInput.createByReal(a),
-                      rc.xZConstructionPlane)
+                      rc.yZConstructionPlane)
         plane = rc.constructionPlanes.add(pl)
         sk = rc.sketches.add(plane)
         sk.sketchCurves.sketchCircles.addByCenterRadius(
@@ -298,6 +324,25 @@ def run(_context: str):
         ei.setDistanceExtent(True, adsk.core.ValueInput.createByString(
             '%.4f mm' % (b608.width / 2.0)))
         rc.features.extrudeFeatures.add(ei).bodies.item(0).name = '608ZZ_%d' % i
+
+        # PROVE the axle is radial, do not assume it. The disc's flat faces
+        # are normal to its axis, so that normal must be the radial unit
+        # vector. This is the assert the first version did not have, which is
+        # why a roller mounted 90 deg out shipped into a render.
+        body = rc.bRepBodies.item(rc.bRepBodies.count - 1)
+        flats = []
+        for k in range(body.faces.count):
+            f = body.faces.item(k)
+            if f.geometry.objectType == adsk.core.Plane.classType():
+                n = f.geometry.normal
+                flats.append((n.x, n.y, n.z))
+        assert flats, 'roller %d has no flat face to take an axis from' % i
+        nx, ny, nz = flats[0]
+        dot = abs(nx * math.cos(a) + ny * math.sin(a))
+        assert dot > 0.999 and abs(nz) < 0.001, (
+            'roller %d at az %.0f has its axle %.1f deg off radial - it would '
+            'scrub across the race instead of rolling along it'
+            % (i, az, math.degrees(math.acos(min(1.0, dot)))))
     placed.append(('608ZZ_rollers', roll_occ))
     roll_occ.isLightBulbOn = True
     print('3 x 608ZZ Ø%.1f x %.1f at r %.1f, axle z %.1f -> race face z %.2f'
