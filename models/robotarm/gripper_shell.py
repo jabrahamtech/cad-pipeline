@@ -166,6 +166,11 @@ def run(_context: str):
           'back-wall notch for the servo lead. Sited OUTBOARD of the case\n'
           '           end, not on the shaft axis and not straddling the end face -\n'
           '           see the lead datum in lib/servo.py')
+    param('lead_notch_x', PREFIX + 'shaft_end + ' + PREFIX + 'lead_slot / 2 + '
+          + PREFIX + 'loc / 2',
+          'derived: notch centre. Half a locational fit past the case end\n'
+          '           face, so the slot\'s inner edge lands on it and the whole slot\n'
+          '           is clear of the case body.')
     param('srv_roof', PREFIX + 'case_w / 2 + ' + PREFIX + 'loc / 2 + ' + PREFIX + 'wall',
           'derived: floor of the tail cavity, one wall above the servo')
     param('pocket_inset', '2.5 mm',
@@ -388,7 +393,7 @@ def run(_context: str):
     # LEAD NOTCH. The bundle leaves the case's SHORT END FACE at the shaft end
     # (lib/servo.py lead datum), so it emerges OUTBOARD of the case end, in
     # the empty 10.6 mm of pocket beyond it. The notch therefore belongs at
-    # x = shaft_end + slot/2 + 0.1 - its inner edge on the case end face,
+    # x = lead_notch_x - its inner edge on the case end face,
     # the whole slot clear of the case body - not at x 0 (the
     # shaft AXIS, where it sat until 2026-08-28) and not straddling the case
     # end at x = shaft_end, where half the slot is roofed by the case and the
@@ -405,7 +410,7 @@ def run(_context: str):
     # and the notch is purely an exit, which is why it can sit clear of the
     # case rather than on the cable's insertion path.
     for _sx in (+1, -1):
-        _cx = _sx * (val('shaft_end') + val('lead_slot') / 2 + 0.1)
+        _cx = _sx * val('lead_notch_x')
         box('lead_notch_%s' % ('p' if _sx > 0 else 'm'),
             min(_cx - val('lead_slot') / 2, _cx + val('lead_slot') / 2),
             max(_cx - val('lead_slot') / 2, _cx + val('lead_slot') / 2),

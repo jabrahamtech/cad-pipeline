@@ -165,6 +165,11 @@ def run(_context: str):
           'back-wall notch for the servo lead. Sited OUTBOARD of the case\n'
           '           end, not on the shaft axis and not straddling the end face -\n'
           '           see the lead datum in lib/servo.py')
+    param('lead_notch_x', PREFIX + 'shaft_end + ' + PREFIX + 'lead_slot / 2 + '
+          + PREFIX + 'loc / 2',
+          'derived: notch centre. Half a locational fit past the case end\n'
+          '           face, so the slot\'s inner edge lands on it and the whole slot\n'
+          '           is clear of the case body.')
     param('srv_roof', PREFIX + 'case_w / 2 + ' + PREFIX + 'loc / 2 + ' + PREFIX + 'wall',
           'derived: floor of the tail cavity, one wall above the servo')
     param('pocket_inset', '2.5 mm',
@@ -449,7 +454,8 @@ def run(_context: str):
     # only 2.5 was clear of the case body and the 3.4 bundle was pinched by
     # 0.9. Half-working is worse than not working - it reads CLEAR to a
     # probe and jams on the bench. x = shaft_end + slot/2 + 0.1 puts the
-    # slot's inner edge on the case end face and the whole slot clear.
+    # slot's inner edge on the case end face and the whole slot clear
+    # (lead_notch_x).
     #
     # Two notches, because the pocket above is deliberately symmetric "so
     # the servo drops in either way round": the shaft end lands at x
@@ -463,7 +469,7 @@ def run(_context: str):
     # there is no insertion jam here. The notch is purely an exit, which is
     # why it may sit clear of the case instead of on the insertion path.
     for _sx in (+1, -1):
-        _cx = _sx * (val('shaft_end') + val('lead_slot') / 2 + 0.1)
+        _cx = _sx * val('lead_notch_x')
         box('lead_notch_%s' % ('p' if _sx > 0 else 'm'),
             min(_cx - val('lead_slot') / 2, _cx + val('lead_slot') / 2),
             max(_cx - val('lead_slot') / 2, _cx + val('lead_slot') / 2),

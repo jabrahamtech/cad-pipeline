@@ -118,12 +118,15 @@ def run(_context: str):
           'servo + cable opening, across the flats of the SG90. Must contain\n'
           '           the STATOR\'S void (a 20.0 circle unioned with a 12.40 x 22.90\n'
           '           rectangle), not merely the servo - the two parts share this hole.')
-    param('open_y', '31.00 mm',
+    param('open_y', '32.60 mm',
           'the long way. WAS 26.00 and centred, which masked the servo well.\n'
           '           Three things set it now: the stator\'s Ø20 void ON the axis,\n'
           '           its 12.40 x 22.90 well at y +5.25, and the loom slot\'s inner\n'
-          '           radius at 13.0, which this opening has to reach PAST rather\n'
-          '           than stop short of - see the merge note below.')
+          '           radius, which this opening has to reach PAST rather than stop\n'
+          '           short of - see the merge note below. 31.00 -> 32.60 on\n'
+          '           2026-08-28: the slot\'s inner radius stepped out to 13.70 to\n'
+          '           keep a wall beside the stator\'s new lead keyway, and the\n'
+          '           opening has to follow it or the merge stops being a merge.')
     param('open_off_y', '2.00 mm',
           'the opening\'s centre, off the J1 axis. NOT a style choice and NOT\n'
           '           ts_shaft_off either. The void union runs y -10.00..+16.60 and\n'
@@ -147,7 +150,10 @@ def run(_context: str):
     # 22.70 case, a tenth of a millimetre each side. This slot is the bottom of
     # a three-part route: base_lid -> turntable_stator (same slot) -> the space
     # under the rotor -> shoulder_bracket's own window, which turns with J1.
-    param('cable_ir', '13.00 mm', 'MUST MATCH ts_cable_ir - asserted below')
+    param('cable_ir', '13.70 mm',
+          'MUST MATCH ts_cable_ir - asserted below. 13.00 -> 13.70 on\n'
+          '           2026-08-28 when the stator\'s servo well grew a lead keyway\n'
+          '           and the window had to step out to keep a wall beside it.')
     param('cable_or', '20.00 mm', 'MUST MATCH ts_cable_or - asserted below')
     param('cable_az', '270.00 deg', 'astern of the arm', 'deg')
     param('cable_deg', '70.00 deg', 'MUST MATCH ts_cable_deg', 'deg')
