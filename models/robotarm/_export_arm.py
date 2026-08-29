@@ -31,16 +31,36 @@ hour and 29 g for the plate.
 
 import json
 import os
+import shutil
 
 import adsk.core
 import adsk.fusion
 
 REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
 EXPORT_DIR = os.path.join(REPO, 'exports', 'robotarm', 'print')
+# The flat, numbered, un-versioned copy you actually feed the slicer. The
+# versioned files above are the ARCHIVE and are never overwritten; this
+# folder is the CURRENT queue and is rewritten every export. Two different
+# jobs, so two different rules - a folder that is both is neither.
+QUEUE_DIR = os.path.join(REPO, 'exports', 'robotarm', 'print_queue')
 LEDGER = os.path.join(REPO, 'specs', 'robotarm', '_volumes.json')
-VERSION = 1
+VERSION = 2
 TOL_MM3 = 1.0
 PETG, SOLID = 1.27, 0.65
+
+# Queue order. 01 is the gauge, which is not a part and so is not in PARTS -
+# it is copied in separately. The rest are printed in this order for a reason:
+# the turret first because "does J1 turn" is the riskiest open claim in the
+# project, then the arm, then the head, then the lid last because you can
+# print it while assembling everything else.
+QUEUE = ['turntable_stator', 'turntable_ring', 'shoulder_bracket', 'upper_arm',
+         'forearm', 'wrist_roll', 'wrist_rotator', 'wrist_hub', 'shoulder_hub',
+         'pruner_shell', 'pruner_blade', 'pruner_rack', 'gripper_pinion',
+         'gripcut_finger', 'base_lid']
+# suffixes that put the instruction in the FILENAME, where it cannot be
+# missed, rather than in a document nobody has open at the printer
+SUFFIX = {'forearm': '_SUPPORTS', 'base_lid': '_BRIM'}
+GAUGE = os.path.join(REPO, 'exports', 'robotarm', 'gauge_verify_v2.3mf')
 
 # name, how many, print orientation, note
 PARTS = [
@@ -176,3 +196,36 @@ def run(_context: str):
     print('')
     print('BOUGHT PARTS: 1 x MG995, 2 x MG90S, 3 x SG90, 3 x 608ZZ,')
     print('  M3 hardware, and heat-set inserts for wrist_rotator.')
+
+    # ---- the numbered queue -------------------------------------------------
+    by_name = {n: (c, o, t) for n, c, _, m, o, t in
+               [(w[0], w[1], w[2], w[3], w[4], w[5]) for w in written]}
+    assert set(QUEUE) == set(by_name), (
+        'QUEUE and PARTS disagree: %r' % (set(QUEUE) ^ set(by_name)))
+    os.makedirs(QUEUE_DIR, exist_ok=True)
+    made = []
+    if os.path.exists(GAUGE):
+        dst = os.path.join(QUEUE_DIR, '01_gauge_FIRST.3mf')
+        shutil.copyfile(GAUGE, dst)
+        made.append(os.path.basename(dst))
+    else:
+        print('')
+        print('NOTE: %s is missing, so the queue has no 01. Print the gauge '
+              'before any of this.' % os.path.basename(GAUGE))
+    for i, name in enumerate(QUEUE, start=2):
+        count = by_name[name][0]
+        tag = '%s%s%s' % (name, '_x%d' % count if count > 1 else '',
+                          SUFFIX.get(name, ''))
+        src = os.path.join(EXPORT_DIR, '%s_v%d.3mf' % (name, VERSION))
+        dst = os.path.join(QUEUE_DIR, '%02d_%s.3mf' % (i, tag))
+        shutil.copyfile(src, dst)
+        made.append(os.path.basename(dst))
+    print('')
+    print('QUEUE - exports/robotarm/print_queue/, print in number order:')
+    for f in made:
+        print('  %s' % f)
+    print('')
+    print('The queue is REWRITTEN every export and carries no version in the')
+    print('names. The versioned files in print/ are the archive and are never')
+    print('overwritten - if you need to know what you actually printed, that')
+    print('is where it lives.')
