@@ -138,8 +138,13 @@ def test_reproduces_assembly_md_figure():
     for name, mass_g, offset_mm, bought in ab.CLUSTER:
         items.append(al.Item(name, mass_g, ref['l2'] + offset_mm,
                              'BOUGHT' if bought else 'MEASURED'))
+    # the HISTORICAL head offset, for exactly the reason spelled out three
+    # lines down about the COM fraction: this test compares two
+    # IMPLEMENTATIONS on identical inputs, and validate() computes with the
+    # historical constants. Feeding one side today's 45.5 and the other 47.0
+    # makes them disagree about the arm rather than about the arithmetic.
     items.append(al.Item('head', ref['head_g'],
-                         ref['l2'] + ab.HEAD_OFFSET_MM, 'MEASURED'))
+                         ref['l2'] + ab.VALIDATION_HEAD_OFFSET_MM, 'MEASURED'))
     # the HISTORICAL fraction, matching what validate() computes with. Using
     # the live constant here would make this test fail the moment a COM is
     # measured, which is the opposite of what it is for.

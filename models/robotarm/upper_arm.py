@@ -89,7 +89,7 @@ def run(_context: str):
     param('loc', '0.2 mm', 'locational fit - design_rules')
 
     # --- link -----------------------------------------------------------------
-    param('l1', '65.0 mm',
+    param('l1', '125.0 mm',
           'J2 to J3. Was 85. Shortened 2026-08-26 to match the reference arm\'s\n'
           '           proportions - see specs/robotarm/_assembly.md "SUPERSEDED".\n'
           '           Everything outboard of the elbow translates 1:1 with fa_l2, so\n'

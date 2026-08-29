@@ -62,7 +62,9 @@ CLUSTER = [
     ('SG90 J5 roll',      9.0,    0.0,   True),
     ('SG90 effector',     9.0,   32.0,   True),
 ]
-HEAD_OFFSET_MM = 47.0        # head centre of mass, past the wrist end
+HEAD_OFFSET_MM = 45.5        # head centre of mass, past the wrist end.
+                             # 47.0 -> 45.5 with the 2026-08-29 head diet;
+                             # see the derivation in _check_loads.py.
 
 # --- the links -------------------------------------------------------------
 # mass per mm of length at the CURRENT section, back-calculated from the
@@ -88,6 +90,11 @@ UPPERARM_COM_FRAC = 0.5000           # MEASURED (confirmed the old ESTIMATE)
 # every time a mass is measured - punishing exactly the work it exists to
 # protect.
 VALIDATION_FOREARM_COM_FRAC = 2.84 / 6.5      # 0.437, historical
+# Same reason, same trap, one field along: the published figure was computed
+# with the head 47.0 mm out, and the 2026-08-29 diet moved the live constant
+# to 45.5. validate() must keep using the historical one or it stops checking
+# the arithmetic and starts checking today's geometry, which is not its job.
+VALIDATION_HEAD_OFFSET_MM = 47.0              # historical
 
 # --- two different arms, and they must never be paired -----------------------
 # BUILT is the arm ON DISK TODAY. VALIDATION is the arm _assembly.md's
@@ -111,7 +118,8 @@ def validate():
     """
     got = j3_moment(VALIDATION['l2'], VALIDATION['head_g'],
                     VALIDATION['section'], correct_density=False,
-                    fa_com_frac=VALIDATION_FOREARM_COM_FRAC)[0]
+                    fa_com_frac=VALIDATION_FOREARM_COM_FRAC,
+                    head_offset_mm=VALIDATION_HEAD_OFFSET_MM)[0]
     assert abs(got - VALIDATION_J3_TARGET) <= VALIDATION_TOL, (
         'arm_budget no longer reproduces _assembly.md: %.2f against %.1f g.cm '
         'at L2 %.0f. Fix this before trusting any row below it.'
@@ -120,14 +128,16 @@ def validate():
 
 
 def j3_moment(l2, head_g, section=1.0, correct_density=False,
-              fa_com_frac=None):
+              fa_com_frac=None, head_offset_mm=None):
     """Elbow moment, arm horizontal. `section` scales the LINK mass only -
     it is how a chunkier link gets priced.
 
-    fa_com_frac overrides the module constant. Only validate() passes it, so
-    that the historical check keeps using the historical number."""
+    fa_com_frac and head_offset_mm override the module constants. Only
+    validate() passes them, so that the historical check keeps using the
+    historical numbers."""
     k = MASS_CORRECTION if correct_density else 1.0
     frac = FOREARM_COM_FRAC if fa_com_frac is None else fa_com_frac
+    head_off = HEAD_OFFSET_MM if head_offset_mm is None else head_offset_mm
     total = 0.0
     rows = []
     fa = FOREARM_G_PER_MM * l2 * section * k
@@ -135,7 +145,7 @@ def j3_moment(l2, head_g, section=1.0, correct_density=False,
     for name, m, off, bought in CLUSTER:
         mm = m if bought else m * k
         rows.append((name, mm, (l2 + off) / 10.0))
-    rows.append(('head', head_g * k, (l2 + HEAD_OFFSET_MM) / 10.0))
+    rows.append(('head', head_g * k, (l2 + head_off) / 10.0))
     for _, m, r in rows:
         total += m * r
     return total, rows

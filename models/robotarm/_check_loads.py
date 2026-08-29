@@ -82,9 +82,36 @@ BOUGHT_OFFSET_MM = {
 }
 HUB_SPIN_DEG = 90.0          # matches _check_wrist - every socket in this arm
                              # has a hex vertex on the assembly's +Y
-HEAD_OFFSET_MM = 47.0        # pruner head centre of mass, past the wrist end
+# BOTH OF THESE ARE TYPED, and this file's own closing note says nothing
+# here notices when the head changes. It did not: the 2026-08-29 head diet
+# shortened the shell 9.0 mm and these two constants held the old head in
+# place, hiding most of the benefit for one whole gate run.
+#
+# What actually moved, and by how much - the head is NOT rigid-shifted by
+# the 9.0 mm, because its tail (the SG90 bay, half its mass) did not move:
+#
+#   HEAD_OFFSET   mass-weighted from the rebuilt COMs. shell COM -4.1 ->
+#                 -5.6 (2 x 11.24 g), blade -5.8 -> -3.1 but placed on a
+#                 pivot that moved -6.5, so net -3.8 (2 x 1.26 g), rack
+#                 5.9 -> 5.3 (2 x 2.79 g), pinion unchanged (1.33 g).
+#                 Weighted: -1.46 mm. 47.0 -> 45.5.
+#   PAYLOAD       the stem sits in the jaw, and the jaw is the crossing
+#                 point, which rides on CHOSEN.pivot_y. That moved
+#                 42.0 -> 35.5, so this moves with it: 68.0 -> 61.5.
+HEAD_OFFSET_MM = 45.5        # pruner head centre of mass, past the wrist end
 PAYLOAD_G = 25.0             # rated payload, _assembly.md
-PAYLOAD_OFFSET_MM = 68.0     # asm_l3 - wrist axis to the jaw faces
+PAYLOAD_OFFSET_MM = 61.5     # asm_l3 - wrist axis to the jaw faces
+
+# HOW MANY OF EACH. The head is a CLAMSHELL: _check_pruner places
+# pruner_shell twice (M3() and `turned`) and so does _preview_arm. This file
+# counted it ONCE, in two places, and nothing asserted the two views agreed.
+# 11.44 g - a third of the head - sat at 9.2 cm from the elbow and was simply
+# absent from the budget, which is about ten points of J3 duty. Found
+# 2026-08-28 while pricing a longer arm; it made the arm look affordable.
+#
+# Counts live here, once, and both the head and the turret read them.
+COUNT = {'pruner_shell': 2, 'pruner_blade': 2, 'pruner_rack': 2,
+         'gripper_pinion': 1, 'wrist_hub': 2}
 
 # The J1 turret: what rotates, and how far the arm reaches over the rollers.
 ROTATING = ('shoulder_bracket', 'shoulder_hub', 'upper_arm', 'forearm',
@@ -234,8 +261,9 @@ def run(_context: str):
     # ---- B: the joint moment budget -----------------------------------------
     l1_mm = gv('ua_l1')
     l2_mm = gv('fa_l2')
-    head_g = (mass('pruner_shell') + 2 * mass('pruner_blade')
-              + 2 * mass('pruner_rack') + mass('gripper_pinion'))
+    head_g = sum(COUNT.get(p, 1) * mass(p) for p in
+                 ('pruner_shell', 'pruner_blade', 'pruner_rack',
+                  'gripper_pinion'))
 
     # ---- the link centres of mass, DERIVED from what was just harvested ----
     # Both links are authored with one joint on the origin and the other at
@@ -377,7 +405,7 @@ def run(_context: str):
 
     # ---- D: J1, and the relief this session cut -----------------------------
     print('=== D. J1 turret - the roller path, and the 2026-08-26 relief ===')
-    rot_g = sum(mass(p) for p in ROTATING if p in props)
+    rot_g = sum(COUNT.get(p, 1) * mass(p) for p in ROTATING if p in props)
     rot_g += sum(BOUGHT_G[b] for b in ROTATING_BOUGHT)
     reach_mm = l1_mm + l2_mm + PAYLOAD_OFFSET_MM
     roller_r_mm = gv('tt_roller_r')

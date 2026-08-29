@@ -210,7 +210,7 @@ def run(_context: str):
           '           clearance. Mirrors pb_gap + pb_thk. The blades sweep in here.')
     param('cheek_t', '3.0 mm', 'cheek plate thickness above the blades')
     param('cheek_z', PREFIX + 'blade_clear + ' + PREFIX + 'cheek_t', 'derived cheek top')
-    param('cheek_front', '%.3f mm' % (CHOSEN.pivot_y + 6.0),
+    param('cheek_front', '%.3f mm' % (CHOSEN.pivot_y + 3.5),
           'derived-ish: past the pivot by enough to carry it')
     param('cheek_half_w', '13.0 mm', 'cheek half width at its root')
     param('cheek_nose_w', '9.0 mm',

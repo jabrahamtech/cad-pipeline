@@ -279,12 +279,32 @@ def stem_mm(force_N: float, progression: float, n_per_mm: float = 10.0) -> float
 # disc every time: by assuming the disc sat behind y = 0, then by treating the
 # pin as a point rather than a cylinder, then by forgetting the tail runs past
 # the pin at all. Each is now an assertion, because each looked fine.
+# SHORTENED 2026-08-29, deliberately, to buy elbow margin. tail_r IS the
+# mechanical advantage - one for one - so this is not a free trim:
+#
+#   tail_r 26.0 -> 21.0   MA at the throat 3.68 -> 2.97, cut force at the
+#                         throat 31.5 N -> 25.4 N. The claimed stem on the
+#                         pessimistic x2 progression goes 6.3 -> 5.06 mm
+#                         against test_pruner_linkage's committed 5.0 floor:
+#                         it passes by 1 %, and there is no room below this.
+#   pivot_y 42.0 -> 35.5  the binding constraint is
+#                         pivot_y >= 1.3054*tail_r + 7.625 = 35.04 at 40 deg
+#   knee_y  29.0 -> 25.0  stays the midpoint of a knee_x = 0 tail
+#
+# It shortens the head 9.0 mm (with cheek_front's pad cut 6.0 -> 3.5) and
+# takes 1.6 g off the pair. Mouth opening is UNCHANGED at 7.0 mm - that is
+# 2 x edge_offset and edge_offset costs no length. Rack travel improves,
+# 139 deg of servo sweep down to 112.
+#
+# WHY: _check_loads counted one clamshell half, so the head was priced at
+# 21.44 g when it is 32.87. Corrected, the elbow sat at 88 % of duty. This
+# and the L1 change are what buy that back.
 CHOSEN = Layout(
     pivot_x=0.0,        # common pivot, true scissors: the two blades share a
-    pivot_y=42.0,       # post, which is what keeps the crossing angle shallow
-    tail_r=26.0,
+    pivot_y=35.5,       # post, which is what keeps the crossing angle shallow
+    tail_r=21.0,
     knee_x=0.0,
-    knee_y=29.0,
+    knee_y=25.0,
     edge_offset=3.5,    # THE cut-or-crush parameter. See crossing_r().
     throat_r=8.5,       # nominal stem position, measured from the pivot
     tip_r=20.0,         # far end of the usable edge
