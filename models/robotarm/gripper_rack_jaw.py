@@ -37,8 +37,11 @@ PREFIX = 'rj_'
 SHARED = 'gr_'      # gear contract shared with gripper_pinion.py
 STYLE = 'sty_'      # design language - specs/robotarm/_style.md
 # _style.md rule 5: two-tone by PART. The jaws are body, so they are light.
-APPEARANCE_HINTS = [('plastic', 'yellow'), ('paint', 'yellow'), ('yellow',),
-                    ('plastic',)]
+# COLOUR LIVES IN lib/palette.py, not here. It used to be typed in this
+# file and sixteen others, so a re-theme meant editing seventeen files
+# and hoping you found them all.
+from lib.palette import hints_for  # noqa: E402
+APPEARANCE_HINTS = hints_for('gripper_rack_jaw')
 MATERIAL_NAME = 'PET Plastic'
 PHASES = ['rack bar', 'jaw arm and blade', 'finish']
 

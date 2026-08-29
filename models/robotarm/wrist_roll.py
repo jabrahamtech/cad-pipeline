@@ -66,7 +66,11 @@ PH_FINISH = 'finish'
 PHASES = [PH_FORM, PH_SERVO, PH_PIVOT, PH_FINISH]
 MATERIAL_NAME = 'PET Plastic'
 # _style.md rule 5: two-tone by PART. A wrist is a joint, so it is dark.
-APPEARANCE_HINTS = [('plastic', 'black'), ('paint', 'black'), ('black',), ('plastic',)]
+# COLOUR LIVES IN lib/palette.py, not here. It used to be typed in this
+# file and sixteen others, so a re-theme meant editing seventeen files
+# and hoping you found them all.
+from lib.palette import hints_for  # noqa: E402
+APPEARANCE_HINTS = hints_for('wrist_roll')
 
 
 def run(_context: str):

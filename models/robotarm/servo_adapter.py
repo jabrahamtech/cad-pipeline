@@ -52,7 +52,11 @@ BODY_NAME = 'servo_adapter'
 PREFIX = 'sa_'
 STYLE = 'sty_'
 MATERIAL_NAME = 'PET Plastic'
-APPEARANCE_HINTS = [('plastic', 'black'), ('paint', 'black'), ('black',), ('plastic',)]
+# COLOUR LIVES IN lib/palette.py, not here. It used to be typed in this
+# file and sixteen others, so a re-theme meant editing seventeen files
+# and hoping you found them all.
+from lib.palette import hints_for  # noqa: E402
+APPEARANCE_HINTS = hints_for('servo_adapter')
 PHASES = ['plate', 'target servo', 'donor interface', 'finish']
 
 

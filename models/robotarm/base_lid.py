@@ -427,8 +427,27 @@ def run(_context: str):
         if m:
             body.material = m
             break
+    # COLOUR from lib/palette.py. This part had no appearance at all, so it
+    # rendered in Fusion's default grey while everything around it was
+    # themed - the lid is half the visible footprint of the machine.
+    from lib.palette import hints_for   # noqa: E402
+    used_appearance = 'none'
+    for want in hints_for('base_lid'):
+        for i in range(app.materialLibraries.count):
+            apps = app.materialLibraries.item(i).appearances
+            for j in range(apps.count):
+                a = apps.item(j)
+                if all(w.lower() in a.name.lower() for w in want):
+                    body.appearance = a
+                    used_appearance = a.name
+                    break
+            if used_appearance != 'none':
+                break
+        if used_appearance != 'none':
+            break
     bb = body.boundingBox
-    print('body: %r | material: %s' % (body.name, body.material.name))
+    print('body: %r | material: %s | appearance: %s'
+          % (body.name, body.material.name, used_appearance))
     print('REPLACES the printed base_lid_v1, which has NO central opening -')
     print('  measured, not assumed: its own spec claims a 60.0 servo hole and the')
     print('  STEP has nothing in the middle. The SG90 could never have gone in.')

@@ -65,8 +65,11 @@ MATERIAL_NAME = 'PET Plastic'
 # _style.md rule 5: two-tone by PART. The shell is a body, so it is light.
 # Matched as sets of substrings, best first, against every appearance in
 # every loaded library.
-APPEARANCE_HINTS = [('plastic', 'yellow'), ('paint', 'yellow'), ('yellow',),
-                    ('plastic', 'opaque'), ('plastic',)]
+# COLOUR LIVES IN lib/palette.py, not here. It used to be typed in this
+# file and sixteen others, so a re-theme meant editing seventeen files
+# and hoping you found them all.
+from lib.palette import hints_for  # noqa: E402
+APPEARANCE_HINTS = hints_for('gripper_shell')
 
 
 def run(_context: str):

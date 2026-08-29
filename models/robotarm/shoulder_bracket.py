@@ -102,7 +102,11 @@ PH_FINISH = 'finish'
 PHASES = [PH_FORM, PH_PIVOT, PH_DRIVE, PH_BASE, PH_FINISH]
 MATERIAL_NAME = 'PET Plastic'
 # _style.md rule 5: two-tone by PART. A bracket is structure, so it is dark.
-APPEARANCE_HINTS = [('plastic', 'black'), ('paint', 'black'), ('black',), ('plastic',)]
+# COLOUR LIVES IN lib/palette.py, not here. It used to be typed in this
+# file and sixteen others, so a re-theme meant editing seventeen files
+# and hoping you found them all.
+from lib.palette import hints_for  # noqa: E402
+APPEARANCE_HINTS = hints_for('shoulder_bracket')
 
 
 def run(_context: str):
@@ -298,10 +302,16 @@ def run(_context: str):
     param('lobe_pad', '3.0 mm', 'material past the end of the outermost tab slot')
 
     # ---- the upper arm, for the down-pitch scan ONLY -------------------------
-    param('arm_l1', '65.0 mm',
+    param('arm_l1', '125.0 mm',
           'upper arm length - MUST TRACK ua_l1 in upper_arm.py. Was 85.0 and did\n'
           '           NOT track it when ua_l1 moved to 65 on 2026-08-26, because a\n'
-          '           comment is not a mechanism. The assertion below is.')
+          '           comment is not a mechanism. The assertion below is - and it\n'
+          '           earned its keep again on 2026-08-29, catching this at 65.0\n'
+          '           when ua_l1 had gone to 125. The ledger had reported PASS in\n'
+          '           between, because the only run since the change was BATCH 3\n'
+          '           and this part sat in the document STALE, matching its own\n'
+          '           old volume. A gate that never rebuilt a part is not a gate\n'
+          '           that checked it.')
     param('arm_half', '13.0 mm',
           'upper arm half height at its widest (the drum) - MUST TRACK ua_drum_r.\n'
           '           Conservative: the waist is only 12.0.')
