@@ -35,7 +35,12 @@ GREEN = ('forearm', 'upper_arm', 'gripper_shell', 'gripper_rack_jaw',
 # forest green #228B22, white #F5F5F5 - the exact values, for a tinted
 # appearance. HINTS is the fallback that finds a stock Fusion appearance by
 # substring, which is how every part file already looks one up.
-RGB = {'green': (34, 139, 34), 'white': (245, 245, 245)}
+# THE ACTUAL COLOUR. Fusion's stock 'Plastic - Glossy (Green)' is a bright
+# mid green and Jonathan's filament is much deeper, so the stock appearance
+# is only the STARTING POINT - tint() below copies it and overwrites its
+# albedo with these values. Change them here and nothing else needs touching.
+RGB = {'green': (18, 77, 40), 'white': (242, 242, 242)}
+TINT_NAME = {'green': 'robotarm_deep_green', 'white': 'robotarm_white'}
 HINTS = {
     'green': [('plastic', 'green'), ('paint', 'green'), ('green',),
               ('plastic',)],
@@ -52,3 +57,40 @@ def colour_of(part_name):
 def hints_for(part_name):
     """The substring hint list a part file feeds its appearance lookup."""
     return HINTS[colour_of(part_name)]
+
+
+def tint(app, design, colour):
+    """A design-local appearance in the exact RGB above.
+
+    Fusion library appearances are read-only, so this copies the nearest
+    stock plastic into the design and overwrites its albedo. Cached by name:
+    calling it repeatedly returns the same appearance rather than piling up
+    copies, which is what a naive version does and why documents end up with
+    forty near-identical materials.
+    """
+    name = TINT_NAME[colour]
+    local = design.appearances.itemByName(name)
+    if local is None:
+        src = None
+        for hint in HINTS[colour]:
+            for i in range(app.materialLibraries.count):
+                aps = app.materialLibraries.item(i).appearances
+                for j in range(aps.count):
+                    a = aps.item(j)
+                    if all(w.lower() in a.name.lower() for w in hint):
+                        src = a
+                        break
+                if src:
+                    break
+            if src:
+                break
+        assert src is not None, 'no stock appearance matched %r' % colour
+        local = design.appearances.addByCopy(src, name)
+    prop = local.appearanceProperties.itemById('opaque_albedo')
+    assert prop is not None, (
+        '%s has no opaque_albedo to tint - the stock appearance this was '
+        'copied from is not the plastic shader it was assumed to be' % name)
+    r, g, b = RGB[colour]
+    import adsk.core
+    prop.value = adsk.core.Color.create(r, g, b, 255)
+    return local
