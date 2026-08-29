@@ -61,6 +61,7 @@ def run(_context: str):
     root = design.rootComponent
     ups = design.userParameters
     M3 = adsk.core.Matrix3D.create
+    P3 = adsk.core.Point3D.create
     VEC = adsk.core.Vector3D.create
     ORG = adsk.core.Point3D.create(0, 0, 0)
 
@@ -255,6 +256,55 @@ def run(_context: str):
     assert lit == len(placed), (
         'only %d of %d posed occurrences are visible - the render would be empty'
         % (lit, len(placed)))
+
+    # ---- the three 608ZZ, because without them the rotor floats --------------
+    # Jonathan, looking at a render: "I cant see the rotating base touching the
+    # base?" He was reading the picture correctly. The rotor does not touch the
+    # stator ANYWHERE - it rides on three bearings, and the bearings were not
+    # in this file, so the render showed a turret hanging in mid air with
+    # nothing under it. The geometry was right and the picture was lying.
+    #
+    # Built here rather than imported: _check_j1 makes them in its own gate
+    # document, which this one is not. Every dimension is READ - the radius,
+    # height and azimuths from the stator's own tt_ parameters, the bearing
+    # itself from lib/bearings - so this cannot drift from the part it sits in.
+    from lib.bearings import CATALOG as BEARINGS          # noqa: E402
+    b608 = BEARINGS['608ZZ']
+    roller_r, axle_z = gv('tt_roller_r') * 10, gv('tt_axle_z') * 10
+    assert abs(b608.od - gv('tt_roller_od') * 10) < 1e-6, (
+        'the stator says the roller is Ø%.2f and lib/bearings says Ø%.2f'
+        % (gv('tt_roller_od') * 10, b608.od))
+    race_z = axle_z + b608.od / 2.0
+    roll_occ = root.occurrences.addNewComponent(M3())
+    roll_occ.component.name = 'preview_608ZZ_rollers'
+    rc = roll_occ.component
+    for i, az in enumerate((90.0, 210.0, 330.0)):
+        a = math.radians(az)
+        cx, cy = roller_r * math.cos(a), roller_r * math.sin(a)
+        # RADIAL axle: the disc's own axis is horizontal, pointing outward,
+        # so the sketch plane is the vertical one containing that radius.
+        pl = rc.constructionPlanes.createInput()
+        pl.setByAngle(rc.zConstructionAxis, adsk.core.ValueInput.createByReal(a),
+                      rc.xZConstructionPlane)
+        plane = rc.constructionPlanes.add(pl)
+        sk = rc.sketches.add(plane)
+        sk.sketchCurves.sketchCircles.addByCenterRadius(
+            sk.modelToSketchSpace(P3(cx / 10.0, cy / 10.0, axle_z / 10.0)),
+            b608.od / 20.0)
+        prof = adsk.core.ObjectCollection.create()
+        prof.add(sk.profiles.item(0))
+        ei = rc.features.extrudeFeatures.createInput(
+            prof, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        ei.setDistanceExtent(True, adsk.core.ValueInput.createByString(
+            '%.4f mm' % (b608.width / 2.0)))
+        rc.features.extrudeFeatures.add(ei).bodies.item(0).name = '608ZZ_%d' % i
+    placed.append(('608ZZ_rollers', roll_occ))
+    roll_occ.isLightBulbOn = True
+    print('3 x 608ZZ Ø%.1f x %.1f at r %.1f, axle z %.1f -> race face z %.2f'
+          % (b608.od, b608.width, roller_r, axle_z, race_z))
+    _rotor_z = C('shoulder_bracket').bRepBodies.item(0).boundingBox.maxPoint.z * 10
+    print('  the rotor rides ON these, not on the stator: race face z %.2f'
+          % race_z)
 
     # ---- the printed platter, for scale --------------------------------------
     # Imported, not modelled. If the STEP is missing the render still works and
