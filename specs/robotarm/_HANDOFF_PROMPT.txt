@@ -1,0 +1,61 @@
+Paste this into a new chat. Nothing else is needed — it points at the repo,
+which is the actual state.
+
+────────────────────────────────────────────────────────────────────────────
+
+I'm building a 6-DOF 3D-printed robot arm in
+/Users/jonothanabraham/Documents/GitHub/cad-pipeline — a Fusion-360-only CAD
+pipeline driven through the Autodesk Fusion MCP. Every part is a Python
+script in models/robotarm/; there is no hand-modelling, and the Fusion
+document is disposable.
+
+FIRST, before touching Fusion or answering me, read these three files in
+full:
+
+  specs/robotarm/_HANDOFF.md    - state, landmines, open decisions
+  specs/robotarm/_assembly.md   - the arm's reasoning and load budget
+  CLAUDE.md                     - repo conventions
+
+_HANDOFF.md sections 2 and 3 will cost you a session if you skip them. In
+particular: there are three unsaved "Untitled" Fusion documents open and
+only the 27-occurrence one is current — identify it by its shoulder_hub
+measuring 1907.043 mm3, never by tab order. And TemporaryBRepManager
+booleanOperation silently returns empty here, so interference checks must
+use pointContainment WITH a positive control that is required to register a
+hit.
+
+How I want you to work:
+
+- Honest engineering. Never invent a number silently. Gate everything in
+  Fusion before believing it. State grades: MEASURED / DERIVED / ASSUMED /
+  DATASHEET / MODEL, and write a downgrade into the file that carries it.
+- The project's recurring failure is "a datum in a shared library which only
+  one file reads is a decoration, not a contract". When you add a shared
+  number, make more than one file read it and make the consumers assert
+  against it.
+- Never claim something works, a gate passed, or a part is printable unless
+  you actually observed the result. Report the files you changed, the
+  commands you ran, and the outcomes.
+- Lead with the next action - a command, a path, a snippet - not context or
+  a plan. Number multi-step work, one bounded action per step. No preamble,
+  no recap, no closing pleasantries.
+
+Inventory, because it constrains everything: 1 x MG995, 2 x MG90S, 3 x SG90,
+no spare. 608ZZ is the ONLY bearing I have. Printer is a Bambu Lab X2D,
+bed 256 x 256 x 260, PETG.
+
+Where things stand: everything below the wrist is printed, plus a six-hub
+plate whose shoulder_hub is scrap (it physically cannot be installed - the
+fix is committed). exports/robotarm/plates/plate_remaining_v7.3mf is the 12
+pieces still to print. A 2:1 spur reduction for the J3 elbow is built and
+mesh-gated but NOT integrated - forearm.py and upper_arm.py still have to
+change for it.
+
+The decision that blocks everything else is _HANDOFF.md section 6 item 1:
+which J3 drive. Offset spur pair as built, coaxial planetary at ~3.6:1, or a
+belt. Read section 7 before you advise me - both reference arms in
+reference/ chose a belt at the elbow, and I want to know whether that
+changes your recommendation.
+
+Start by reading those files and the current gate output, then tell me what
+you'd do about J3 and why.
