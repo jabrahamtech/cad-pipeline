@@ -209,3 +209,135 @@ J3_JOINT_TRAVEL_DEG = J3_SERVO_TRAVEL_DEG / J3_PAIR.ratio
 
 _bad = J3_PAIR.validate(J3_INPUT_STALL_NM)
 assert not _bad, 'J3_PAIR is not buildable: ' + '; '.join(_bad)
+
+
+# --- Mounting a printed pinion on a hobby servo horn ----------------------
+# THIS IS THE NUMBER THE ELBOW WAS COSTED WRONG ON. The 2026-08-30 handoff
+# priced the offset spur pair at "~7 mm of forearm width". It is not a free
+# parameter: a servo's horn seat is a fixed height above the tab plane its
+# mount clamps, the pinion's tooth band has to coincide with the gear's, and
+# the gear's band is fixed by the fork plate it journals in. Those three
+# facts SOLVE for how far the servo mount must stand off the plate. Nobody
+# gets to choose it, and the first version of this reduction was drawn as
+# though somebody had.
+#
+# THE STACK, from the tab plane, +Z out of the shaft (lib/servo.py's frame):
+#     case top   = tab_below_top + tab_thk
+#     boss top   = case top + boss_h          <- the horn blade sits here
+#     blade top  = boss top + horn_blade_thk
+#     hub top    = boss top + horn_hub_h
+#
+# WHY THE BORE GOES STRAIGHT THROUGH. Blind-pocketing the horn puts the
+# pinion's seat face on the BOSS TOP, 11.5 mm up an MG90S - and every one of
+# those millimetres is standoff the forearm has to grow. Boring straight
+# through at the hub press diameter lets the servo's own output boss pass
+# freely and drops the seat face to just clear the case top, which is 4.8 mm
+# of arm width on the MG90S. Thickening the pinion to swallow the boss in a
+# blind pocket does NOT work: the swallowed depth comes out of the pinion's
+# own thickness, the pinion is bounded inboard by the fork plate, and it ends
+# up 2.7 mm inside it needing a relief that breaks into the J4 counterbore.
+#
+# THE PRESS IS UNCHANGED - the hub still presses over its full horn_hub_h,
+# just partway along a through bore instead of at the bottom of a blind one.
+
+
+@dataclass(frozen=True)
+class HornPinion:
+    """Where a printed pinion sits on a servo horn, and what it costs.
+
+    All distances in mm. `seat_z` is in the SERVO's frame (lib/servo.py);
+    every other depth is measured from the pinion's own seat face, which is
+    the face that looks at the servo.
+    """
+
+    servo_name: str
+    seat_z: float          # servo-z of the pinion's seat (servo-side) face
+    face: float            # pinion blank thickness = the pair's face width
+    bore_d: float          # the single through bore
+    press_from: float      # depth where the horn hub press begins
+    press_to: float        # ... and ends
+    slot_r: float          # horn arms trimmed to this radius
+    slot_w: float          # horn arm width at that radius, plus press
+    slot_depth: float      # cross slot depth from the seat face
+    case_gap: float        # seat face to the servo case top
+
+    @property
+    def press_len(self) -> float:
+        return self.press_to - self.press_from
+
+
+def horn_pinion(servo, pair, arm_r=6.0, arm_w=5.7, press=0.15,
+                recess=0.2, slot_extra=0.1):
+    """Solve the pinion's seat face for a servo and a gear pair.
+
+    arm_w is the RAW measured arm width; `press` is added here, once. The
+    old j3_pinion.py carried the already-pressed 5.85 as its input, which is
+    exactly how a datum acquires a second, wrong home.
+
+    arm_r / arm_w are MEASURED, not datasheet - specs/robotarm/_horn_numbers.md
+    (caliper 2026-08-28: the model said the micro hub was 8.0 and it is 6.8,
+    which had made every press pocket in this project 1.35 loose).
+
+    The seat face is placed as LOW on the servo as the horn allows: the horn
+    hub's top must finish `recess` below the pinion's far face, because that
+    face looks at the fork plate across a running gap and a proud hub would
+    rub it.
+    """
+    case_top = servo.tab_below_top + servo.tab_thk
+    boss_top = case_top + servo.boss_h
+    blade_top = boss_top + servo.horn_blade_thk
+    hub_top = boss_top + servo.horn_hub_h
+
+    seat_z = hub_top - pair.face + recess
+    m = HornPinion(
+        servo_name=servo.name,
+        seat_z=seat_z,
+        face=pair.face,
+        bore_d=servo.horn_hub_dia + press,
+        press_from=boss_top - seat_z,
+        press_to=hub_top - seat_z,
+        slot_r=arm_r,
+        slot_w=arm_w + press,
+        slot_depth=(blade_top - seat_z) + slot_extra,
+        case_gap=seat_z - case_top,
+    )
+
+    bad = []
+    if m.case_gap < 0.4:
+        bad.append('the pinion seat face would sit %.2f mm off the %s case '
+                   'top - it needs a running gap, not a rub'
+                   % (m.case_gap, servo.name))
+    if m.press_to > pair.face - 1e-9:
+        bad.append('the horn hub tops out %.2f mm into a %.2f face - it would '
+                   'stand proud of the pinion and foul the plate'
+                   % (m.press_to, pair.face))
+    if m.slot_depth > pair.face:
+        bad.append('the horn arm slot is %.2f deep in a %.2f face'
+                   % (m.slot_depth, pair.face))
+    if m.bore_d / 2 < servo.boss_dia / 2:
+        bad.append('the %.2f bore will not pass the %.2f output boss'
+                   % (m.bore_d, servo.boss_dia))
+    wall = pair.r_root(pair.z_pinion) - m.bore_d / 2
+    if wall < 1.6:
+        bad.append('only %.2f mm between the bore and the tooth roots' % wall)
+    if pair.r_root(pair.z_pinion) - arm_r < 1.6:
+        bad.append('only %.2f mm between the horn arm slot and the tooth roots'
+                   % (pair.r_root(pair.z_pinion) - arm_r))
+    assert not bad, ('%s pinion mount is not buildable: ' % servo.name
+                     + '; '.join(bad))
+    return m
+
+
+from lib.servo import CATALOG as _SERVOS  # noqa: E402
+
+J3_MOUNT = horn_pinion(_SERVOS['MG90S'], J3_PAIR)
+
+# What the drive costs the part that carries the servo. forearm.py adds its
+# own plate chain to this; _check_elbow.py asserts the two agree.
+#
+#   standoff = (gear band outboard face) - seat_z - (lobe outer face today)
+#
+# which for the MG90S/J3_PAIR combination is 9.60 mm of extra forearm width,
+# NOT the 7 the handoff claimed and not the 14.40 a blind-pocketed pinion
+# would have cost.
+J3_MOUNT_SEAT_Z = J3_MOUNT.seat_z

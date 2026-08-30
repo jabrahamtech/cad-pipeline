@@ -11,6 +11,24 @@ so 17 undercuts and 18 does not. gripper_pinion gets away with 12 because a
 rack has no tip circle to interfere with; this pair has two involutes and no
 such licence. lib/gears.py asserts it rather than trusting this comment.
 
+THE BORE GOES STRAIGHT THROUGH, AND THAT IS AN ARM-WIDTH DECISION, NOT A
+DETAIL. A blind horn pocket seats this part on the servo's BOSS TOP, 11.5 mm
+up an MG90S, and every one of those millimetres is standoff the forearm has
+to grow to keep the two tooth bands coplanar - 14.4 mm of extra arm width.
+Boring through at the hub press diameter lets the 6.0 output boss pass
+freely, drops the seat face to 6.70, and costs 9.6 mm instead. The press is
+unchanged: the 6.8 hub still presses over its full 3.0 height, at 4.80..7.80
+along the bore instead of at the bottom of a blind one. The old third cut, a
+5.5 driver access bore, already went all the way through - so the blind hub
+pocket was never buying anything.
+
+WHERE THOSE NUMBERS LIVE. Not here. lib/gears.py J3_MOUNT solves them from
+lib/servo.py's MG90S stack and J3_PAIR's face width, because their real
+consumer is forearm.py - which has to stand the servo off the fork plate by
+exactly the height they imply, and which was drawn as though that height
+were free to choose. Six typed-in numbers in this file could not tell it
+otherwise. _check_elbow.py asserts the two agree.
+
 THE HORN NUMBERS ARE MEASURED AND THEY ARE NOT THE DATASHEET'S. The model
 said the micro hub was 8.0; the caliper said 6.8 on 2026-08-28, which had
 made every press pocket in this project 1.35 loose. The same three numbers
@@ -25,8 +43,9 @@ through the teeth. The slot is a CROSS so either the single-arm or the
 four-arm horn keys at 90 deg increments; a joint that carries the whole
 forearm wants positive keying, not a press fit doing the work.
 
-Print orientation: TOOTH FACE ON THE BED, horn pocket up. Same as
-gripper_pinion, same face width, so one test print settles both.
+Print orientation: TOOTH FACE ON THE BED, bore vertical. Same as
+gripper_pinion, same face width, so one test print settles both. The bore is
+now through, so it prints as a clean vertical hole with no bridged floor.
 """
 
 import math
@@ -42,7 +61,7 @@ for _stale in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.'
 import adsk.core
 import adsk.fusion
 
-from lib.gears import J3_PAIR  # noqa: E402
+from lib.gears import J3_MOUNT, J3_PAIR  # noqa: E402
 from lib.palette import hints_for  # noqa: E402
 
 COMPONENT = 'robotarm_j3_pinion'
@@ -103,16 +122,33 @@ def run(_context: str):
           'centre distance to the J3 servo shaft - forearm.py reads the SAME\n'
           '           number out of lib/gears.py to place the lobe')
 
-    # --- horn interface. MEASURED 2026-08-28, see the docstring. ----------
-    param('hub_d', '6.95 mm',
-          'MG90S horn hub MEASURED 6.8 + press 0.15. The model said 8.0 and\n'
-          '           every press pocket in this project was 1.35 loose on it.')
-    param('hub_depth', '3.1 mm', 'horn hub 3.0 + 0.1 so the shaft sets the axial gap')
-    param('arm_w', '5.85 mm',
-          'horn arm width AT the r 6 trim: MEASURED 5.7 + press 0.15')
-    param('arm_r', '6.0 mm', 'horn arms TRIMMED to this radius at assembly')
-    param('arm_depth', '2.1 mm', 'horn blade 2.0 + 0.1 seating')
-    param('screw_d', '5.5 mm', 'driver access to the horn retaining screw')
+    # --- horn interface, from lib/gears.py J3_MOUNT. WRITTEN, NOT CHOSEN. --
+    # These were six typed-in numbers. They are now solved in one place from
+    # lib/servo.py's MG90S stack and J3_PAIR's face, because their real
+    # consumer is not this file - it is forearm.py, which has to stand the
+    # servo off the fork plate by exactly the height they imply, and which
+    # was drawn as though it could pick that height freely. See J3_MOUNT.
+    M = J3_MOUNT
+    param('seat_z', '%.4f mm' % M.seat_z,
+          'servo-z of THIS face - how far up the MG90S the pinion sits.\n'
+          '           lib/gears.py J3_MOUNT - do not edit here. forearm.py reads\n'
+          '           the SAME number to place the servo lobe.')
+    param('case_gap', '%.4f mm' % M.case_gap,
+          'derived in lib/gears.py: seat face to the servo case top')
+    param('bore_d', '%.4f mm' % M.bore_d,
+          'ONE bore, straight THROUGH: horn hub 6.8 MEASURED + 0.15 press.\n'
+          '           It presses on the hub over press_from..press_to and passes the\n'
+          '           6.0 output boss freely below that. Blind-pocketing it instead\n'
+          '           puts this face on the BOSS TOP and costs the forearm 4.8 mm of\n'
+          '           width for nothing.')
+    param('press_from', '%.4f mm' % M.press_from, 'derived: hub press begins')
+    param('press_to', '%.4f mm' % M.press_to, 'derived: hub press ends')
+    param('arm_w', '%.4f mm' % M.slot_w,
+          'horn arm width at the r 6 trim, MEASURED 5.7 + 0.15 press - the\n'
+          '           press is added ONCE, in lib/gears.py, not typed in pre-added')
+    param('arm_r', '%.4f mm' % M.slot_r, 'horn arms TRIMMED to this radius at assembly')
+    param('arm_depth', '%.4f mm' % M.slot_depth,
+          'derived: down to the horn blade top plus seating')
     param('lead_in', '0.5 mm', 'insertion lead-in chamfer')
     param('tooth_sink', '0.5 mm', 'how far a tooth profile reaches inside the root circle')
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
@@ -211,7 +247,11 @@ def run(_context: str):
 
     # ---- phase 2: horn interface ------------------------------------------
     t1 = design.timeline.count
-    disc('horn_hub_relief', val('hub_d'), '0.0 mm', PREFIX + 'hub_depth', CUT)
+    # ONE through bore. It was three cuts - a blind hub relief, a blind arm
+    # slot and a separate driver access bore - and the driver bore already
+    # went all the way through, so the blind hub pocket was never doing
+    # anything a through bore would not.
+    disc('horn_bore', val('bore_d'), '0.0 mm', PREFIX + 'face', CUT)
     for ang, tag in ((0, 'a'), (1, 'b')):
         sk_a = sketch(comp.xYConstructionPlane, 'sk_horn_arm_slot_' + tag)
         if ang == 0:
@@ -223,7 +263,6 @@ def run(_context: str):
         sk_a.sketchCurves.sketchLines.addTwoPointRectangle(p0, p1)
         extrude(profiles(sk_a, expected=1), CUT, '0.0 mm', PREFIX + 'arm_depth',
                 'horn_arm_slot_' + tag)
-    disc('horn_screw_bore', val('screw_d'), '0.0 mm', PREFIX + 'face', CUT)
     group(t1, PH_STEM)
 
     # ---- phase 3: finish --------------------------------------------------
@@ -282,12 +321,20 @@ def run(_context: str):
         'only %.2f mm between the horn arm tips (r %.2f) and the tooth roots '
         '(r %.2f) - trim the horn shorter or the pinion loses teeth'
         % (arm_wall, val('arm_r') * 10, P.r_root(P.z_pinion)))
-    hub_wall = P.r_root(P.z_pinion) - val('hub_d') * 10 / 2
+    hub_wall = P.r_root(P.z_pinion) - val('bore_d') * 10 / 2
     assert hub_wall >= 1.6, (
-        'only %.2f mm between the horn hub pocket and the tooth roots' % hub_wall)
-    assert val('hub_depth') + 1e-9 >= val('arm_depth'), (
-        'the hub pocket is shallower than the arm slot - the horn cannot seat')
-    assert val('face') > val('hub_depth'), 'the hub pocket goes straight through'
+        'only %.2f mm between the horn bore and the tooth roots' % hub_wall)
+    assert val('arm_depth') * 10 <= val('face') * 10 + 1e-6, (
+        'the horn arm slot is %.2f deep in a %.2f face'
+        % (val('arm_depth') * 10, val('face') * 10))
+    # The hub must finish BELOW the far face: that face looks at the fork
+    # plate across a running gap and a proud hub would rub it.
+    assert val('press_to') * 10 < val('face') * 10 - 1e-6, (
+        'the horn hub tops out at %.2f in a %.2f face - it stands proud and '
+        'will rub the forearm plate' % (val('press_to') * 10, val('face') * 10))
+    assert val('case_gap') * 10 >= 0.4 - 1e-6, (
+        'only %.2f mm between the pinion seat face and the servo case top'
+        % (val('case_gap') * 10))
 
     print('body: %r | material: %s | appearance: %s'
           % (body.name, body.material.name, used))
@@ -299,10 +346,14 @@ def run(_context: str):
     print('tooth thickness at pitch %.3f mm (target %.3f incl. backlash)'
           % (T['thk_pitch'], math.pi * P.module / 2 - P.backlash / 2))
     print('tip land %.3f mm - a pointed tooth would read 0' % (2 * T['ang_tip'] * T['r_tip']))
-    print('horn: hub %.2f x %.2f | cross slot r %.1f x %.2f wide x %.2f deep '
-          '| driver bore %.1f'
-          % (val('hub_d') * 10, val('hub_depth') * 10, val('arm_r') * 10,
-             val('arm_w') * 10, val('arm_depth') * 10, val('screw_d') * 10))
+    print('horn: %.2f bore THROUGH a %.2f face, hub press %.2f..%.2f | cross '
+          'slot r %.1f x %.2f wide x %.2f deep'
+          % (val('bore_d') * 10, val('face') * 10, val('press_from') * 10,
+             val('press_to') * 10, val('arm_r') * 10, val('arm_w') * 10,
+             val('arm_depth') * 10))
+    print('seat face sits %.2f up the MG90S (%.2f clear of its case top) - '
+          'forearm.py must stand the J3 lobe off to match'
+          % (val('seat_z') * 10, val('case_gap') * 10))
     print('walls: arm tips/roots %.2f | hub/roots %.2f mm' % (arm_wall, hub_wall))
     print('centre distance to the J3 servo shaft %.3f mm' % P.centre_distance)
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f'
