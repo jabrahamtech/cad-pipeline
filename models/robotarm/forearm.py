@@ -337,9 +337,6 @@ def run(_context: str):
           '           spans them. So the head, not the shank, is what sets how far\n'
           '           this standoff has to reach - sized on the shank first and the\n'
           '           counterbore came out 0.72 mm from the edge.')
-    param('bolt_clear_r', '%.4f mm' % (_FASTENERS['M3']['clearance'] / 2.0),
-          'half the M3 clearance the CAP is bored to. This file needs it to\n'
-          '           place the pilots so the cap\'s own holes clear the window.')
     param('cap_pilot_depth', '8.0 mm',
           'engagement into the standoff web, which is %.2f deep. Leaves 1.6.'
           % 9.6)
