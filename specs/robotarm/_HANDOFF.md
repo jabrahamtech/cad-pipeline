@@ -1,6 +1,7 @@
 # robotarm — handoff
 
-Rewritten 2026-08-30. Supersedes the 2026-08-26 version entirely. **The repo
+Rewritten 2026-08-30, amended later the same day (see §9). Supersedes the
+2026-08-26 version entirely. **The repo
 is the state; this file is the index to it.** Read this top to bottom before
 touching Fusion — sections 2 and 3 are the ones that will cost you a session
 if you skip them.
@@ -183,7 +184,15 @@ Module 1.25, 18T/36T, 20°, face 8.0, centre distance 33.950, contact ratio
 1.593, root stress 5.64 MPa of the 8.75 MPa cyclic allowable. 18T is the
 undercut floor (2/sin²20 = 17.1) and it is asserted, not commented.
 `GATE j3_mesh: PASS` — 0 of 420 flank points buried across a full tooth
-pitch, with a control that buries 102 when deliberately mis-phased.
+pitch, with a control that buries 116 when deliberately mis-phased.
+**This is now `models/robotarm/_check_elbow.py` and can be re-run.** It was
+prose here and nothing else: the script that first produced it was never
+committed, `lib/gears.py` had named a consumer that did not exist, and an
+ungated number in this project is a decoration. `_check_elbow` also carries
+`GATE j3_contract`, which reads each shared elbow number from the side that
+did NOT define it — including `B608ZZ.inner_race_od` from both ends, since
+the forearm shoulder must bear OUTSIDE the inner race and the axle collar
+INSIDE it, and either one backwards locks the joint solid.
 
 Three new parts build and gate: `j3_gear` (36T on the elbow axis),
 `j3_pinion` (18T on the MG90S horn), `j3_axle` (idler side, runs in a
@@ -237,38 +246,34 @@ g['run'](_context)
 ---
 
 ## 6. Open, in the order things block each other
-
-1. **DECIDE THE J3 DRIVE.** Nothing else in the elbow can proceed. Three
-   live options:
-   - **Offset spur pair as built.** 2:1, 90° of travel, done and gated.
-     Costs: the servo moves 33.95 mm off the elbow to y −11.05, ~7 mm of
-     forearm width, a new r 23.75 clearance cylinder about J3, and +45 g·cm
-     on J3 from the servo mass moving outboard.
-   - **Coaxial planetary at ~3.6:1.** Servo stays on the elbow axis, so the
-     entire forearm rework disappears. Costs 51° of travel and 8 printed
-     parts on plain pins. A true 2:1 needs the STAR form (fixed carrier,
-     ring output) at sun 34T / planet 17T / ring 68T, ring OD ~75 — a
-     normal ring-fixed planetary CANNOT do 2:1 at all, since the ratio is
-     `1 + Zr/Zs` and that is strictly greater than 2.
-   - **Belt.** See section 7 — this is what both reference arms actually
-     did, and it is the option with the least evidence against it.
-2. **`forearm.py` rework**, whichever drive wins. Servo lobe relocation,
-   the r 23.75 gear clearance cylinder, and the 608ZZ pocket (Ø22 × 7.0
-   from the plate's inner face, 0.5 shoulder outboard with a Ø13 bore) in
-   place of the flange counterbore.
+1. ~~DECIDE THE J3 DRIVE.~~ **DECIDED 2026-08-30: the offset spur pair.**
+   Belt and coaxial planetary are both dropped. See §9 for what that
+   decision actually costs, which is not what §7 priced it at.
+2. **`forearm.py` rework — BLOCKED on a shape decision, see §9.** The servo
+   lobe relocation, the gear clearance and the 608ZZ pocket (Ø22 × 7.0 from
+   the plate's inner face, 0.5 shoulder outboard with a Ø13 bore) are all
+   specified. What is not settled is how the relocated lobe joins back to
+   the fork plate, because the obvious answer does not survive the pinion's
+   own clearance circle. Note the J3 drive-side flange counterbore also has
+   to go: `j3_gear` has no flange, and leaving it would cut the journal's
+   bearing length from 7.5 to 5.0 against a hub built for the full plate.
 3. **`upper_arm.py` needs one Ø3.4 hole** on the elbow axis, through the
    cable duct, for the M3 that clamps `j3_gear` + upper arm + `j3_axle`
    into one rotating group. The gear cannot be flange-trapped — both its
-   stops are inboard.
+   stops are inboard. Independent of §9; can be done any time.
 4. **Re-run `_check_loads`** and confirm the 87 % → ~44 % and the payload.
+   The J3 servo now sits 33.95 mm toward the wrist rather than on the elbow
+   axis, which is +45 g·cm on J3. The extra width in §9 costs nothing here,
+   because it is along the joint axis.
 5. **Re-export the plates.** The J3 parts are on none of them, and the
    full-build plates in `exports/robotarm/plates/plate_[12]_v6.3mf` came
    from a document where `shoulder_bracket` still had the old arm length —
    geometry is identical and the ledger passes, but they are worth
    regenerating rather than trusted.
 
-Also standing: **how many spare 608ZZ does Jonathan actually have?** The
-geared elbow needs one beyond the three in the turntable.
+~~Also standing: how many spare 608ZZ does Jonathan actually have?~~
+**ANSWERED 2026-08-30: three or more spare**, beyond the three in the
+turntable. The geared elbow needs one. No longer a constraint.
 
 ---
 
@@ -315,3 +320,87 @@ per-joint reduction has no published equivalent. Lift pieces, not designs.
   radial. `_preview_arm.py` now asserts the face normal.
 - `base_lid` is ours; the printed legacy platter has no central opening at
   all, measured not assumed.
+
+---
+
+## 9. Amendment, 2026-08-30 — what the spur pair actually costs
+
+The decision in §6.1 was taken on a number this file got wrong, and the
+correction is large enough to be worth its own section.
+
+### The standoff was never free to choose
+
+§7 priced the offset spur pair at "~7 mm of forearm width". It is not a
+parameter. Three facts solve for it:
+
+- a servo's horn seat is a fixed height above the tab plane its mount clamps
+  (MG90S: `tab_below_top + tab_thk + boss_h` = 11.5 mm),
+- the pinion's tooth band must coincide with the gear's,
+- the gear's band is fixed by the fork plate it journals in (−20.30 … −28.30).
+
+Solved, the tab plane lands at **−39.80** against −25.40 today: **14.40 mm**
+of extra forearm width on the −X side only, not 7. It costs no elbow torque —
+the growth is along the joint axis — but the arm becomes asymmetric and the
+servo case hangs out to −58.30.
+
+**Cut to 9.60 mm** by boring `j3_pinion` straight through at the hub press
+diameter instead of blind-pocketing it, so the servo's own Ø6 output boss
+passes freely up the bore and the seat face drops from 11.5 to 6.70. The
+press is unchanged — the 6.8 hub still presses over its full 3.0, now at
+4.80…7.80 along the bore — and the part got lighter, 2654 → 2257 mm³.
+
+Thickening the pinion to swallow the boss in a *blind* pocket was priced
+first and does **not** work: the swallowed depth comes out of the pinion's
+own thickness, the pinion is bounded inboard by the fork plate, and it
+finishes 2.70 mm inside it needing a Ø25.4 relief that breaks into the J4
+flange counterbore.
+
+`lib/gears.py J3_MOUNT` now solves all of this from `lib/servo.py` and
+`J3_PAIR`, and asserts each failure mode rather than describing it. Six
+typed-in horn numbers used to live in `j3_pinion.py`, whose real consumer
+was always `forearm.py` — §3's recurring failure with the serial numbers
+filed off.
+
+### THE OPEN QUESTION: the standoff cannot be a solid block
+
+Relocating the J3 lobe to the pinion axis puts it at y −11.05, spanning
+y −22.90 … 11.60, z ±8.80. Two clearance cylinders then live inside the
+9.60 mm standoff band:
+
+| about | radius | why |
+|---|---|---|
+| the ELBOW (y −45) | 24.15 | the 36T gear turns here |
+| the PINION (y −11.05) | 12.90 | the 18T pinion turns here — **inside the lobe's own footprint** |
+
+The pinion circle is r 12.90 and the lobe is only 8.80 tall, so **it cuts the
+standoff clean through, top to bottom.** Inside the lobe height the only
+material still joining the lobe back to the fork plate is a web at the WRIST
+end, y −1.62 … 11.60 — 9.75 mm wide on the centreline, 13.22 mm at the
+lobe's top and bottom edges. The elbow-side remainder is inside the gear
+circle and is cut away too.
+
+**So the J3 servo becomes a cantilever off the J4 end of the forearm**,
+carrying its own 2.0 kg·cm stall reaction across a 9.60 mm standoff on a
+~10 mm web. That is a structural change to the part, not a detail.
+
+Going over the top of the pinion does not obviously rescue it: the pinion
+circle only clears at |z| ≥ 12.90, `fa_waist_z` is 12.0, and the silhouette
+at that station reaches roughly 12.9 — there is no room for a strap without
+growing the link's outline.
+
+Three ways out, none of them yet priced:
+
+1. **Accept the cantilever** and gate it — a stress check on the web, not a
+   clearance check. Nothing else changes.
+2. **Grow the silhouette at the J3 station** so a strap passes over and
+   under the pinion, making the standoff a closed yoke instead of a
+   cantilever. Costs mass on the forearm, which §4's `fa_l2` comment calls
+   the single highest-leverage number in the arm.
+3. **Put the centre distance in Z rather than Y** — servo directly above or
+   below the elbow instead of along the link. The gravity moment about J3
+   goes to roughly zero with the arm horizontal, better than the +45 g·cm
+   the Y placement costs. But the standoff then has to reach the lobe around
+   the OUTSIDE of the r 24.15 gear circle and the fork plate only reaches
+   r 13.775 at that station. Not obviously buildable; not yet drawn.
+
+Pick one before touching `forearm.py`. Everything else in §6 is unblocked.
