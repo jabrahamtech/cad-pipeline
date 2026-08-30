@@ -81,7 +81,12 @@ def run(_context: str):
     design.timeline.moveToEnd()
     need = ['turntable_stator', 'turntable_ring', 'shoulder_bracket', 'shoulder_hub',
             'wrist_hub', 'upper_arm', 'forearm', 'wrist_roll', 'wrist_rotator',
-            'pruner_shell', 'pruner_rack', 'pruner_blade', 'gripper_pinion']
+            'pruner_shell', 'pruner_rack', 'pruner_blade', 'gripper_pinion',
+            # The geared elbow. Without these J3 renders as a bare pivot and
+            # the picture quietly shows an arm that has no elbow drive - the
+            # same way it once showed a turret riding on nothing because the
+            # three 608ZZ were missing from this file.
+            'j3_gear', 'j3_pinion', 'j3_axle', 'j3_servo_cap']
     missing = [n for n in need if 'robotarm_' + n not in keep]
     assert not missing, (
         'not in the document: %r - run _check_ledger BATCH 0,1,2 first' % missing)
@@ -224,10 +229,58 @@ def run(_context: str):
     placed.append(('upper_arm', add(C('upper_arm'), M_ua)))
     placed.append(('forearm', add(C('forearm'), M_fa)))
     for sx, tag in ((+1, 'p'), (-1, 'm')):
-        placed.append(('hub_j3' + tag, add(C('wrist_hub'),
-                                           mul(M_fa, place_hub(sx, -l2, fa_in)))))
         placed.append(('hub_j4' + tag, add(C('wrist_hub'),
                                            mul(M_fa, place_hub(sx, 0.0, fa_in)))))
+
+    # ---- the geared elbow ---------------------------------------------------
+    # J3 IS NOT TWO wrist_hubs ANY MORE. The drive side carries j3_gear, the
+    # idler side j3_axle running in a 608ZZ, and the servo hangs outboard on
+    # j3_servo_cap over a standoff. Each frame is written as the images of the
+    # part's own axes in the forearm's, because "rotate it 90 degrees" is how
+    # the J2 preview bearings ended up tangential instead of radial.
+    po, fr = gv('fa_plate_out'), gv('fa_free')
+    so_ = gv('fa_j3_standoff')
+    y_pin = -l2 + gv('fa_j3_centre')
+    face = gv('jp_face')
+
+    def frame(origin, ax, ay, az):
+        m = M3()
+        m.setWithCoordinateSystem(P3(*origin), VEC(*ax), VEC(*ay), VEC(*az))
+        return m
+
+    # j3_gear: its +Z runs OUTBOARD on -X, and its z 0 is the disc's inner
+    # face, standing fa_free off the plate.
+    M_gear = frame((-(po + fr), -l2, 0.0), (0, 0, 1), (0, 1, 0), (-1, 0, 0))
+    # j3_pinion: coplanar teeth, so its seat face is the gear band's OUTBOARD
+    # end and its +Z runs back inboard.
+    M_pin = frame((-(po + fr + face), y_pin, 0.0), (0, 0, 1), (0, -1, 0), (1, 0, 0))
+    # j3_axle: hex face on the upper arm's socket FLOOR, journal running out.
+    M_axle = frame((gv('ua_half_x') - gv('ua_socket_d'), -l2, 0.0),
+                   (0, 0, 1), (0, -1, 0), (1, 0, 0))
+    # j3_servo_cap: seats on the standoff's end face; its local X runs along
+    # the arm and its +Z outboard.
+    M_cap = frame((-(po + so_), y_pin, 0.0), (0, 1, 0), (0, 0, -1), (-1, 0, 0))
+
+    for nm, mm_ in (('j3_gear', M_gear), ('j3_pinion', M_pin),
+                    ('j3_axle', M_axle), ('j3_servo_cap', M_cap)):
+        placed.append((nm, add(C(nm), mul(M_fa, mm_))))
+
+    # THE ASSERT THE BEARING PREVIEW DID NOT HAVE. Both gears must come out
+    # with their axes along the forearm's X - that is what a spur pair on
+    # parallel shafts means - and the pinion must land one centre distance
+    # from the elbow. A frame written with a sign flipped still renders as a
+    # confident-looking picture of a gearbox that cannot turn.
+    for nm, mm_ in (('j3_gear', M_gear), ('j3_pinion', M_pin)):
+        ax = mm_.getAsCoordinateSystem()[3]
+        assert abs(abs(ax.x) - 1.0) < 1e-9 and abs(ax.y) < 1e-9 and abs(ax.z) < 1e-9, (
+            '%s comes out with its axis at (%.3f, %.3f, %.3f) - a spur pair on '
+            'parallel shafts has both axes along X' % (nm, ax.x, ax.y, ax.z))
+    _o_g = M_gear.getAsCoordinateSystem()[0]
+    _o_p = M_pin.getAsCoordinateSystem()[0]
+    _d = math.hypot(_o_g.y - _o_p.y, _o_g.z - _o_p.z)
+    assert abs(_d - gv('fa_j3_centre')) < 1e-6, (
+        'the gears are %.3f mm apart and the pair is cut for %.3f'
+        % (_d * 10, gv('fa_j3_centre') * 10))
     placed.append(('wrist_roll', add(C('wrist_roll'), M_roll)))
     placed.append(('wrist_rotator', add(C('wrist_rotator'), M_rot)))
 
