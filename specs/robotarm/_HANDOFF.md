@@ -163,6 +163,8 @@ Two 2026-08-30 findings in the same family, both now gated:
 ### Printed already
 
 Everything below the wrist, plus the six-hub plate (marked 2H, 2, 3, 3, 4, 4).
+**As of 2026-08-30 the printed `forearm` is scrap and the printed `upper_arm`
+is one Ø3.4 hole short of usable** — see §6.5.
 **The `shoulder_hub` on that plate is scrap** — it is the un-installable
 flanged one. A corrected flangeless one is on the remaining plate.
 
@@ -300,10 +302,24 @@ g['run'](_context)
 
    The one weak number: `MESH_EFFICIENCY = 0.90` is ASSUMED for a printed
    PETG spur pair running dry, not measured. It is deliberately pessimistic.
-5. **Re-export the plates.** The J3 parts are on none of them, and the
-   full-build plates in `exports/robotarm/plates/plate_[12]_v6.3mf` came
-   from a document where `shoulder_bracket` still had the old arm length —
-   geometry is identical and the ledger passes, but they are worth
+5. **Re-export the plates — and TWO ALREADY-PRINTED PARTS ARE NOW STALE.**
+   This is the only open item left, and it needs a decision first:
+
+   - **`forearm` 15887.767 → 18322.471 mm³.** It is 9.60 mm wider on −X and
+     carries the whole gear train. The printed one is scrap; there is no
+     modifying it. **Reprint.**
+   - **`upper_arm` 45299.852 → 45207.244 mm³** — the difference is the one
+     Ø3.4 elbow bolt bore. Either reprint ~42 g of PETG, or drill the
+     printed one: it is on the J3 axis through the cable duct, and the two
+     Ø16 hex sockets at either end are a usable guide for getting it
+     concentric. Drilling is the cheap answer if the sockets guide it
+     honestly; that is a bench judgement, not a CAD one.
+
+   Then the new plate is `plate_remaining_v7`'s 12 pieces **plus** `j3_gear`,
+   `j3_pinion`, `j3_axle`, `forearm`, and `upper_arm` if it is not drilled.
+   The full-build plates in `exports/robotarm/plates/plate_[12]_v6.3mf` also
+   came from a document where `shoulder_bracket` still had the old arm
+   length — geometry is identical and the ledger passes, but they are worth
    regenerating rather than trusted.
 
 ~~Also standing: how many spare 608ZZ does Jonathan actually have?~~
