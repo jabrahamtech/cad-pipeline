@@ -57,6 +57,8 @@ for _stale in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.'
 import adsk.core
 import adsk.fusion
 
+from lib.bearings import B608ZZ  # noqa: E402 - the idler runs in one
+from lib.gears import J3_MOUNT, J3_PAIR  # noqa: E402 - the elbow reduction
 from lib.servo import CATALOG  # noqa: E402 - MEASURED lead bundle
 
 COMPONENT = 'robotarm_forearm'
@@ -68,13 +70,18 @@ PH_FORM = 'link form'
 PH_CLEAR = 'joint clearance'
 PH_PIVOT = 'pivot journals'
 PH_DRIVE = 'servo lobes'
+PH_ELBOW = 'elbow drive clearance'
 PH_CABLE = 'cable route'
 PH_FINISH = 'finish'
 
 # Probe hook: _probe_forearm_facet.py sets this False to build the plain body
 # and then try chamfer sizes against it. Nothing else touches it.
 FACET = True
-PHASES = [PH_FORM, PH_CLEAR, PH_PIVOT, PH_DRIVE, PH_CABLE, PH_FINISH]
+# Same hook for the lobe-corner fillet. The J3 lobe's INBOARD corners are cut
+# away by the gear and pinion clearance cylinders now, so which corners still
+# exist is a question to probe, not to assume.
+LOBE_FILLET = True
+PHASES = [PH_FORM, PH_CLEAR, PH_PIVOT, PH_ELBOW, PH_DRIVE, PH_CABLE, PH_FINISH]
 MATERIAL_NAME = 'PET Plastic'
 # _style.md rule 5: two-tone by PART. A link is light; the joints are dark.
 # COLOUR LIVES IN lib/palette.py, not here. It used to be typed in this
@@ -114,6 +121,9 @@ def run(_context: str):
 
     def wval(name):
         return ups.itemByName(WRIST + name).value
+
+    def sval(name):
+        return ups.itemByName(STYLE + name).value
 
     # --- SHARED joint contract ----------------------------------------------
     wrist('pivot_af', '16.0 mm',
@@ -159,18 +169,24 @@ def run(_context: str):
     param('bore_d', WRIST + 'hub_d + ' + PREFIX + 'rot', 'derived journal bore')
     param('cbore_d', WRIST + 'flange_d + ' + PREFIX + 'rot', 'derived flange counterbore')
     param('boss_r', PREFIX + 'cbore_d / 2 + ' + PREFIX + 'wall', 'derived pivot boss radius')
-    param('facet', PREFIX + 'plate_t / 5',
+    param('facet', '1.0 mm',
           'LOCAL, not sty_facet - _style.md rule 1 says the facet scales with\n'
           '           the volume it bevels, and these are 7.5 mm fork plates, not the\n'
           '           upper arm\'s 24 mm slab. A 4.0 shared facet on a 7.5 plate is not\n'
           '           a facet, it is most of the plate. And redefining sty_facet to\n'
           '           suit this part would silently re-cut every other part in the\n'
           '           document - that is the exact bug _check_ledger.py exists for.\n'
-          '           plate_t/5 = 1.50, and 1.50 is a CEILING, not a preference. The\n'
-          '           silhouette arc runs tangentially into the boss circles at both\n'
-          '           ends and has nowhere to run out; measured by probing the built\n'
-          '           body, 2.50 and 2.00 both fail ASM_BL_UNFIN_SHEET and 1.50 is the\n'
-          '           largest that computes. Do not raise it without re-probing.')
+          '           A PROBED CEILING, not a preference, and the ceiling MOVED when\n'
+          '           the J3 reduction landed. It was plate_t/5 = 1.50: measured\n'
+          '           against the built body, 2.50 and 2.00 failed ASM_BL_UNFIN_SHEET\n'
+          '           because the silhouette arc runs tangentially into the boss\n'
+          '           circles and has nowhere to run out, and 1.50 was the largest\n'
+          '           that computed. The J3 servo standoff now blends into the -X\n'
+          '           plate face as well, and on THAT face 1.50 and 1.25 both fail\n'
+          '           ASM_INCONS_FACE; 1.00 computes on both. Held as ONE number\n'
+          '           rather than one per face: the two faces bevel the same plate,\n'
+          '           and a part chamfered 1.50 on one side and 1.00 on the other\n'
+          '           reads as a bug. Do not raise it without re-probing BOTH faces.')
     param('waist_t', '3.5 mm',
           'wall thickness between the two pivot bosses. The bosses need 7.5 for the\n'
           '           journal + counterbore; the span between them does not, and this is\n'
@@ -210,6 +226,16 @@ def run(_context: str):
           '           are non-manifold and the fillet fails later - see PLAYBOOK.')
     param('lobe_z', PREFIX + 'case_w / 2 + ' + PREFIX + 'wall + 1.0 mm', 'derived lobe half height')
     param('lobe_pad', '3.5 mm', 'material past the outermost tab screw')
+    param('lobe_radius_j3', '4.5 mm',
+          'LOCAL, not sty_radius - and for the same reason fa_facet is local.\n'
+          '           The J3 lobe stopped being a pad on the plate when the reduction\n'
+          '           pushed it out on a standoff: its corner edge now runs 16.10 mm\n'
+          '           from inside the plate, through the gear clearance cut, to the\n'
+          '           servo face, and the faces either side of it change along the way.\n'
+          '           J4\'s 6.0 will not compute on it. PROBED against the built body:\n'
+          '           6.0 fails ASM_INCONS_FACE, 5.5 and 5.0 fail ASM_BL_CAP_COMPLEX,\n'
+          '           4.5 computes. A CEILING, not a preference. Do not raise it\n'
+          '           without re-probing.')
     # ---- LEAD KEYWAY -------------------------------------------------------
     # The servo cannot be installed without this. The whole case travels
     # through this window during assembly (the tabs land on the FAR face), so
@@ -235,6 +261,58 @@ def run(_context: str):
     param('pilot_d', '1.8 mm', 'servo screw pilot - design_rules, self-tapping into PETG')
     param('pilot_depth', '3.5 mm',
           'engagement. Must not break into the flange counterbore behind it - asserted.')
+    # --- THE GEARED ELBOW ---------------------------------------------------
+    # Every number here is READ, not chosen. The handoff priced this drive at
+    # "~7 mm of forearm width" and it was never a free parameter - see
+    # lib/gears.py J3_MOUNT, which solves it from the MG90S stack and the
+    # pair's face width, and specs/robotarm/_HANDOFF.md section 9.
+    _P, _M, _B = J3_PAIR, J3_MOUNT, B608ZZ
+    param('j3_centre', '%.5f mm' % _P.centre_distance,
+          'lib/gears.py J3_PAIR - do not edit here. The J3 servo shaft sits\n'
+          '           this far from the elbow, TOWARD THE WRIST, and j3_gear and\n'
+          '           j3_pinion cut their teeth from the same object.')
+    param('j3_band', PREFIX + 'free + %.5f mm + ' % _P.face + PREFIX + 'free',
+          'derived: the axial band the 36T gear turns in, out from the plate\n'
+          '           outer face - a running gap, the face width, another gap')
+    param('j3_gear_clear', '%.5f mm + ' % _P.r_tip(_P.z_gear) + PREFIX + 'free',
+          'derived: the radius the 36T sweeps about J3, plus clearance.\n'
+          '           NOTHING may stand inside this between the plate outer face and\n'
+          '           the servo lobe.')
+    param('j3_pin_clear', '%.5f mm + ' % _P.r_tip(_P.z_pinion) + PREFIX + 'free',
+          'derived: the same for the 18T about the SERVO axis. This one is the\n'
+          '           surprise - it is r %.2f and the lobe is only %.2f tall, so it\n'
+          '           cuts the standoff clean through and the lobe hangs off the J4\n'
+          '           end on a web. Priced in _HANDOFF.md section 9: 71x on\n'
+          '           interlayer shear, 1.6 %%%% of backlash in lost motion.'
+          % (_P.r_tip(_P.z_pinion) + 0.4, CATALOG['MG90S'].case_w / 2 + 1.6 + 1.0))
+    param('j3_standoff',
+          PREFIX + 'free + %.5f mm + %.5f mm - ' % (_P.face, _M.seat_z) + PREFIX + 'lobe_t',
+          'derived, and the whole cost of this drive: how far the J3 servo pad\n'
+          '           stands off the plate so the pinion lands coplanar with the gear.\n'
+          '           free + face + J3_MOUNT.seat_z - lobe_t. Boring the pinion\n'
+          '           through instead of blind-pocketing it is what makes seat_z 6.70\n'
+          '           rather than 11.50, and that is 4.8 mm of arm width.')
+
+    # --- 608ZZ at the idler side, in place of a flange counterbore ----------
+    # A gear mesh loads this axis RADIALLY and slop at the elbow is backlash
+    # at the tooth, which is the one thing a 2:1 cannot fix. j3_axle.py has
+    # the argument. Its inner race is the datum read from BOTH ends:
+    # j3_axle's collar must land INSIDE it, this shoulder OUTSIDE it, and
+    # _check_elbow.py asserts both.
+    param('brg_od', '%.4f mm' % _B.od, 'lib/bearings.py B608ZZ - do not edit here')
+    param('brg_w', '%.4f mm' % _B.width, 'lib/bearings.py B608ZZ')
+    param('brg_press', '0.02 mm',
+          'interference on the OUTER race. ASSUMED - it is j3_axle\'s number for\n'
+          '           the inner race applied to the other one, and a housing fit is not\n'
+          '           a shaft fit. GAUGE IT before printing a second one.')
+    param('brg_pocket_d', PREFIX + 'brg_od - ' + PREFIX + 'brg_press', 'derived')
+    param('brg_bore', '%.4f mm' % (_B.inner_race_od + 1.0),
+          'the retaining shoulder\'s bore. DERIVED from B608ZZ.inner_race_od,\n'
+          '           not typed: this plate does not turn, so its shoulder must bear\n'
+          '           OUTSIDE the inner race or it rubs it and locks the joint.')
+    param('brg_shoulder', PREFIX + 'plate_t - ' + PREFIX + 'brg_w',
+          'derived: what is left of the plate outboard of the pocket')
+
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
 
     # ---- idempotent rebuild --------------------------------------------------
@@ -357,14 +435,22 @@ def run(_context: str):
             mpt(sk, x0, 0, z0), mpt(sk, x1, 0, z1))
         return extrude(profiles(sk, expected=1), op, y0_expr, dy_expr, name)
 
-    def edge_along_x_at(y_c, z_c):
+    def edge_along_x_at(y_c, z_c, min_len=0.0):
+        """Edges running along X at one (y, z) corner, at least min_len long.
+
+        The length filter is not tidiness. The J3 lobe's INBOARD corner is now
+        SPLIT by the gear clearance cut into a 1.00 stub inside the plate and a
+        5.50 stub on the lobe; asking a 4.5 fillet to run along a 1.00 edge is
+        the ASM_INCONS_FACE this used to die on.
+        """
         col = adsk.core.ObjectCollection.create()
         for e in comp.bRepBodies.item(0).edges:
             b = e.boundingBox
             if (abs(b.minPoint.y - b.maxPoint.y) < val('tol')
                     and abs(b.minPoint.z - b.maxPoint.z) < val('tol')
                     and abs(b.minPoint.y - y_c) < val('tol')
-                    and abs(b.minPoint.z - z_c) < val('tol')):
+                    and abs(b.minPoint.z - z_c) < val('tol')
+                    and e.length >= min_len - 1e-9):
                 col.add(e)
         return col
 
@@ -373,7 +459,19 @@ def run(_context: str):
     # INBOARD along the arm so their mass sits between the joints, not past
     # them: J4's runs back from the wrist, J3's runs forward from the elbow.
     L2 = val('l2')
-    LOBES = [(+1, 0.0, -1, 'j4'), (-1, -L2, +1, 'j3')]
+    # J3's servo NO LONGER SITS ON THE ELBOW. It drives a 2:1 spur pair, so
+    # it sits one centre distance toward the WRIST and one standoff further
+    # outboard, with the gear train filling the space between. Both numbers
+    # are read from lib/gears.py, not chosen here.
+    Y_PIN = -L2 + val('j3_centre')
+    LOBES = [(+1, 0.0, -1, 'j4'), (-1, Y_PIN, +1, 'j3')]
+
+    def SO(jnt):
+        """The standoff expression for one lobe. J4 sits on its plate."""
+        return (' + ' + PREFIX + 'j3_standoff') if jnt == 'j3' else ''
+
+    def so_val(jnt):
+        return val('j3_standoff') if jnt == 'j3' else 0.0
 
     def lobe_geometry(y_p, run):
         """Case span, screw positions and lobe outline for one servo, in cm."""
@@ -413,6 +511,33 @@ def run(_context: str):
         '%.2f mm away - it would end blind inside the lobe and trap the cable'
         % (val('lead_key_l') * 10, _to_edge * 10))
 
+    # ---- the geared elbow, checked before any of it is cut ------------------
+    assert val('j3_standoff') >= val('j3_band') - 1e-9, (
+        'the J3 lobe stands off %.2f but the gear turns through %.2f of that '
+        'band - the servo pad would sit in the gear'
+        % (val('j3_standoff') * 10, val('j3_band') * 10))
+    _pocket_wall = (val('boss_r') - val('brg_pocket_d') / 2) * 10
+    assert _pocket_wall >= val('wall') * 10 - 1e-6, (
+        'only %.2f mm of boss wall around the %.2f 608ZZ pocket - the boss has '
+        'to grow' % (_pocket_wall, val('brg_pocket_d') * 10))
+    assert val('brg_shoulder') * 10 >= 0.4 - 1e-6, (
+        'the 608ZZ pocket leaves only %.2f mm of retaining shoulder'
+        % (val('brg_shoulder') * 10))
+    assert val('brg_bore') * 10 > B608ZZ.inner_race_od, (
+        'the retaining shoulder bores %.2f and the 608 inner race reaches '
+        '%.2f - this plate does not turn, so it would rub the INNER race and '
+        'lock the joint' % (val('brg_bore') * 10, B608ZZ.inner_race_od))
+    assert val('brg_bore') * 10 < B608ZZ.od, (
+        'the retaining shoulder bores %.2f against a %.2f bearing OD - it '
+        'retains nothing' % (val('brg_bore') * 10, B608ZZ.od))
+    # The whole reason the standoff is a web and not a block. Stated here so
+    # the geometry below cannot quietly stop being true.
+    assert val('j3_pin_clear') > val('lobe_z'), (
+        'the pinion clears at r %.2f and the lobe is %.2f tall, so the pinion '
+        'circle does NOT cut the standoff through - the web analysis in '
+        '_HANDOFF.md section 9 no longer describes this part'
+        % (val('j3_pin_clear') * 10, val('lobe_z') * 10))
+
     def plate(sx):
         """(start expression, distance expression) for one side wall."""
         if sx > 0:
@@ -440,12 +565,15 @@ def run(_context: str):
                       2 * val('boss_r'), x0, dx, JOIN)
     for sx, y_p, run, jnt in LOBES:
         _, _, _, lo, hi = lobe_geometry(y_p, run)
+        # ONE block from inside the plate out to the tab plane. For J3 that
+        # is standoff + lobe; the clearance phase then carves the gear and
+        # the pinion out of it, which is what makes the standoff a web rather
+        # than something drawn by hand and gone stale.
         if sx > 0:
             x0 = PREFIX + 'plate_out - ' + PREFIX + 'lobe_over'
-            dx = PREFIX + 'lobe_t + ' + PREFIX + 'lobe_over'
         else:
-            x0 = '-(' + PREFIX + 'plate_out + ' + PREFIX + 'lobe_t)'
-            dx = PREFIX + 'lobe_t + ' + PREFIX + 'lobe_over'
+            x0 = '-(' + PREFIX + 'plate_out' + SO(jnt) + ' + ' + PREFIX + 'lobe_t)'
+        dx = PREFIX + 'lobe_t + ' + PREFIX + 'lobe_over' + SO(jnt)
         yz_rect('lobe_' + jnt, lo, hi, -val('lobe_z'), val('lobe_z'), x0, dx, JOIN)
     group(t0, PH_FORM)
 
@@ -476,23 +604,60 @@ def run(_context: str):
             cb0 = PREFIX + 'plate_out - ' + PREFIX + 'cbore_depth'
         else:
             cb0 = '-' + PREFIX + 'plate_out'
-        for y_p, jnt in ((0.0, 'j4'), (-L2, 'j3')):
-            yz_circle('bore_%s_%s' % (jnt, tag), y_p, 0.0, val('bore_d'), x0, dx, CUT)
-            yz_circle('cbore_%s_%s' % (jnt, tag), y_p, 0.0, val('cbore_d'),
-                      cb0, PREFIX + 'cbore_depth', CUT)
+        # J4 is untouched by the reduction: a journal bore and a flange
+        # counterbore in each plate, same as every other joint in the arm.
+        yz_circle('bore_j4_%s' % tag, 0.0, 0.0, val('bore_d'), x0, dx, CUT)
+        yz_circle('cbore_j4_%s' % tag, 0.0, 0.0, val('cbore_d'),
+                  cb0, PREFIX + 'cbore_depth', CUT)
+        if sx < 0:
+            # J3 DRIVE SIDE. j3_gear's O20 journal runs in this bore - but
+            # that part has NO FLANGE (its gear disc is 47.5 and sits proud
+            # of the face), so the counterbore that retains every other hub
+            # in this arm is DELETED here. Leaving it would cut the journal's
+            # bearing length from 7.5 to 5.0 against a hub whose collar is
+            # built for the whole plate - and j3_gear.py asserts fa_plate_t
+            # is that whole 7.5, so the two would silently disagree.
+            yz_circle('bore_j3_%s' % tag, -L2, 0.0, val('bore_d'), x0, dx, CUT)
+        else:
+            # J3 IDLER SIDE. A 608ZZ, not a printed journal: the mesh loads
+            # this axis radially and slop here is backlash at the tooth,
+            # which is the one thing a 2:1 cannot fix. Pocketed from the
+            # INNER face and retained by what is left of the plate outboard
+            # of it - a shoulder whose bore must clear the INNER race, or
+            # this stationary plate rubs it and locks the joint.
+            yz_circle('brg_bore_j3_%s' % tag, -L2, 0.0, val('brg_bore'), x0, dx, CUT)
+            yz_circle('brg_pocket_j3_%s' % tag, -L2, 0.0, val('brg_pocket_d'),
+                      PREFIX + 'plate_in', PREFIX + 'brg_w', CUT)
     group(t2, PH_PIVOT)
+
+    # ---- phase 3b: elbow drive clearance ---------------------------------------
+    # The gear and the pinion both turn in the band between the plate outer
+    # face and the servo lobe, and BOTH are cut out of the block above rather
+    # than drawn around. The pinion's is the one that surprises: r 12.90
+    # against a lobe only 8.80 tall, so it cuts the standoff through top to
+    # bottom and what is left joining the lobe to the plate is a web at the
+    # WRIST end. That is priced in _HANDOFF.md section 9 and it passes.
+    t2b = design.timeline.count
+    band0 = '-(' + PREFIX + 'plate_out + ' + PREFIX + 'j3_standoff)'
+    bandd = PREFIX + 'j3_standoff'
+    yz_circle('gear_sweep_j3', -L2, 0.0, 2 * val('j3_gear_clear'), band0, bandd, CUT)
+    yz_circle('pinion_sweep_j3', Y_PIN, 0.0, 2 * val('j3_pin_clear'),
+              band0, bandd, CUT)
+    group(t2b, PH_ELBOW)
 
     # ---- phase 4: servo lobes ----------------------------------------------------
     t3 = design.timeline.count
     for sx, y_p, run, jnt in LOBES:
         c0, c1, screws, _, _ = lobe_geometry(y_p, run)
         if sx > 0:
-            win0, wind = PREFIX + 'plate_out', PREFIX + 'lobe_t'
-            pil0 = PREFIX + 'plate_out + ' + PREFIX + 'lobe_t - ' + PREFIX + 'pilot_depth'
-        else:
-            win0 = '-(' + PREFIX + 'plate_out + ' + PREFIX + 'lobe_t)'
+            win0 = PREFIX + 'plate_out' + SO(jnt)
             wind = PREFIX + 'lobe_t'
-            pil0 = '-(' + PREFIX + 'plate_out + ' + PREFIX + 'lobe_t)'
+            pil0 = (PREFIX + 'plate_out' + SO(jnt) + ' + ' + PREFIX + 'lobe_t - '
+                    + PREFIX + 'pilot_depth')
+        else:
+            win0 = '-(' + PREFIX + 'plate_out' + SO(jnt) + ' + ' + PREFIX + 'lobe_t)'
+            wind = PREFIX + 'lobe_t'
+            pil0 = '-(' + PREFIX + 'plate_out' + SO(jnt) + ' + ' + PREFIX + 'lobe_t)'
         yz_rect('window_' + jnt,
                 c0 - val('loc') / 2, c1 + val('loc') / 2,
                 -(val('case_w') + val('loc')) / 2, (val('case_w') + val('loc')) / 2,
@@ -522,17 +687,31 @@ def run(_context: str):
 
     # ---- phase 6: finish ------------------------------------------------------------
     t5 = design.timeline.count
-    col = adsk.core.ObjectCollection.create()
+    # ONE FILLET PER LOBE, NOT ONE FOR BOTH. They no longer take the same
+    # radius - see fa_lobe_radius_j3 - and a single edge set would fail whole
+    # rather than fail the corner that actually cannot carry it.
+    n_fillet, fillet_note = 0, []
     for sx, y_p, run, jnt in LOBES:
         _, _, _, lo, hi = lobe_geometry(y_p, run)
+        if jnt == 'j3':
+            rad_expr, rad = PREFIX + 'lobe_radius_j3', val('lobe_radius_j3')
+        else:
+            rad_expr, rad = STYLE + 'radius', sval('radius')
+        col = adsk.core.ObjectCollection.create()
+        skipped = 0
         for y_c in (lo, hi):
             for z_c in (-val('lobe_z'), val('lobe_z')):
-                for e in edge_along_x_at(y_c, z_c):
+                skipped += (edge_along_x_at(y_c, z_c).count
+                            - edge_along_x_at(y_c, z_c, rad).count)
+                for e in edge_along_x_at(y_c, z_c, rad):
                     col.add(e)
-    if col.count:
-        f_inp = fil.createInput()
-        f_inp.addConstantRadiusEdgeSet(col, V(STYLE + 'radius'), True)
-        fil.add(f_inp).name = 'lobe_corners'
+        fillet_note.append('%s r%.1f on %d edges (%d too short)'
+                           % (jnt, rad * 10, col.count, skipped))
+        if col.count and LOBE_FILLET:
+            f_inp = fil.createInput()
+            f_inp.addConstantRadiusEdgeSet(col, V(rad_expr), True)
+            fil.add(f_inp).name = 'lobe_corners_' + jnt
+            n_fillet += col.count
     # POLYGONAL: facet the OUTLINE of each fork plate. The plate's outer face
     # carries several closed curves - the boss circle, the journal counterbore,
     # the lobe blends - and only the outline reaches the body's z extreme at
@@ -620,8 +799,31 @@ def run(_context: str):
     print('box beam: 2 walls %.1f thick + rails %.1f top and bottom, duct %.1f x %.1f'
           % (val('waist_t') * 10, val('rail_z') * 10,
              val('plate_in') * 20, val('duct_z') * 20))
-    print('POLYGONAL: %.2f mm facet (plate_t/5, LOCAL, probed ceiling) on %d plate-outline edges'
+    print('POLYGONAL: %.2f mm facet (LOCAL, probed ceiling on BOTH faces) on %d plate-outline edges'
           % (val('facet') * 10, n_face))
+    print('lobe corners: %s' % ' | '.join(fillet_note))
+    _y0 = Y_PIN + val('j3_pin_clear')
+    _hi = max(lobe_geometry(Y_PIN, +1)[4], lobe_geometry(Y_PIN, +1)[3])
+    print('')
+    print('GEARED ELBOW: J3 servo moved %.2f mm toward the wrist (y %.2f) and '
+          '%.2f mm out' % (val('j3_centre') * 10, Y_PIN * 10,
+                           val('j3_standoff') * 10))
+    print('   gear turns at r %.2f, pinion at r %.2f, both in the %.2f band off '
+          'the plate face' % (val('j3_gear_clear') * 10,
+                              val('j3_pin_clear') * 10, val('j3_band') * 10))
+    print('   the pinion circle (r %.2f) is taller than the lobe (%.2f), so the '
+          'standoff' % (val('j3_pin_clear') * 10, val('lobe_z') * 10))
+    print('   survives only as a web at the WRIST end, y %.2f .. %.2f - '
+          '%.2f mm of it' % (_y0 * 10, _hi * 10, (_hi - _y0) * 10))
+    print('   608ZZ: %.2f pocket x %.1f deep from the plate INNER face, %.2f '
+          'shoulder' % (val('brg_pocket_d') * 10, val('brg_w') * 10,
+                        val('brg_shoulder') * 10))
+    print('   shoulder bores %.1f - OUTSIDE the %.1f inner race, so the '
+          'stationary plate bears on the OUTER one'
+          % (val('brg_bore') * 10, B608ZZ.inner_race_od))
+    print('   J3 drive-side flange counterbore DELETED - j3_gear has no flange '
+          'and its journal is built for the full %.1f plate' % (val('plate_t') * 10))
+    print('')
     print('WEB ON THE CENTRELINE: %.1f mm between the two swings '
           '(J4 takes %.1f, J3 takes %.1f)' % (
               web_at_axis * 10, wval('sweep_r') * 10, val('elbow_clear') * 10))

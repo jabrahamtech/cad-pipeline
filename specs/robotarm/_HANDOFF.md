@@ -249,14 +249,21 @@ g['run'](_context)
 1. ~~DECIDE THE J3 DRIVE.~~ **DECIDED 2026-08-30: the offset spur pair.**
    Belt and coaxial planetary are both dropped. See §9 for what that
    decision actually costs, which is not what §7 priced it at.
-2. **`forearm.py` rework — BLOCKED on a shape decision, see §9.** The servo
-   lobe relocation, the gear clearance and the 608ZZ pocket (Ø22 × 7.0 from
-   the plate's inner face, 0.5 shoulder outboard with a Ø13 bore) are all
-   specified. What is not settled is how the relocated lobe joins back to
-   the fork plate, because the obvious answer does not survive the pinion's
-   own clearance circle. Note the J3 drive-side flange counterbore also has
-   to go: `j3_gear` has no flange, and leaving it would cut the journal's
-   bearing length from 7.5 to 5.0 against a hub built for the full plate.
+2. ~~`forearm.py` rework~~ **DONE 2026-08-30, on option 1.** Servo lobe at
+   y −11.05 on a 9.60 mm standoff; gear (r 24.15) and pinion (r 12.90)
+   clearance both CUT out of that block rather than drawn around it; 608ZZ
+   pocket Ø21.98 × 7.0 from the plate inner face with a 0.50 shoulder bored
+   Ø13.0; J3 drive-side flange counterbore deleted (`j3_gear` has no flange,
+   and leaving it would cut the journal's bearing length from 7.5 to 5.0
+   against a hub built for the full plate). forearm 15887.767 → 18322.471 mm³,
+   −X extent 25.40 → 35.00. **`GATE j3_mesh` and `GATE j3_contract` both
+   PASS**, 8 contract terms checked and 0 absent.
+
+   Two probed ceilings MOVED and both are recorded in the file:
+   `fa_lobe_radius_j3` is a new LOCAL 4.5 (J4 keeps sty_radius 6.0 — 6.0
+   fails ASM_INCONS_FACE on the J3 lobe, 5.5 and 5.0 fail ASM_BL_CAP_COMPLEX),
+   and `fa_facet` drops 1.50 → **1.00**, because the standoff now blends into
+   the −X plate face and 1.50 and 1.25 both fail ASM_INCONS_FACE there.
 3. ~~`upper_arm.py` needs one Ø3.4 hole~~ **DONE 2026-08-30.** The bore runs
    the full width on the J3 axis, through the cable duct; upper_arm 45299.852
    → 45207.244 mm³. Swept with `pointContainment`, 0 of 96 stations blocked,
@@ -423,6 +430,8 @@ decision does not turn on a factor of two, or of ten.
 
 **Recommendation: take option 1.** Options 2 and 3 buy stiffness that is
 already 60× more than the joint can use, and both cost real geometry.
+
+**TAKEN 2026-08-30 and built — see §6.2.** Both elbow gates pass.
 
 Three ways out:
 
