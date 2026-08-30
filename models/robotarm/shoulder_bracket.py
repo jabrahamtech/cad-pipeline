@@ -106,6 +106,9 @@ MATERIAL_NAME = 'PET Plastic'
 # file and sixteen others, so a re-theme meant editing seventeen files
 # and hoping you found them all.
 from lib.palette import hints_for  # noqa: E402
+from lib.servo import CATALOG as _SERVOS  # noqa: E402
+
+_SG_HORN = _SERVOS['SG90']
 APPEARANCE_HINTS = hints_for('shoulder_bracket')
 
 
@@ -206,7 +209,14 @@ def run(_context: str):
            '           is 4.0 at its narrowest - and even a constant 4.4 would only\n'
            '           have taken it outboard of r 13.5. gauge_horn v1 CROSS, first\n'
            '           drop, 2026-08-28.' % (micro_arm_w(_HORN_R_TIP), _HORN_CLEAR))
-    turret('horn_z', '2.4 mm', 'blade thickness 2.0 + 0.4 seating. At the old 1.8 a\n           real 2.0 blade stood proud and the rotor rode the horn, not the race\n           - horn audit. Pocket depth into this underside')
+    turret('horn_z', '%.4f mm' % (_SG_HORN.horn_hub_h + 0.4),
+           'derived: the horn\'s FULL protrusion above the output collar,\n'
+           '           plus a 0.4 seating gap. NOT "blade thickness 2.0 + 0.4" -\n'
+           '           what goes into this pocket is the whole horn and the splined\n'
+           '           HUB stands proud of the blade. Pocket depth into this underside.\n'
+           '           2026-08-30, from the bench: the rotor would not sit down on\n'
+           '           its races. See ts_horn_seat - raising this number alone had\n'
+           '           never once changed the clearance.')
     turret('screw_bore', '6.0 mm', 'driver access to the horn screw, up the centre')
 
     style('ef', '0.4 mm', 'elephant-foot chamfer, functional faces - design_rules')

@@ -73,6 +73,9 @@ MATERIAL_NAME = 'PET Plastic'
 # file and sixteen others, so a re-theme meant editing seventeen files
 # and hoping you found them all.
 from lib.palette import hints_for  # noqa: E402
+from lib.servo import CATALOG as _SERVOS  # noqa: E402
+
+_SG_HORN = _SERVOS['SG90']
 APPEARANCE_HINTS = hints_for('turntable_stator')
 
 
@@ -166,7 +169,14 @@ def run(_context: str):
     turret('horn_w_tip', '4.84 mm',
            'SHARED - micro_arm_w(16.4) + 0.4. THE SLOTS ARE TAPERED.')
     turret('horn_r_root', '6.5 mm', 'SHARED - where the tapered slots start')
-    turret('horn_z', '2.4 mm', 'blade thickness 2.0 + 0.4 seating. At the old 1.8 a\n           real 2.0 blade stood proud and the rotor rode the horn, not the race\n           - horn audit. Pocket depth into the rotor underside')
+    turret('horn_z', '%.4f mm' % (_SG_HORN.horn_hub_h + 0.4),
+           'derived: the horn\'s FULL protrusion above the output collar,\n'
+           '           plus a 0.4 seating gap. NOT "blade thickness 2.0 + 0.4" -\n'
+           '           what goes into this pocket is the whole horn and the splined\n'
+           '           HUB stands proud of the blade. Pocket depth into the rotor underside.\n'
+           '           2026-08-30, from the bench: the rotor would not sit down on\n'
+           '           its races. See ts_horn_seat - raising this number alone had\n'
+           '           never once changed the clearance.')
     turret('screw_bore', '6.0 mm', 'driver access to the horn screw, up the rotor centre')
 
     style('ef', '0.4 mm', 'elephant-foot chamfer, functional faces - design_rules')
@@ -447,10 +457,41 @@ def run(_context: str):
     # higher than "horn top flush with the race face" - which is what this was,
     # and it left the blade sitting 1.8 mm short of the slot it is meant to
     # drive. J1 would not have turned at all.
-    deck_z = race_z + tval('horn_z') - (val('tab_below_top') + val('tab_thk')
-                                        + val('boss_h') + val('horn_hub_h'))
+    # THE SEATING GAP, AND IT WAS NEVER IN THE STACK. tt_horn_z used to
+    # cancel out of this derivation entirely: deck_z = race_z + horn_z - K
+    # gives horn_top = deck_z + K = race_z + horn_z, which IS the pocket
+    # ceiling. Exactly zero clearance, for any value of horn_z. That is why
+    # raising it 1.8 -> 2.4 in August changed nothing except lowering the
+    # servo 0.6 - the horn went on touching the ceiling and the rotor went on
+    # riding the horn instead of its races. Jonathan, at the bench, 2026-08-30:
+    # "if we put the horn on the base gear the turret plate does not touch
+    # the bearings."
+    #
+    # The gap is subtracted HERE, where the servo is positioned, because the
+    # pocket depth appears on both sides of that equation and anything folded
+    # into it alone does nothing at all.
+    param('horn_seat', '0.4 mm',
+          'clearance between the top of the FITTED horn and the ceiling of the\n'
+          '           rotor pocket. Subtracted from the deck so it cannot cancel.')
+    deck_z = race_z + tval('horn_z') - val('horn_seat') - (
+        val('tab_below_top') + val('tab_thk')
+        + val('boss_h') + val('horn_hub_h'))
     horn_top = deck_z + (val('tab_below_top') + val('tab_thk')
                          + val('boss_h') + val('horn_hub_h'))
+
+    # THE LEAD GROOVE TRACKS THE DECK, because the deck keeps moving and the
+    # groove was a typed 1.2. Derived here, where deck_z is finally known,
+    # from the same bundle top edge the assert further down tests - so the
+    # number and its check cannot drift apart. Deepening the horn pocket
+    # raised this servo 1.0 and the seating gap lowered it 0.4; net +0.6 put
+    # the bundle straight into the plate, and the assert caught it.
+    _sg0 = CATALOG['SG90']
+    _cb0 = (deck_z * 10) - (_sg0.case_h - _sg0.tab_below_top - _sg0.tab_thk)
+    _need_groove = _cb0 + _sg0.lead_bundle_dia * 1.5
+    param('lead_groove_d', '%.4f mm' % max(1.2, _need_groove + 0.2),
+          'DERIVED from the deck, not typed: deep enough for the bundle\'s TOP\n'
+          '           EDGE where the servo actually sits, plus 0.2. Was 1.2, which was\n'
+          '           right for a deck that has since moved twice.')
     blade_bottom = horn_top - val('horn_blade_t')
     case_bottom = deck_z - (val('case_h') - val('tab_below_top') - val('tab_thk'))
     cheek_top = tval('axle_z') + val('cheek_over')
@@ -515,10 +556,27 @@ def run(_context: str):
         'the horn blade bottoms at z %.2f and the rotor face is at %.2f - the blade '
         'never enters the cross pocket and the yaw servo drives nothing'
         % (blade_bottom * 10, race_z * 10))
-    assert horn_top <= race_z + tval('horn_z') + 1e-9, (
-        'the horn stands %.2f proud of the rotor\'s pocket ceiling - the rotor '
-        'would rest on the horn instead of on its rollers'
-        % ((horn_top - race_z - tval('horn_z')) * 10))
+    # STRICTLY LESS, BY THE SEATING GAP. The old form was <= and passed at
+    # exact equality - which is precisely the state that got printed: horn top
+    # flush with the pocket ceiling, nothing left for a horn 0.1 thicker than
+    # its datasheet or a pocket 0.1 shallow off the printer.
+    _gap = (race_z + tval('horn_z')) - horn_top
+    assert _gap >= val('horn_seat') - 1e-9, (
+        'only %.2f mm between the horn top and the rotor pocket ceiling, and '
+        '%.2f is wanted - the rotor rests on the horn, not on its rollers'
+        % (_gap * 10, val('horn_seat') * 10))
+
+    # AND THE BLADE MUST REACH INTO THE SLOT FAR ENOUGH TO DRIVE IT. Read
+    # conservatively: blade sitting ON the collar with the hub proud above it,
+    # which is lib/gears.py's reading of the same horn. If the other reading
+    # is right there is MORE engagement than this asserts, never less.
+    _blade_lo = horn_top - val('horn_hub_h')
+    _blade_hi = _blade_lo + val('horn_blade_t')
+    _engage = min(_blade_hi, race_z + tval('horn_z')) - max(_blade_lo, race_z)
+    assert _engage >= val('horn_blade_t') - 1e-9, (
+        'only %.2f mm of the %.2f blade is inside the rotor cross pocket - '
+        'that is all there is to turn the whole arm with'
+        % (_engage * 10, val('horn_blade_t') * 10))
     assert val('axle_len') > tval('roller_w'), (
         'the stub is shorter than the bearing - the washer would clamp the axle end')
     assert deck_z > plate_t + 1e-9, (
@@ -764,6 +822,11 @@ def run(_context: str):
     print('RACE FACE z %.2f = axle %.2f + 608 OD/2. Rotor rim top %.2f, ring under '
           '%.2f.' % (race_z * 10, tval('axle_z') * 10,
                      (race_z + tval('disc_t')) * 10, ring_under * 10))
+    print('J1 HORN STACK: deck %.2f, horn top %.2f, pocket ceiling %.2f -> '
+          '%.2f of seating' % (deck_z * 10, horn_top * 10,
+                               (race_z + tval('horn_z')) * 10, _gap * 10))
+    print('  blade %.2f..%.2f against a rotor face at %.2f: %.2f mm of it is in '
+          'the slot' % (_blade_lo * 10, _blade_hi * 10, race_z * 10, _engage * 10))
     print('SG90: tabs bear at z %.2f, case bottom z %.2f (into the platter column)'
           % (deck_z * 10, case_bottom * 10))
     print('  horn blade z %.2f..%.2f sits IN the rotor cross pocket z %.2f..%.2f'

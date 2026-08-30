@@ -601,3 +601,94 @@ that must find material.
 Still NOT gated: the 608ZZ's own journey into its pocket from inside the
 fork, and whether the horn's arms can be got into the pinion's cross slot by
 feel. Both are bench questions this gate does not answer.
+
+---
+
+## 11. Bench, 2026-08-30 — J1: the seating gap that was never in the stack
+
+Jonathan, with the parts in hand: *"if we put the horn on the base gear the
+turret plate does not touch the bearings."*
+
+**`tt_horn_z` cancelled out of its own derivation.** `turntable_stator` set the
+servo deck as
+
+```
+deck_z   = race_z + horn_z − K        K = tab_below_top + tab_thk + boss_h + horn_hub_h
+horn_top = deck_z + K = race_z + horn_z          ← horn_z cancels
+```
+
+and `race_z + horn_z` **is the pocket ceiling**. So the horn top met the ceiling
+exactly, at **0.000 mm of clearance, for every value of `horn_z`** — and the
+assert guarding it was `<=`, which passes at equality.
+
+That is why the August repair did nothing. `tt_horn_z` was raised 1.8 → 2.4
+for this exact symptom ("a real 2.0 blade stood proud and the rotor rode the
+horn, not the race"). It lowered the servo 0.6 and left the clearance at 0.000.
+Raising it again would have done the same.
+
+### The fix
+
+- **`ts_horn_seat` = 0.4**, subtracted where the servo is *positioned*. Folded
+  into the pocket depth alone it cancels; it has to go on the deck.
+- **`tt_horn_z` is derived now**, `horn_hub_h + 0.4` = **3.4**, not a typed 2.4
+  labelled "blade 2.0 + 0.4 seating". What enters that pocket is the whole
+  horn, and the splined hub stands proud of the blade.
+- The `<=` assert is now a real gap test, and a second assert requires the
+  **full blade thickness** to be inside the cross pocket — read conservatively,
+  so the other reading of the horn gives more engagement, never less.
+- **`ts_lead_groove_d` is derived from the deck** (1.2 → 1.5). It was typed,
+  the deck has moved twice, and moving it again drove the bundle into the
+  plate. The existing assert caught that immediately.
+
+Measured after: horn top **27.10**, pocket ceiling **27.50**, **0.40 of
+seating**; blade **24.10…26.10** against a rotor face at 24.10 — the full 2.00
+in the slot.
+
+### THE COST, AND IT IS A DECISION
+
+Both parts are in the "printed, still good" list and this **scraps both**:
+`shoulder_bracket` 55812 → 55508 (45.8 g) and `turntable_stator` 35594 →
+35743 (29.5 g). **~75 g of reprints.**
+
+A cheaper variant exists: **the seating gap alone**, leaving `tt_horn_z` at
+2.4. Only `turntable_stator` reprints (29.5 g) and `shoulder_bracket` survives
+untouched. It costs blade engagement, and how much depends on a number nobody
+has calipered — see below.
+
+### The horn ambiguity this exposed
+
+`lib/gears.py` and `turntable_stator.py` disagree about the same SG90 horn:
+
+| | where the blade sits |
+|---|---|
+| `lib/gears.py` | underside **on** the collar; hub stands 1.0 proud above it |
+| `turntable_stator.py` | blade floats **1.0 above** the collar |
+
+Both put the horn top in the same place, so both survive the fix above. They
+differ by 1.0 mm in blade position, which is exactly the engagement the cheap
+variant would live or die on. **One caliper reading settles it:** with a horn
+pressed on, the height from the servo's case top to the top of the horn, and
+the blade's own thickness.
+
+## 12. Bench, 2026-08-30 — the servos do not fit their pockets
+
+Jonathan: *"none of the servos fit properly into the holes or gears you have
+made."*
+
+Not diagnosed, because it cannot be from CAD. What is known:
+
+- **Every servo window is cut at case + 0.2 total** — 0.1 per side, on a
+  printed pocket, around a **datasheet** case. After print shrinkage that is
+  zero or negative. `lib/servo.py` argues a loose case pocket costs nothing
+  because the tab plane is the datum; 0.1 per side is not a loose pocket.
+- **`tab_hole_pitch` for the MG90S is 27.5 and DERIVED** — no drawing states
+  it. `forearm.py` carries the words *"CALIPER before printing anything that
+  screws to these tabs"* and the forearm was printed anyway.
+- **`exports/robotarm/gauge_verify_v2.3mf` exists and has never been printed.**
+  Its stations are the SG90 window, the MG995 bed, the MG90S lobe at the
+  derived 27.5 pitch, and the turret CROSS pocket — i.e. exactly the four
+  things now failing. It has been sitting ready since 2026-08-28.
+  Its `CROSS_Z` is 2.4, so it would have caught §11 too.
+
+**Print `gauge_verify_v2` before any more full parts.** ~29 g against the ~75 g
+of reprints §11 already costs.
