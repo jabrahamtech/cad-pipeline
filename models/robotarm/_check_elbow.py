@@ -39,7 +39,26 @@ WHAT IS MEASURED, AND HOW.
    nothing and the clean pass above is worthless - so the control failing
    fails the gate, exactly as a real interference would.
 
-3. GATE j3_contract. The numbers the elbow shares across files, each checked
+3. GATE j3_installs. CAN THE THING BE PUT TOGETHER. This is a different
+   question from every other gate here and it is the one that has already
+   cost this project a printed part: `shoulder_hub` as first printed passed
+   every pose check and could not be installed at all, because the checks
+   measured where things END UP and not the journey they take to get there.
+   The wr_ contract retained it, the poses cleared, and a O24 flange could
+   not physically reach its own seat.
+
+   So this measures the JOURNEY. j3_gear seats by sliding along the elbow
+   axis from outboard, so the gate walks the whole insertion path and, at
+   each station, bisects for the largest radius about that axis which is
+   clear of forearm material - the same method _check_shoulder uses for the
+   drive hub. If the tightest aperture on the path is smaller than the gear,
+   the gear does not go in, whatever the seated clearances say.
+
+   The pinion's journey is arithmetic, not geometry, so it is checked as
+   arithmetic: it threads onto the horn from outboard, which needs its own
+   face width of run-up between the seat and the servo lobe.
+
+4. GATE j3_contract. The numbers the elbow shares across files, each checked
    from the side that did NOT define it:
      - forearm's J3 centre distance == J3_PAIR.centre_distance
      - forearm's gear clearance clears r_tip of the 36T
@@ -72,7 +91,7 @@ import adsk.core
 import adsk.fusion
 
 REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
-PARTS = ['j3_gear', 'j3_pinion', 'j3_axle']
+PARTS = ['forearm', 'j3_gear', 'j3_pinion', 'j3_axle']
 
 # One full gear tooth pitch, in steps. 5 steps x 3 teeth x 28 flank points
 # = 420 samples, which is the population the handoff's claim was made over.
@@ -239,11 +258,123 @@ def run(_context: str):
                      'is not registering interference, so GATE j3_mesh proves '
                      'nothing whether it passes or not')
 
-    # ---- GATE j3_contract ---------------------------------------------------
     def gv(name):
         p = ups.itemByName(name)
         return None if p is None else p.value * 10.0   # val() is CENTIMETRES
 
+    def gv_mm(name):
+        v = gv(name)
+        assert v is not None, 'missing user parameter ' + name
+        return v
+
+    # ---- GATE j3_installs ---------------------------------------------------
+    fa = keepers.get('robotarm_forearm')
+    install_fails = []
+    if fa is None:
+        install_fails.append('robotarm_forearm is not in the document, so the '
+                             'insertion path could not be walked at all')
+    else:
+        fa_body = fa.component.bRepBodies.item(0)
+        OUTSIDE = adsk.fusion.PointContainment.PointOutsidePointContainment
+        L2 = gv_mm('fa_l2')
+        plate_in, plate_out = gv_mm('fa_plate_in'), gv_mm('fa_plate_out')
+        standoff, lobe_t = gv_mm('fa_j3_standoff'), gv_mm('fa_lobe_t')
+        free = gv_mm('fa_free')
+
+        def clear_r_at(x_mm, cap=40.0, step=0.25):
+            """Radius of the FIRST forearm material met going out from the axis.
+
+            NOT A BISECTION, and the first version of this was one - it read
+            r 31.22 of free space in the middle of a solid fork plate and the
+            control caught it. Bisection needs "clear at R implies clear at
+            every smaller R", and that is false here: about the J3 axis the
+            forearm is an ANNULUS - open bore inside, plate material, then
+            free air outside the silhouette - so a bisection probing only at
+            its midpoint jumps the material entirely and reports the outside.
+
+            A disc of radius R passes only if EVERY radius under R is clear,
+            so this scans outward from the axis and stops at the first hit.
+            Monotone by construction, and there is nothing left for a
+            bisection to skip.
+            """
+            r = 0.0
+            while r <= cap:
+                for k in range(48):
+                    a = 2 * math.pi * k / 48
+                    pt = P3(x_mm / 10.0,
+                            (-L2 + r * math.cos(a)) / 10.0,
+                            (r * math.sin(a)) / 10.0)
+                    if fa_body.pointContainment(pt) != OUTSIDE:
+                        return r
+                r += step
+            return cap
+
+        # The path: the gear enters from outboard of everything and slides in
+        # along +X until its journal is home. Walk from just outside the tab
+        # plane to the plate's outer face.
+        x_from = -(plate_out + standoff + lobe_t) - 0.5
+        x_to = -plate_out
+        aperture, at_x, x = 99.0, None, x_from
+        while x <= x_to + 1e-9:
+            r = clear_r_at(x)
+            if r < aperture:
+                aperture, at_x = r, x
+            x += 0.75
+
+        r_gear = P.r_tip(P.z_gear)
+        print('')
+        print('GEAR INSERTION PATH, x %.2f (outboard of the tab plane) to %.2f '
+              '(the plate face):' % (x_from, x_to))
+        print('   tightest aperture r %.2f at x %.2f. The 36T gear is r %.2f.'
+              % (aperture, at_x, r_gear))
+        if aperture < r_gear - 1e-6:
+            install_fails.append(
+                'the 36T gear is r %.2f and the tightest aperture on its '
+                'insertion path is r %.2f (at x %.2f) - it is %.2f mm too big '
+                'to reach its own seat' % (r_gear, aperture, at_x,
+                                           r_gear - aperture))
+
+        # POSITIVE CONTROL. Push the same probe INTO the plate, where there
+        # is certainly material, and it must read blocked. An aperture
+        # measurement that never finds anything is not a measurement.
+        ctl_x = -(plate_in + plate_out) / 2.0
+        ctl = clear_r_at(ctl_x)
+        print('   CONTROL, same probe inside the fork plate at x %.2f: first '
+              'material at r %.2f - %s'
+              % (ctl_x, ctl,
+                 'the probe can see' if ctl < r_gear else
+                 'THE PROBE SEES NOTHING, the reading above is worthless'))
+        if ctl >= r_gear:
+            install_fails.append(
+                'the aperture probe found r %.2f of free space inside the fork '
+                'plate, which is solid - it is measuring nothing' % ctl)
+
+        # THE PINION'S JOURNEY IS ARITHMETIC. Its bore passes the servo's
+        # output boss, so it threads on from OUTBOARD moving inboard, and it
+        # needs its own face width of run-up between where it seats and
+        # whatever is behind it. Behind it is the servo lobe.
+        seat_x = -(plate_out + free + P.face)
+        lobe_inner_x = -(plate_out + standoff)
+        run_up = seat_x - lobe_inner_x
+        print('   pinion threads onto the horn from outboard: seat face x %.2f, '
+              'lobe inner face x %.2f' % (seat_x, lobe_inner_x))
+        print('   run-up available %.2f mm, and the pinion is %.2f thick.'
+              % (run_up, P.face))
+        if run_up < P.face - 1e-6:
+            install_fails.append(
+                'the pinion needs %.2f mm of run-up to thread onto the horn '
+                'and has %.2f - it cannot be fitted with the servo in its lobe, '
+                'and it is r %.2f against a %.2f-wide lobe window so it cannot '
+                'go in on the servo either'
+                % (P.face, run_up, P.r_tip(P.z_pinion), gv_mm('fa_case_w')))
+
+    print('')
+    print('GATE j3_installs   : %s' % ('PASS' if not install_fails else 'FAIL'))
+    for f in install_fails:
+        print('   %s' % f)
+    fails.extend(install_fails)
+
+    # ---- GATE j3_contract ---------------------------------------------------
     checked, absent, contract_fails = [], [], []
 
     def agree(name, want, why, tol=1e-6):
