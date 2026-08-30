@@ -490,3 +490,56 @@ Three ways out:
    r 13.775 at that station. Not obviously buildable; not yet drawn.
 
 Pick one before touching `forearm.py`. Everything else in §6 is unblocked.
+
+---
+
+## 10. The geared elbow does not go together — 2026-08-30
+
+`GATE j3_installs` in `_check_elbow.py`. It exists because §3's worst failure
+was `shoulder_hub`: it passed every pose check and could not be installed at
+all, because the checks measured where things END UP and not the journey.
+Nothing was watching that for the elbow either. **`j3_mesh` and `j3_contract`
+both PASS and the assembly is impossible** — which is exactly the combination
+the shoulder taught us to look for.
+
+Three blockages, all of them the **integral J3 servo lobe** (x −35.00 … −29.50):
+
+| journey | needs | has | |
+|---|---|---|---|
+| 36T gear slides in along the elbow axis | r 23.75 | aperture **r 22.50** at x −34.75 | blocked 1.25 mm |
+| pinion threads onto the horn from outboard | 8.00 mm run-up | **1.20 mm** | and it is r 12.50 against a 12.40 window, so it cannot go in on the servo either |
+| M3 driven in the gear's counterbore | ~25 mm for a bit | **1.20 mm** | the retention bolt cannot be turned |
+
+The `fa_j3_gear_clear` cut spans only the **standoff** band. Measured with the
+lobe excluded, that band has no material within 40 mm of the elbow axis at
+all — the gear passes freely. The lobe is the whole problem.
+
+### The fix: make the servo pad a separate bolt-on cap
+
+Split the outer 5.50 mm of the J3 lobe — the servo pad itself — into its own
+printed part, bolted to the end of the standoff web. The web stays integral,
+so §9's load path and its 71× margin are unchanged. Then:
+
+1. gear in through the plate bore — nothing outboard of the standoff,
+2. M3 down the axis and tightened — open access,
+3. pinion pressed onto the horn **with the servo in your hand**, off the arm,
+4. servo + pinion + cap bolted on as one unit, phased into mesh.
+
+All three blockages are the cap being there; with it removable they all go.
+
+Alternatives considered and rejected: cutting the gear clearance through the
+lobe band leaves 0.55 mm of wall at the inboard tab pilot (min wall is 1.6);
+enlarging the window to pass the Ø25.0 pinion eats that same pilot; and
+pushing the servo in so its horn presses blind into a loose pinion, hoping
+the arms find a cross slot 8 mm down, is not an assembly procedure.
+
+**Not yet designed or costed.** `forearm.py` loses the lobe and gains a
+mounting face; `j3_servo_cap.py` is new.
+
+### Caveats on this gate
+
+`DRIVER_REACH_MM = 25.0` is ASSUMED — a 25 mm bit with nothing behind it.
+The gear aperture is measured on real geometry with a control that reads the
+journal bore wall at r 10.25. The pinion and driver checks are arithmetic off
+`lib/servo.py` and `lib/gears.py`, not swept geometry. The 608ZZ's own
+journey into its pocket from inside the fork is NOT yet gated.

@@ -99,6 +99,13 @@ ROLL_STEPS = 5
 MESH_TEETH = (-1, 0, 1)
 FLANK_N = 14
 
+# How much straight-line room a driver needs beyond a fastener head to turn
+# it. ASSUMED: a 25 mm 1/4in bit with nothing behind it. A ball-end hex key
+# wants more, a stubby bit slightly less. It is here as a named number rather
+# than a shrug because "can this screw be turned" is a real constraint and
+# nothing else in this project states it.
+DRIVER_REACH_MM = 25.0
+
 REBUILD = True
 
 
@@ -367,6 +374,31 @@ def run(_context: str):
                 'and it is r %.2f against a %.2f-wide lobe window so it cannot '
                 'go in on the servo either'
                 % (P.face, run_up, P.r_tip(P.z_pinion), gv_mm('fa_case_w')))
+
+        # AND THE BOLT HAS TO BE DRIVEN, not just inserted. The M3 head sits
+        # in a counterbore on the gear's OUTBOARD face and a driver reaches it
+        # along the elbow axis from outboard - straight into the servo lobe.
+        # A fastener nobody can turn is a joint that never gets tightened.
+        jg_head_d = gv('jg_bolt_head_d')
+        if jg_head_d is not None:
+            # The driver enters at the COUNTERBORE MOUTH, which is the gear's
+            # outboard face - not at the head underside. Measuring from the
+            # underside flatters it by the counterbore depth and got the sign
+            # wrong on the first pass.
+            mouth_x = -(plate_out + free + P.face)
+            lobe_inner_x = -(plate_out + standoff)
+            reach = mouth_x - lobe_inner_x
+            print('   M3 head is sunk %.1f in the gear\'s outboard face at '
+                  'x %.2f; the lobe inner face is at x %.2f'
+                  % (jg_head_d, mouth_x, lobe_inner_x))
+            print('   driver clearance along the axis: %.2f mm, and a stubby '
+                  'bit needs about %.1f (ASSUMED).' % (reach, DRIVER_REACH_MM))
+            if reach < DRIVER_REACH_MM:
+                install_fails.append(
+                    'the M3 counterbore opens %.2f mm from the servo lobe and a '
+                    'driver needs about %.1f - the elbow retention bolt cannot '
+                    'be turned with the servo in place'
+                    % (reach, DRIVER_REACH_MM))
 
     print('')
     print('GATE j3_installs   : %s' % ('PASS' if not install_fails else 'FAIL'))
