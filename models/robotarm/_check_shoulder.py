@@ -342,7 +342,7 @@ def run(_context: str):
     print('')
     print('contracted, per specs/robotarm/_assembly.md:')
     print('  arm^bracket  >= %.3f  free fit, the pitch joint running gap' % want_arm_br)
-    print('  hub^bracket  0.000 EXPECTED: the flange bottoms on the counterbore')
+    print('  hub^bracket  0.000 EXPECTED: the drive hub is flangeless (2026-08-30)')
     print('  hub^arm      0.000 EXPECTED: the hex bottoms in its socket')
     print('               Those two stops are what trap the hub with no screw. The')
     print('               fit that matters is RADIAL (%.3f / %.3f) and only'
@@ -388,6 +388,72 @@ def run(_context: str):
           % (printed * 1000, printed * 1000 * 0.6))
     print('  (+ 55 g of MG995, which this joint carries but does not lift)')
     print('')
+    # ---- GATE: can the drive hub actually be FITTED? ------------------------
+    # Found 2026-08-30, on Jonathan trying to assemble J2 with the first hub
+    # printed. It does not go in. The wr_ contract retains every hub with a
+    # 24.0 flange too big to pass its own 20.35 journal bore - which is the
+    # point of it - but on the DRIVE side the servo pad is bolted over the
+    # counterbore, so the flange has to pass the pad's case window as well.
+    # It is 20.4 wide in Y, and there is no path. Interference at a pose
+    # cannot see this: every pose is fine, it is the JOURNEY that is blocked.
+    #
+    # The aperture is measured on the bracket, not assumed, because it is a
+    # contract between two parts and a number only one file reads is a
+    # decoration.
+    ins_fails = []
+    brk_body = C['shoulder_bracket'].bRepBodies.item(0)
+    hub_body = C['shoulder_hub'].bRepBodies.item(0)
+    OUTSIDE = adsk.fusion.PointContainment.PointOutsidePointContainment
+    P3c = adsk.core.Point3D.create
+
+    def clear_r_at(x_mm, lo=0.0, hi=16.0):
+        # largest radius about the J2 axis that is free of bracket at this X
+        for _ in range(14):
+            mid = (lo + hi) / 2.0
+            free = True
+            for k in range(24):
+                a = 2 * math.pi * k / 24
+                if brk_body.pointContainment(P3c(
+                        x_mm / 10.0, mid * math.cos(a) / 10.0,
+                        mid * math.sin(a) / 10.0)) != OUTSIDE:
+                    free = False
+                    break
+            if free:
+                lo = mid
+            else:
+                hi = mid
+        return lo
+
+    up = design.userParameters
+    x_in = up.itemByName('sb_plate_in').value * 10
+    x_out = (up.itemByName('sb_plate_out').value
+             + up.itemByName('sb_lobe_t').value) * 10
+    aperture, at_x = 99.0, None
+    x = x_in + 0.25
+    while x <= x_out - 0.25:
+        r = clear_r_at(x)
+        if r < aperture:
+            aperture, at_x = r, x
+        x += 0.75
+
+    hb = hub_body.boundingBox
+    hub_r = max(abs(hb.minPoint.x), abs(hb.maxPoint.x),
+                abs(hb.minPoint.y), abs(hb.maxPoint.y)) * 10
+    print('')
+    print('drive-side aperture: the bracket is clear to r %.2f mm all the way '
+          'from the plate inner face (X %.1f) to the pad outer face (X %.1f);'
+          % (aperture, x_in, x_out))
+    print('   tightest at X %.2f. The hub is %.2f across at its widest.'
+          % (at_x, hub_r * 2))
+    if hub_r > aperture + 1e-6:
+        ins_fails.append(
+            'the drive hub is %.2f across and the tightest aperture on its '
+            'insertion path is %.2f (at X %.2f) - it cannot be fitted from '
+            'either side' % (hub_r * 2, aperture * 2, at_x))
+    print('GATE hub_installs : %s' % ('PASS' if not ins_fails else 'FAIL'))
+    for f in ins_fails:
+        print('   %s' % f)
+
     print('GATE interference : worst %.3f mm3 - %s' % (
         worst, 'PASS' if worst < 1.0 else 'FAIL'))
     print('GATE clearances   : %s' % ('PASS' if not fails else 'FAIL'))

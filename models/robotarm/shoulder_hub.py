@@ -2,36 +2,69 @@
 
 Rebuilds `robotarm_shoulder_hub` (idempotent). Spec: specs/robotarm/_state.md.
 
-`wrist_hub` with an MG995 horn in it instead of an MG90S one. EVERYTHING
-outboard of the horn - hex, collar, flange, the trapped-not-screwed
-retention - is the shared wr_ contract, unchanged, so the shoulder fork
-is the same fork the forearm already is and the idler side takes an
-ordinary wrist_hub off the same print.
+`wrist_hub` with an MG995 horn in it instead of an MG90S one. The hex and
+the journal collar are the shared wr_ contract, unchanged, so the shoulder
+fork is the same fork the forearm already is and the idler side takes an
+ordinary wrist_hub off the same print. The RETENTION is not shared - see
+the next paragraph.
 
 ONE of these is printed. The J2 idler is a plain wrist_hub.
 
+THIS HUB HAS NO RETAINING FLANGE, AND THAT IS THE WHOLE POINT OF THE
+PART. Every other hub in the arm is trapped by a 24.0 flange too big to
+pass its own 20.35 journal bore. On the J2 DRIVE side that flange makes
+the hub impossible to install, and the first one printed had to be
+scrapped:
+
+  from inside   the flange must pass the fork's 20.35 journal bore.  24.0.
+  from outside  the flange must pass the servo pad's case window, which
+                is 20.4 wide in Y (sb_case_w + sb_loc) and only 12.2 mm
+                of depth from the counterbore floor to the pad's outer
+                face. Tilting a 24.0 disc far enough to clear 20.4 costs
+                at least 21.8 mm of that depth. There is no path.
+
+So the counterbore on the drive plate is unreachable and is left empty,
+and the collar simply runs the full plate thickness instead - the horn
+face lands in exactly the same place it did, sh_collar_l = wr_journal +
+wr_flange_t. Retention is by the two stops that were always there and
+are 3.4 mm apart:
+
+  inboard   the hex bottoms in the upper arm's socket (wr_reach 3.8 =
+            0.4 running gap + 3.4 socket depth)
+  outboard  the MG995's own case top, 0.5 mm off this face
+
+The idler side is unaffected: it takes an ordinary flanged wrist_hub off
+the same print, because nothing is bolted over its counterbore.
+
+NOTHING ON THIS PART MAY EXCEED wr_hub_d. That is asserted on the built
+body, not on the parameters, because it is the assembly that is at stake
+and a flange is exactly the kind of feature that gets added back.
+
 THE RELIEF IS A THREE-STEP POCKET, AND THAT IS NOT DECORATION. An MG995
-does not present a bare spline: it presents 3.0 mm of 13.0 output boss,
-then the horn sitting on top of that, and the two together are 8.0 mm of
-stack that has to disappear into a hub only 7.0 mm deep before its hex
-starts. So:
+does not present a bare spline: it presents 3.0 mm of 13.0 output boss
+and then the horn hub sitting on it, 6.8 mm of stack above the case top
+going into a hub 7.0 mm deep before its hex starts. Depths below are from
+this face, which stands 0.5 off the case top:
 
-  0.0 - 2.5 mm   16.4 mouth   swallows the boss AND passes the horn arms
-  2.5 - 5.1 mm   cross slot   the blade, keyed at 90 deg increments
-  2.5 - 7.6 mm   12.15 bore   the horn hub, a 0.15 press
+  0.0 - 2.5 mm   15.60 mouth   swallows the boss AND passes the horn arms
+  2.5 - 4.8 mm   cross slot    the blade, keyed at 90 deg increments
+  0.0 - 6.4 mm   9.10 bore     the horn hub (MEASURED 8.7) + 0.4 free
 
-The mouth is 16.4 because of the ARMS, not the boss. The horn is trimmed
-to r 7.6 and has to travel down this hole to reach its slot; sized on the
-13.0 boss alone the arms would not pass and the servo could not be fitted.
+The mouth is 15.60 because of the ARMS, not the 13.0 boss: the arms are
+TRIMMED to r 7.6 at assembly and have to travel down this hole to reach
+their slot. On the boss alone it would be 13.4 and the servo could never
+be fitted. An untrimmed MG995 cross is 33.5 tip to tip and the round horn
+is 22.0 - neither goes in as it comes out of the bag.
 
 The horn goes in BLADE TOWARD THE SERVO. Flipped the other way its blade
 would sit 5 mm deeper, which is inside the hex, and the arm tips would
 break out through the flats.
 
-THE WALL IS THE TIGHT DIMENSION. The 12.15 bore runs 0.6 mm past the
-collar into a hex 15.80 across flats, leaving 1.83 mm - just over the 1.6
-minimum. If the horn measures over 12.3 in the hand, this part needs a
-bigger hex and the whole wr_ contract moves with it.
+THE HORN IS SCREWED TO THE SERVO FIRST. Once the hub is on the horn its
+retaining screw is behind the hex, and once the upper arm is on the hex
+there is no access at all. The 6.50 screw bore on this side is driver
+access for that first step and nothing else; on the idler side the same
+bore passes the M3.
 
 The horn slot is a CROSS, not a bar. An MG995 ships with a four-arm horn
 and a round one; the cross takes either at 90 deg increments, and a
@@ -129,6 +162,11 @@ def run(_context: str):
           'derived: locational fit inside the effector socket - grow the HOLE, '
           'shrink nothing, so the socket stays nominal and this comes down')
     param('lead_in', '0.6 mm', 'chamfer on the hex nose - joints_tolerances, every mating edge')
+    param('collar_l', WRIST + 'journal + ' + WRIST + 'flange_t',
+          'derived: the drive hub is FLANGELESS, so its collar runs the whole\n'
+          '           plate thickness - the journal bore plus the counterbore the\n'
+          '           flange can never reach. Same overall length as the idler\n'
+          '           hub, so the horn face lands on the same datum. 2026-08-30.')
 
     # --- MG90S horn, DATASHEET (lib/servo.py) -------------------------------
     param('horn_hub_d', '9.10 mm',
@@ -234,11 +272,11 @@ def run(_context: str):
 
     # ---- phase 1: collar + hex boss ----------------------------------------
     t0 = design.timeline.count
-    disc('journal_collar', wval('hub_d'), '-' + WRIST + 'journal', WRIST + 'journal', NEW)
-    # Trapped, not screwed: the flange cannot pass through the plate bore and
-    # the effector's socket floor stops it going the other way.
-    disc('retaining_flange', wval('flange_d'),
-         '-(' + WRIST + 'journal + ' + WRIST + 'flange_t)', WRIST + 'flange_t', JOIN)
+    # ONE collar, full plate thickness. No flange - see the docstring. The
+    # length is still written as journal + flange_t so the horn face stays
+    # on the plate's outer datum if either of those ever moves.
+    disc('journal_collar', wval('hub_d'), '-' + PREFIX + 'collar_l',
+         PREFIX + 'collar_l', NEW)
 
     sk_hex = sketch(comp.xYConstructionPlane, 'sk_hex_boss')
     lines = sk_hex.sketchCurves.sketchLines
@@ -256,11 +294,11 @@ def run(_context: str):
 
     # ---- phase 2: horn interface -------------------------------------------
     t1 = design.timeline.count
-    disc('horn_hub_relief', val('horn_hub_d'), '-(' + WRIST + 'journal + ' + WRIST + 'flange_t)',
+    disc('horn_hub_relief', val('horn_hub_d'), '-' + PREFIX + 'collar_l',
          PREFIX + 'horn_hub_depth', CUT)
     # The mouth. Cut second so the step is unambiguous: everything above
     # boss_depth opens out to clear the output boss and let the arms through.
-    disc('horn_mouth', val('boss_d'), '-(' + WRIST + 'journal + ' + WRIST + 'flange_t)',
+    disc('horn_mouth', val('boss_d'), '-' + PREFIX + 'collar_l',
          PREFIX + 'boss_depth', CUT)
 
     for ang, tag in ((0, 'a'), (1, 'b')):
@@ -273,17 +311,17 @@ def run(_context: str):
             p1 = mpt(sk_arm, val('horn_arm_w') / 2, val('horn_arm_r'), 0)
         sk_arm.sketchCurves.sketchLines.addTwoPointRectangle(p0, p1)
         extrude(profiles(sk_arm, expected=1), CUT,
-                '-(' + WRIST + 'journal + ' + WRIST + 'flange_t) + ' + PREFIX + 'arm_start',
+                '-' + PREFIX + 'collar_l' + ' + ' + PREFIX + 'arm_start',
                 PREFIX + 'horn_arm_depth', 'horn_arm_slot_' + tag)
 
-    disc('screw_bore', val('screw_d'), '-(' + WRIST + 'journal + ' + WRIST + 'flange_t)',
-         WRIST + 'journal + ' + WRIST + 'flange_t + ' + WRIST + 'reach', CUT)
+    disc('screw_bore', val('screw_d'), '-' + PREFIX + 'collar_l',
+         PREFIX + 'collar_l + ' + WRIST + 'reach', CUT)
     group(t1, PH_HORN)
 
     # ---- phase 3: finish ----------------------------------------------------
     t2 = design.timeline.count
     for z_pick, size, nm in ((reach, PREFIX + 'lead_in', 'hex_nose_lead_in'),
-                             (-(journal + wval('flange_t')), STYLE + 'ef', 'bed_face_chamfer')):
+                             (-val('collar_l'), STYLE + 'ef', 'bed_face_chamfer')):
         c_inp = chf.createInput2()
         c_inp.chamferEdgeSets.addEqualDistanceChamferEdgeSet(
             edges_in_plane_z(z_pick), V(size), False)
@@ -319,10 +357,10 @@ def run(_context: str):
     # bore must STOP inside the body - if it tunnels past journal + flange it
     # cores the hex boss root, which carries all of J2; (2) the collar wall
     # around the bore takes the torque across the bore band.
-    body_deep = wval('journal') + wval('flange_t')
+    body_deep = val('collar_l')
     assert val('horn_hub_depth') <= body_deep + 1e-9, (
         'the horn hub bore runs %.2f deep and the body is only %.2f - it '
-        'tunnels into the hex boss root. Raise sb_horn_standoff, do not '
+        'tunnels into the hex boss root. Lengthen the collar, do not '
         'thin the hex.' % (val('horn_hub_depth') * 10, body_deep * 10))
     wall = (wval('hub_d') / 2 - val('horn_hub_d') / 2)
     assert wall >= 0.16 - 1e-9, (
@@ -339,10 +377,24 @@ def run(_context: str):
     assert arm_wall >= 0.16 - 1e-9, (
         'only %.2f mm of collar wall at the horn arm tips' % (arm_wall * 10))
     blade_end = val('arm_start') + val('horn_arm_depth')
-    assert blade_end <= wval('journal') + wval('flange_t') + 1e-9, (
-        'the blade slot ends %.2f mm below this face, past the %.2f mm of flange '
-        'and collar - the arm tips would break out through the hex flats'
-        % (blade_end * 10, (wval('journal') + wval('flange_t')) * 10))
+    assert blade_end <= val('collar_l') + 1e-9, (
+        'the blade slot ends %.2f mm below this face, past the %.2f mm of collar '
+        '- the arm tips would break out through the hex flats'
+        % (blade_end * 10, val('collar_l') * 10))
+    # THE ASSEMBLY ASSERT. This hub is installed through a servo pad that is
+    # already bolted over its counterbore: nothing on it may exceed the journal
+    # collar, or it cannot be fitted at all. Measured on the BODY, because a
+    # flange is exactly the feature that gets added back by someone reading
+    # wrist_hub.py. See the docstring.
+    _bb = body.boundingBox
+    max_r = max(abs(_bb.minPoint.x), abs(_bb.maxPoint.x),
+                abs(_bb.minPoint.y), abs(_bb.maxPoint.y))
+    assert max_r <= wval('hub_d') / 2 + 1e-6, (
+        'this hub is %.2f across at its widest and the drive plate journal bore '
+        'is %.2f - it cannot be installed from either side. The drive hub is '
+        'FLANGELESS; retention is the arm socket inboard and the MG995 case '
+        'outboard.' % (max_r * 20, wval('hub_d') * 10))
+
     hex_corners = hex_af / math.cos(math.pi / 6)
     assert hex_corners < wval('hub_d'), (
         'hex is %.2f across corners but the collar is only %.2f - the hub cannot be '
@@ -354,8 +406,8 @@ def run(_context: str):
         hex_af * 10, wval('pivot_af') * 10, val('loc') * 10, reach * 10))
     print('hex across corners %.2f, threaded through a %.1f collar bore' % (
         hex_corners * 10, wval('hub_d') * 10))
-    print('collar OD %.1f x %.1f, retaining flange OD %.1f x %.1f' % (
-        wval('hub_d') * 10, journal * 10, wval('flange_d') * 10, wval('flange_t') * 10))
+    print('collar OD %.1f x %.1f (FLANGELESS - widest point %.2f), journal band %.1f' % (
+        wval('hub_d') * 10, val('collar_l') * 10, max_r * 20, journal * 10))
     print('relief: mouth %.2f x %.2f | blade slot %.2f..%.2f r %.2f | bore %.2f x %.2f'
           % (val('boss_d') * 10, val('boss_depth') * 10, val('arm_start') * 10,
              blade_end * 10, val('horn_arm_r') * 10,
