@@ -24,6 +24,16 @@ centreline where the two swings nearly meet and wide above and below where
 they do not. Drawing that outline by hand would be a guess that goes stale
 the moment either neighbour changes size; cutting it cannot.
 
+J3's SERVO PAD IS NOT PART OF THIS FILE ANY MORE. It is `j3_servo_cap`,
+bolted to the end of the standoff web with two M3. That is not tidiness: with
+the pad integral the elbow could not be assembled at all - GATE j3_installs
+found the 36T gear 1.25 mm too big to pass its own insertion path, the pinion
+short of its run-up onto the horn by 6.8 mm, and the retention M3 with 1.20 mm
+of driver clearance where a bit needs 25. All three were the pad being in the
+way, and all three go when it lifts off. See _HANDOFF.md section 10.
+
+What stays here is the standoff WEB, so section 9's load path is unchanged.
+
 BOTH wrist servos hang off this part, staggered: J4's on +X, J3's on -X.
 That is forced, not chosen. An MG90S is 24.0 mm along its own shaft axis,
 so a servo driving a joint whose axis is X occupies 24 mm of X. Inboard is
@@ -58,6 +68,7 @@ import adsk.core
 import adsk.fusion
 
 from lib.bearings import B608ZZ  # noqa: E402 - the idler runs in one
+from lib.design_rules import FASTENER_MM as _FASTENERS  # noqa: E402
 from lib.gears import J3_MOUNT, J3_PAIR  # noqa: E402 - the elbow reduction
 from lib.servo import CATALOG  # noqa: E402 - MEASURED lead bundle
 
@@ -313,6 +324,25 @@ def run(_context: str):
     param('brg_shoulder', PREFIX + 'plate_t - ' + PREFIX + 'brg_w',
           'derived: what is left of the plate outboard of the pocket')
 
+    # --- the bolt-on servo cap ---------------------------------------------
+    param('cap_t', PREFIX + 'lobe_t',
+          'the cap IS the servo pad, so it is exactly the pad thickness this\n'
+          '           file used to carry. j3_servo_cap.py asserts it matches.')
+    param('cap_pilot_d', '%.4f mm' % _FASTENERS['M3']['pilot'],
+          'M3 self-tapping pilot - lib/design_rules.py FASTENER_MM, the same\n'
+          '           table the elbow retention bolt reads.')
+    param('cap_head_d', '6.0 mm',
+          'M3 socket head. The cap counterbores its screws FLUSH to this and\n'
+          '           it has no choice: the servo\'s tab plate lands on that face and\n'
+          '           spans them. So the head, not the shank, is what sets how far\n'
+          '           this standoff has to reach - sized on the shank first and the\n'
+          '           counterbore came out 0.72 mm from the edge.')
+    param('bolt_clear_r', '%.4f mm' % (_FASTENERS['M3']['clearance'] / 2.0),
+          'half the M3 clearance the CAP is bored to. This file needs it to\n'
+          '           place the pilots so the cap\'s own holes clear the window.')
+    param('cap_pilot_depth', '8.0 mm',
+          'engagement into the standoff web, which is %.2f deep. Leaves 1.6.'
+          % 9.6)
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
 
     # ---- idempotent rebuild --------------------------------------------------
@@ -473,6 +503,19 @@ def run(_context: str):
     def so_val(jnt):
         return val('j3_standoff') if jnt == 'j3' else 0.0
 
+    def block_hi(jnt, hi):
+        """How far along +Y the servo block reaches.
+
+        J4 stops at lobe_pad past its outer screw, as it always did. J3
+        REACHES TO THE BOSS RADIUS, and that is not styling: the web which
+        survives the pinion cut is 9.75 mm of Y, the servo window eats 4.0 of
+        it, and a M3 through-hole with two minimum walls wants 6.6 - so there
+        is nowhere to put the cap screws otherwise. boss_r is as far as it can
+        go without standing proud of the part's own silhouette, which stops
+        there anyway.
+        """
+        return val('cap_reach') if jnt == 'j3' else hi
+
     def lobe_geometry(y_p, run):
         """Case span, screw positions and lobe outline for one servo, in cm."""
         # The shaft sits shaft_end in from the NEAR end, so the near end is
@@ -510,6 +553,76 @@ def run(_context: str):
         'the keyway runs %.2f mm from the case face but the lobe edge is '
         '%.2f mm away - it would end blind inside the lobe and trap the cable'
         % (val('lead_key_l') * 10, _to_edge * 10))
+
+    # ---- where the cap bolts on, SOLVED before anything is cut --------------
+    # The band for the cap screws is pinned on both sides: the servo window
+    # inboard, the block edge outboard, a minimum wall and a HEAD RADIUS from
+    # each. So the reach is not a styling choice - it is the smallest block
+    # that can carry the screw, and it comes out past the silhouette. That is
+    # the honest cost of bolting through the same face the servo clamps.
+    _Y_PIN = -val('l2') + val('j3_centre')
+    _c0, _c1, _scr, _, _ = lobe_geometry(_Y_PIN, +1)
+    _win_y1 = _c1 + val('loc') / 2
+    _head_r = val('cap_head_d') / 2
+
+    # Z first - it does not depend on anything else. As far apart as the edge
+    # and a FLUSH head allow, because the pair splits the servo's reaction
+    # couple and wants the longest lever it can get.
+    param('cap_screw_z', '%.5f mm' % ((val('lobe_z') - val('wall') - _head_r) * 10),
+          'derived: as far apart as the cap edge and a flush HEAD allow. The\n'
+          '           pair is stacked in Z on purpose - the servo reacts its stall\n'
+          '           torque about X as a couple in Z and two screws split it; side\n'
+          '           by side in Y they would not. What binds this is the counterbore,\n'
+          '           not the hole: 5.0 looked fine on the shank and put the head\n'
+          '           0.80 from the edge.')
+
+    # Y is pinned by THREE things, and it took all three to find out. The
+    # servo window inboard; the servo's own outer tab pilot, which is blind in
+    # the same face this counterbore sinks into; and the block edge outboard.
+    _y_win = _win_y1 + val('wall') + _head_r
+    _sep = _head_r + val('pilot_d') / 2 + val('wall')
+    _dz = val('cap_screw_z')
+    _y_pilot = (max(_scr) + math.sqrt(max(_sep ** 2 - _dz ** 2, 0.0))
+                if _sep > _dz else max(_scr))
+    param('cap_screw_y', '%.5f mm' % (max(_y_win, _y_pilot) * 10),
+          'derived: the first station clear of BOTH the servo window and the\n'
+          '           servo\'s own outer tab pilot. The pilot is the binding one and it\n'
+          '           is easy to miss - it is blind in the same face the cap sinks its\n'
+          '           counterbore into, so the two collide underground while looking\n'
+          '           2.4 mm apart on the face.')
+    param('cap_margin', '0.1 mm',
+          'slack on the derived reach. Without it the block edge lands EXACTLY\n'
+          '           on the minimum wall and every assert downstream sits on a float\n'
+          '           comparison it can fail either side of. 0.1 costs nothing and\n'
+          '           means the checks are measuring the design, not the arithmetic.')
+    param('cap_reach', '%.5f mm'
+          % ((max(_y_win, _y_pilot) + _head_r + val('wall') + val('cap_margin')) * 10),
+          'derived: one head, one wall and a hair past the screw. The SMALLEST\n'
+          '           block that can carry the fixing, and it finishes past fa_boss_r -\n'
+          '           so the standoff stands proud of the link silhouette at the wrist\n'
+          '           end, in free air outboard of the plate where nothing sweeps.\n'
+          '           That is the honest cost of bolting through the same face the\n'
+          '           servo clamps.')
+    assert val('cap_screw_y') + _head_r + val('wall') <= val('cap_reach') + 1e-9, (
+        'the cap screw head at y %.2f reaches past the block edge at %.2f'
+        % (val('cap_screw_y') * 10, val('cap_reach') * 10))
+    assert val('cap_screw_y') - _head_r - val('wall') >= _win_y1 - 1e-9, (
+        'the cap screw head at y %.2f breaks into the servo window ending at '
+        'y %.2f' % (val('cap_screw_y') * 10, _win_y1 * 10))
+    assert val('cap_screw_z') + _head_r + val('wall') <= val('lobe_z') + 1e-9, (
+        'the cap screw HEAD at z %.2f leaves under a wall to the edge at %.2f - '
+        'the counterbore is what binds here, not the hole'
+        % (val('cap_screw_z') * 10, val('lobe_z') * 10))
+    for _ys in _scr:
+        _d = math.hypot(val('cap_screw_y') - _ys, val('cap_screw_z'))
+        assert _d >= _sep - 1e-9, (
+            'the cap screw and the servo tab pilot at y %.2f are %.2f apart '
+            'and a flush head plus a wall needs %.2f'
+            % (_ys * 10, _d * 10, _sep * 10))
+    assert val('cap_pilot_depth') + val('wall') <= val('j3_standoff'), (
+        'a %.1f deep pilot in a %.2f standoff leaves under %.1f of floor'
+        % (val('cap_pilot_depth') * 10, val('j3_standoff') * 10,
+           val('wall') * 10))
 
     # ---- the geared elbow, checked before any of it is cut ------------------
     assert val('j3_standoff') >= val('j3_band') - 1e-9, (
@@ -565,15 +678,20 @@ def run(_context: str):
                       2 * val('boss_r'), x0, dx, JOIN)
     for sx, y_p, run, jnt in LOBES:
         _, _, _, lo, hi = lobe_geometry(y_p, run)
+        hi = block_hi(jnt, hi)
         # ONE block from inside the plate out to the tab plane. For J3 that
         # is standoff + lobe; the clearance phase then carves the gear and
         # the pinion out of it, which is what makes the standoff a web rather
         # than something drawn by hand and gone stale.
+        # J4 is a pad on its plate, as it always was. J3 is now only the
+        # STANDOFF - its pad lifts off as j3_servo_cap, because with the pad
+        # here nothing could be assembled past it.
         if sx > 0:
             x0 = PREFIX + 'plate_out - ' + PREFIX + 'lobe_over'
+            dx = PREFIX + 'lobe_t + ' + PREFIX + 'lobe_over'
         else:
-            x0 = '-(' + PREFIX + 'plate_out' + SO(jnt) + ' + ' + PREFIX + 'lobe_t)'
-        dx = PREFIX + 'lobe_t + ' + PREFIX + 'lobe_over' + SO(jnt)
+            x0 = '-(' + PREFIX + 'plate_out + ' + PREFIX + 'j3_standoff)'
+            dx = PREFIX + 'j3_standoff + ' + PREFIX + 'lobe_over'
         yz_rect('lobe_' + jnt, lo, hi, -val('lobe_z'), val('lobe_z'), x0, dx, JOIN)
     group(t0, PH_FORM)
 
@@ -643,11 +761,20 @@ def run(_context: str):
     yz_circle('gear_sweep_j3', -L2, 0.0, 2 * val('j3_gear_clear'), band0, bandd, CUT)
     yz_circle('pinion_sweep_j3', Y_PIN, 0.0, 2 * val('j3_pin_clear'),
               band0, bandd, CUT)
+
+    # THE CAP'S TWO M3, into the end face of what is left. The station was
+    # solved in the sanity block above, against the window and the block edge.
+    for sz in (+1, -1):
+        yz_circle('cap_pilot_%s' % ('p' if sz > 0 else 'm'),
+                  val('cap_screw_y'), sz * val('cap_screw_z'),
+                  val('cap_pilot_d'), band0, PREFIX + 'cap_pilot_depth', CUT)
     group(t2b, PH_ELBOW)
 
     # ---- phase 4: servo lobes ----------------------------------------------------
     t3 = design.timeline.count
     for sx, y_p, run, jnt in LOBES:
+        if jnt == 'j3':
+            continue          # the window, keyway and pilots are on the cap
         c0, c1, screws, _, _ = lobe_geometry(y_p, run)
         if sx > 0:
             win0 = PREFIX + 'plate_out' + SO(jnt)
@@ -693,6 +820,7 @@ def run(_context: str):
     n_fillet, fillet_note = 0, []
     for sx, y_p, run, jnt in LOBES:
         _, _, _, lo, hi = lobe_geometry(y_p, run)
+        hi = block_hi(jnt, hi)
         if jnt == 'j3':
             rad_expr, rad = PREFIX + 'lobe_radius_j3', val('lobe_radius_j3')
         else:
@@ -741,9 +869,23 @@ def run(_context: str):
             reach = max(abs(bb.minPoint.z), abs(bb.maxPoint.z))
             if abs(reach - val('boss_r')) < val('tol'):
                 col.add(e)
-        assert col.count == 2, (
-            'expected the boss circle and the silhouette arc on the x %+.1f '
-            'plate face, found %d edges' % (x_pick * 10, col.count))
+        # WHAT THIS HAS TO BE, and it is no longer "two edges". The rule
+        # selects everything on this face reaching the body's z extreme,
+        # which is exactly the outline: one CLOSED boss circle plus the
+        # silhouette. On +X the silhouette is a single arc. On -X the J3
+        # standoff block now runs past where that arc ends and blends into
+        # the face, SPLITTING it into two segments - so the honest assert is
+        # about what the edges ARE, not how many. A bare count of 2 was right
+        # only while the outline happened to come in one piece, and it failed
+        # the moment the block grew; a count of 3 would be just as brittle.
+        n_circ = sum(1 for e in col if e.geometry.objectType.endswith('Circle3D'))
+        n_arc = col.count - n_circ
+        assert n_circ == 1, (
+            'expected exactly one closed boss circle on the x %+.1f plate '
+            'face, found %d - the selection is picking up a counterbore'
+            % (x_pick * 10, n_circ))
+        assert n_arc >= 1, (
+            'no silhouette arc found on the x %+.1f plate face' % (x_pick * 10))
         c_inp = chf.createInput2()
         c_inp.chamferEdgeSets.addEqualDistanceChamferEdgeSet(
             col, V(PREFIX + 'facet'), False)
@@ -799,8 +941,9 @@ def run(_context: str):
     print('box beam: 2 walls %.1f thick + rails %.1f top and bottom, duct %.1f x %.1f'
           % (val('waist_t') * 10, val('rail_z') * 10,
              val('plate_in') * 20, val('duct_z') * 20))
-    print('POLYGONAL: %.2f mm facet (LOCAL, probed ceiling on BOTH faces) on %d plate-outline edges'
-          % (val('facet') * 10, n_face))
+    print('POLYGONAL: %.2f mm facet (LOCAL, probed ceiling on BOTH faces) on %d '
+          'plate-outline edges (1 boss circle + silhouette, split on -X by the '
+          'J3 standoff)' % (val('facet') * 10, n_face))
     print('lobe corners: %s' % ' | '.join(fillet_note))
     _y0 = Y_PIN + val('j3_pin_clear')
     _hi = max(lobe_geometry(Y_PIN, +1)[4], lobe_geometry(Y_PIN, +1)[3])
@@ -823,6 +966,13 @@ def run(_context: str):
           % (val('brg_bore') * 10, B608ZZ.inner_race_od))
     print('   J3 drive-side flange counterbore DELETED - j3_gear has no flange '
           'and its journal is built for the full %.1f plate' % (val('plate_t') * 10))
+    print('   the servo PAD is not here - it is j3_servo_cap, %.1f thick, bolted '
+          'to this web' % (val('cap_t') * 10))
+    print('   by 2 x M3 at y %.2f, z +/-%.2f, %.1f pilot x %.1f deep. Without '
+          'that split' % (val('cap_screw_y') * 10, val('cap_screw_z') * 10,
+                          val('cap_pilot_d') * 10, val('cap_pilot_depth') * 10))
+    print('   the gear, the pinion and the retention M3 could none of them be '
+          'fitted - GATE j3_installs.')
     print('')
     print('WEB ON THE CENTRELINE: %.1f mm between the two swings '
           '(J4 takes %.1f, J3 takes %.1f)' % (

@@ -50,6 +50,9 @@ import sys
 import adsk.core
 import adsk.fusion
 
+# Set inside run() from lib.gears.J3_PAIR, once lib is importable.
+J3_OFFSET_MM = None
+
 REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
 OUT = os.path.join(REPO, 'specs', 'robotarm', '_mass_properties.json')
 
@@ -120,7 +123,8 @@ COUNT = {'pruner_shell': 2, 'pruner_blade': 2, 'pruner_rack': 2,
 # The J1 turret: what rotates, and how far the arm reaches over the rollers.
 ROTATING = ('shoulder_bracket', 'shoulder_hub', 'upper_arm', 'forearm',
             'wrist_hub', 'wrist_roll', 'wrist_rotator', 'pruner_shell',
-            'pruner_blade', 'pruner_rack', 'gripper_pinion')
+            'pruner_blade', 'pruner_rack', 'gripper_pinion',
+            'j3_gear', 'j3_pinion', 'j3_axle', 'j3_servo_cap')
 ROTATING_BOUGHT = ('MG995 J2', 'MG90S J3', 'MG90S J4', 'SG90 J5',
                    'SG90 effector')
 
@@ -201,6 +205,11 @@ def run(_context: str):
     if REPO not in sys.path:
         sys.path.insert(0, REPO)
     from lib import arm_loads as al
+    from lib.gears import J3_PAIR
+    # The J3 servo's offset from the elbow IS the pair's centre distance -
+    # imported, not typed, so it cannot drift from the teeth it is cut with.
+    global J3_OFFSET_MM
+    J3_OFFSET_MM = J3_PAIR.centre_distance
     from lib import arm_budget as ab
     ab_fa_frac = ab.FOREARM_COM_FRAC
     ab_ua_frac = ab.UPPERARM_COM_FRAC
@@ -341,14 +350,31 @@ def run(_context: str):
     # forearm's own mass at its measured centre of mass along the link.
     j3_items = shifted(cluster, l2_mm)
     j3_items.append(I('forearm link', mass('forearm'), fa_com_mm, 'MEASURED'))
+
+    # THE ELBOW DRIVE ITSELF, AND IT WAS NOT HERE. The 2:1 moved the J3 servo
+    # one centre distance TOWARD THE WRIST, so it now loads the joint it
+    # drives - and this file still listed it only against J2, sitting on the
+    # elbow axis, contributing nothing to J3 at all. Same for the three new
+    # printed parts: the gear and the axle sit ON the axis and cost J3
+    # nothing, but they are 13.75 g that J2 carries at the full L1 and
+    # nothing was counting them either.
+    #
+    # The offset is imported, not typed. It is the same centre distance the
+    # teeth are cut from.
+    j3_items.append(I('MG90S J3', BOUGHT_G['MG90S J3'], J3_OFFSET_MM, 'BOUGHT'))
+    j3_items.append(I('j3_servo_cap', mass('j3_servo_cap'), J3_OFFSET_MM,
+                      'MEASURED'))
+    j3_items.append(I('j3_pinion', mass('j3_pinion'), J3_OFFSET_MM, 'MEASURED'))
+    j3_items.append(I('j3_gear', mass('j3_gear'), 0.0, 'MEASURED'))
+    j3_items.append(I('j3_axle', mass('j3_axle'), 0.0, 'MEASURED'))
     j3_items.append(I('payload', PAYLOAD_G, l2_mm + PAYLOAD_OFFSET_MM,
                       'PAYLOAD'))
 
-    # J2: shoulder at the origin. Everything above moves out by L1 again.
+    # J2: shoulder at the origin. Everything above moves out by L1 again -
+    # INCLUDING the J3 servo now, which is why it is no longer added here.
     j2_items = shifted(j3_items, l1_mm)
     j2_items.append(I('upper arm link', mass('upper_arm'), ua_com_mm,
                       'MEASURED'))
-    j2_items.append(I('MG90S J3', BOUGHT_G['MG90S J3'], l1_mm, 'BOUGHT'))
 
     print('=== B. joint moments, worst pose: arm straight out, payload gripped')
     print('L1 %.1f  L2 %.1f  head %.1f g (measured)  payload %.1f g'

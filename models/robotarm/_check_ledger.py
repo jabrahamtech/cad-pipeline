@@ -54,7 +54,10 @@ BATCHES = [
     # The J3 reduction. LAST because j3_gear asserts against fa_plate_t and
     # fa_bore_d, which do not exist until forearm has built in batch 1 - a
     # gear that silently skips its own fit check is worse than no check.
-    ['j3_pinion', 'j3_gear', 'j3_axle'],
+    # j3_servo_cap LAST of all: it reads its whole interface out of the
+    # forearm's fa_* parameters and asserts they are present rather than
+    # defaulting, so it cannot build before batch 1 has run.
+    ['j3_pinion', 'j3_gear', 'j3_axle', 'j3_servo_cap'],
 ]
 # The superseded gripper head still builds but is not in the arm, so it is not
 # in the ledger. Add gripper_shell and gripper_rack_jaw here if it comes back.

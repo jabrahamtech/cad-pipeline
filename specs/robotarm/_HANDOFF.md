@@ -514,6 +514,16 @@ The `fa_j3_gear_clear` cut spans only the **standoff** band. Measured with the
 lobe excluded, that band has no material within 40 mm of the elbow axis at
 all — the gear passes freely. The lobe is the whole problem.
 
+### FIXED 2026-08-30 — `j3_servo_cap`, and all three journeys now PASS
+
+| journey | needs | has | |
+|---|---|---|---|
+| 36T gear along the elbow axis | r 23.75 | **r 40.00** (nothing found) | clear |
+| M3 driver, 25 mm out of the counterbore | r 3.2 | **r 40.00** | clear |
+| servo + pinion + cap along the pinion axis | r 12.50 | **r 13.00** | clear |
+
+Control still reads the fork plate at r 10.25, so the probe can see.
+
 ### The fix: make the servo pad a separate bolt-on cap
 
 Split the outer 5.50 mm of the J3 lobe — the servo pad itself — into its own
@@ -533,13 +543,61 @@ enlarging the window to pass the Ø25.0 pinion eats that same pilot; and
 pushing the servo in so its horn presses blind into a loose pinion, hoping
 the arms find a cross slot 8 mm down, is not an assembly procedure.
 
-**Not yet designed or costed.** `forearm.py` loses the lobe and gains a
-mounting face; `j3_servo_cap.py` is new.
+**Built.** `forearm.py` keeps the standoff web and loses the pad
+(18322.471 → 17618.081 mm³); `j3_servo_cap.py` is new at 1748.231 mm³, 1.44 g
+printed. Fixed by 2 × M3 self-tapping into the web's end face, 8.0 deep —
+**buy M3 × 16**.
+
+Three things had to be solved rather than chosen, and each was found by an
+assert after a wrong guess:
+
+- **`fa_cap_screw_z`** is derived from the flush HEAD, not the hole. 5.0 mm
+  looked fine on the Ø3.4 shank and put the Ø6.0 counterbore 0.80 from the
+  edge. It is 4.20.
+- **`fa_cap_screw_y`** is pinned by *three* things: the servo window inboard,
+  the block edge outboard, and — the one that is easy to miss — **the servo's
+  own outer tab pilot**, which is blind in the same face the counterbore
+  sinks into, so the two collide underground while looking 2.4 mm apart on
+  the face. It is 11.65.
+- **`fa_cap_reach`** falls out of that at 16.35, which is **past `fa_boss_r`**
+  — the standoff stands 2.6 mm proud of the link silhouette at the wrist end,
+  in free air outboard of the plate where nothing sweeps. That is the honest
+  cost of bolting through the same face the servo clamps.
+
+The heads MUST be counterbored flush: the servo's tab plate lands on that
+face and spans them. That leaves 2.30 mm of cap under each head — 19.2 mm²
+of bearing area and ~43 mm² of shear-out at the interlayer allowable, against
+about 7 N per screw.
+
+`j3_servo_cap` reads its whole interface out of the forearm's `fa_*`
+parameters and **asserts they are present rather than defaulting**. A cap
+that built itself to its own idea of the interface would fit nothing and
+print clean while doing it.
+
+### And the load model was under-reporting the drive
+
+Found while re-running `_check_loads` after the split. `j3_servo_cap`,
+`j3_pinion`, `j3_gear` and `j3_axle` were in no joint's item list, and
+**`MG90S J3` was still listed against J2 only, sitting on the elbow axis it
+no longer occupies.** The 2:1 moved it one centre distance toward the wrist,
+so it loads the joint it drives — 45.5 g·cm of it.
+
+| joint | before | now | |
+|---|---|---|---|
+| J2 | 60 % | **66 %** | + the servo moving outboard, + 13.75 g of gear and axle at full L1 |
+| J3 | 49 % | **52 %** | + 45.5 servo, + 6.3 pinion, + 4.9 cap, all g·cm |
+| rated payload | 103 g | **92 g** | J2 still binds |
+
+Both load gates still PASS, margins J2 1.51 and J3 1.91. The offset is
+imported from `J3_PAIR`, not typed, so it cannot drift from the teeth.
 
 ### Caveats on this gate
 
-`DRIVER_REACH_MM = 25.0` is ASSUMED — a 25 mm bit with nothing behind it.
-The gear aperture is measured on real geometry with a control that reads the
-journal bore wall at r 10.25. The pinion and driver checks are arithmetic off
-`lib/servo.py` and `lib/gears.py`, not swept geometry. The 608ZZ's own
-journey into its pocket from inside the fork is NOT yet gated.
+`DRIVER_REACH_MM = 25.0` and `DRIVER_BIT_R_MM = 3.175` are ASSUMED — a 1/4in
+bit holder with nothing behind it. All three journeys are now measured as
+apertures on the real forearm body, not arithmetic, each against a control
+that must find material.
+
+Still NOT gated: the 608ZZ's own journey into its pocket from inside the
+fork, and whether the horn's arms can be got into the pinion's cross slot by
+feel. Both are bench questions this gate does not answer.

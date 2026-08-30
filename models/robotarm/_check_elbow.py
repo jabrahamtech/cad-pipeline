@@ -91,7 +91,7 @@ import adsk.core
 import adsk.fusion
 
 REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
-PARTS = ['forearm', 'j3_gear', 'j3_pinion', 'j3_axle']
+PARTS = ['forearm', 'j3_servo_cap', 'j3_gear', 'j3_pinion', 'j3_axle']
 
 # One full gear tooth pitch, in steps. 5 steps x 3 teeth x 28 flank points
 # = 420 samples, which is the population the handoff's claim was made over.
@@ -105,6 +105,10 @@ FLANK_N = 14
 # than a shrug because "can this screw be turned" is a real constraint and
 # nothing else in this project states it.
 DRIVER_REACH_MM = 25.0
+# ... and how fat it is. A 1/4in bit holder is 6.35 across; a bare hex key is
+# 2.5. ASSUMED at the bit-holder end, because that is what most people reach
+# for and it is the case that fails.
+DRIVER_BIT_R_MM = 6.35 / 2.0
 
 REBUILD = True
 
@@ -275,130 +279,124 @@ def run(_context: str):
         return v
 
     # ---- GATE j3_installs ---------------------------------------------------
+    # THE PROCEDURE THIS MEASURES, in order, with the cap OFF:
+    #   1. j3_gear slides in along the elbow axis, through the plate bore
+    #   2. the M3 goes down that axis and is TIGHTENED - a driver has to fit
+    #   3. servo + pinion + j3_servo_cap arrive as one unit along the PINION
+    #      axis, phased into mesh
+    # Each step is an aperture measured on the real forearm body, and each has
+    # a control that must find material. All three failed before the pad was
+    # split off; see _HANDOFF.md section 10.
     fa = keepers.get('robotarm_forearm')
     install_fails = []
     if fa is None:
-        install_fails.append('robotarm_forearm is not in the document, so the '
-                             'insertion path could not be walked at all')
+        install_fails.append('robotarm_forearm is not in the document, so no '
+                             'insertion path could be walked at all')
     else:
         fa_body = fa.component.bRepBodies.item(0)
         OUTSIDE = adsk.fusion.PointContainment.PointOutsidePointContainment
         L2 = gv_mm('fa_l2')
         plate_in, plate_out = gv_mm('fa_plate_in'), gv_mm('fa_plate_out')
-        standoff, lobe_t = gv_mm('fa_j3_standoff'), gv_mm('fa_lobe_t')
+        standoff = gv_mm('fa_j3_standoff')
         free = gv_mm('fa_free')
+        y_pin = -L2 + gv_mm('fa_j3_centre')
 
-        def clear_r_at(x_mm, cap=40.0, step=0.25):
-            """Radius of the FIRST forearm material met going out from the axis.
+        def first_material_r(x_mm, axis_y, cap=40.0, step=0.25):
+            """Radius of the FIRST forearm material going out from an axis.
 
             NOT A BISECTION, and the first version of this was one - it read
             r 31.22 of free space in the middle of a solid fork plate and the
             control caught it. Bisection needs "clear at R implies clear at
-            every smaller R", and that is false here: about the J3 axis the
-            forearm is an ANNULUS - open bore inside, plate material, then
-            free air outside the silhouette - so a bisection probing only at
-            its midpoint jumps the material entirely and reports the outside.
-
+            every smaller R", and about these axes the forearm is an ANNULUS:
+            open bore inside, plate material, free air outside the silhouette.
             A disc of radius R passes only if EVERY radius under R is clear,
-            so this scans outward from the axis and stops at the first hit.
-            Monotone by construction, and there is nothing left for a
-            bisection to skip.
+            so this scans outward and stops at the first hit.
             """
             r = 0.0
             while r <= cap:
                 for k in range(48):
                     a = 2 * math.pi * k / 48
                     pt = P3(x_mm / 10.0,
-                            (-L2 + r * math.cos(a)) / 10.0,
+                            (axis_y + r * math.cos(a)) / 10.0,
                             (r * math.sin(a)) / 10.0)
                     if fa_body.pointContainment(pt) != OUTSIDE:
                         return r
                 r += step
             return cap
 
-        # The path: the gear enters from outboard of everything and slides in
-        # along +X until its journal is home. Walk from just outside the tab
-        # plane to the plate's outer face.
-        x_from = -(plate_out + standoff + lobe_t) - 0.5
-        x_to = -plate_out
-        aperture, at_x, x = 99.0, None, x_from
-        while x <= x_to + 1e-9:
-            r = clear_r_at(x)
-            if r < aperture:
-                aperture, at_x = r, x
-            x += 0.75
+        def walk(x_from, x_to, axis_y, step=0.75):
+            worst, at, x = 99.0, None, x_from
+            while x <= x_to + 1e-9:
+                r = first_material_r(x, axis_y)
+                if r < worst:
+                    worst, at = r, x
+                x += step
+            return worst, at
 
+        # -- 1. the gear, along the elbow axis --------------------------------
         r_gear = P.r_tip(P.z_gear)
+        g_from, g_to = -(plate_out + standoff) - 6.0, -plate_out - 0.25
+        ap_g, at_g = walk(g_from, g_to, -L2)
         print('')
-        print('GEAR INSERTION PATH, x %.2f (outboard of the tab plane) to %.2f '
-              '(the plate face):' % (x_from, x_to))
-        print('   tightest aperture r %.2f at x %.2f. The 36T gear is r %.2f.'
-              % (aperture, at_x, r_gear))
-        if aperture < r_gear - 1e-6:
+        print('1. j3_gear along the elbow axis, x %.2f -> %.2f (cap off):'
+              % (g_from, g_to))
+        print('   tightest aperture r %.2f at x %.2f; the 36T is r %.2f'
+              % (ap_g, at_g, r_gear))
+        if ap_g < r_gear - 1e-6:
             install_fails.append(
-                'the 36T gear is r %.2f and the tightest aperture on its '
-                'insertion path is r %.2f (at x %.2f) - it is %.2f mm too big '
-                'to reach its own seat' % (r_gear, aperture, at_x,
-                                           r_gear - aperture))
+                'the 36T gear is r %.2f and the tightest aperture on its path '
+                'is r %.2f at x %.2f - %.2f mm too big to reach its seat'
+                % (r_gear, ap_g, at_g, r_gear - ap_g))
 
-        # POSITIVE CONTROL. Push the same probe INTO the plate, where there
-        # is certainly material, and it must read blocked. An aperture
-        # measurement that never finds anything is not a measurement.
+        # -- 2. a driver on the M3, along the same axis -----------------------
+        mouth = -(plate_out + free + P.face)
+        d_from, d_to = mouth - DRIVER_REACH_MM, mouth - 0.25
+        ap_d, at_d = walk(d_from, d_to, -L2)
+        print('2. an M3 driver on the same axis, from the counterbore mouth at '
+              'x %.2f out %.1f:' % (mouth, DRIVER_REACH_MM))
+        print('   tightest aperture r %.2f at x %.2f; a bit needs about r %.1f'
+              % (ap_d, at_d, DRIVER_BIT_R_MM))
+        if ap_d < DRIVER_BIT_R_MM - 1e-6:
+            install_fails.append(
+                'an M3 driver needs r %.1f for %.1f mm out of the counterbore '
+                'and the forearm closes to r %.2f at x %.2f - the retention '
+                'bolt cannot be turned'
+                % (DRIVER_BIT_R_MM, DRIVER_REACH_MM, ap_d, at_d))
+
+        # -- 3. servo + pinion + cap, along the PINION axis -------------------
+        r_pin = P.r_tip(P.z_pinion)
+        p_from, p_to = -(plate_out + standoff) - 6.0, -(plate_out + free) - 0.25
+        ap_p, at_p = walk(p_from, p_to, y_pin)
+        print('3. servo + pinion + cap along the pinion axis (y %.2f), '
+              'x %.2f -> %.2f:' % (y_pin, p_from, p_to))
+        print('   tightest aperture r %.2f at x %.2f; the 18T is r %.2f'
+              % (ap_p, at_p, r_pin))
+        if ap_p < r_pin - 1e-6:
+            install_fails.append(
+                'the 18T pinion is r %.2f and the tightest aperture on its '
+                'path is r %.2f at x %.2f' % (r_pin, ap_p, at_p))
+
+        # -- THE CONTROL. Every aperture above is a "nothing found" reading,
+        # and a probe that can never find anything would report exactly the
+        # same. Push it into the fork plate, which is solid.
         ctl_x = -(plate_in + plate_out) / 2.0
-        ctl = clear_r_at(ctl_x)
-        print('   CONTROL, same probe inside the fork plate at x %.2f: first '
-              'material at r %.2f - %s'
-              % (ctl_x, ctl,
-                 'the probe can see' if ctl < r_gear else
-                 'THE PROBE SEES NOTHING, the reading above is worthless'))
+        ctl = first_material_r(ctl_x, -L2)
+        print('   CONTROL, the same probe inside the fork plate at x %.2f: '
+              'first material at r %.2f - %s'
+              % (ctl_x, ctl, 'the probe can see' if ctl < r_gear else
+                 'THE PROBE SEES NOTHING, every reading above is worthless'))
         if ctl >= r_gear:
             install_fails.append(
                 'the aperture probe found r %.2f of free space inside the fork '
                 'plate, which is solid - it is measuring nothing' % ctl)
 
-        # THE PINION'S JOURNEY IS ARITHMETIC. Its bore passes the servo's
-        # output boss, so it threads on from OUTBOARD moving inboard, and it
-        # needs its own face width of run-up between where it seats and
-        # whatever is behind it. Behind it is the servo lobe.
-        seat_x = -(plate_out + free + P.face)
-        lobe_inner_x = -(plate_out + standoff)
-        run_up = seat_x - lobe_inner_x
-        print('   pinion threads onto the horn from outboard: seat face x %.2f, '
-              'lobe inner face x %.2f' % (seat_x, lobe_inner_x))
-        print('   run-up available %.2f mm, and the pinion is %.2f thick.'
-              % (run_up, P.face))
-        if run_up < P.face - 1e-6:
+        # -- and the cap must actually BE a separate part, or none of the
+        # above describes the arm that gets built.
+        if 'robotarm_j3_servo_cap' not in keepers:
             install_fails.append(
-                'the pinion needs %.2f mm of run-up to thread onto the horn '
-                'and has %.2f - it cannot be fitted with the servo in its lobe, '
-                'and it is r %.2f against a %.2f-wide lobe window so it cannot '
-                'go in on the servo either'
-                % (P.face, run_up, P.r_tip(P.z_pinion), gv_mm('fa_case_w')))
-
-        # AND THE BOLT HAS TO BE DRIVEN, not just inserted. The M3 head sits
-        # in a counterbore on the gear's OUTBOARD face and a driver reaches it
-        # along the elbow axis from outboard - straight into the servo lobe.
-        # A fastener nobody can turn is a joint that never gets tightened.
-        jg_head_d = gv('jg_bolt_head_d')
-        if jg_head_d is not None:
-            # The driver enters at the COUNTERBORE MOUTH, which is the gear's
-            # outboard face - not at the head underside. Measuring from the
-            # underside flatters it by the counterbore depth and got the sign
-            # wrong on the first pass.
-            mouth_x = -(plate_out + free + P.face)
-            lobe_inner_x = -(plate_out + standoff)
-            reach = mouth_x - lobe_inner_x
-            print('   M3 head is sunk %.1f in the gear\'s outboard face at '
-                  'x %.2f; the lobe inner face is at x %.2f'
-                  % (jg_head_d, mouth_x, lobe_inner_x))
-            print('   driver clearance along the axis: %.2f mm, and a stubby '
-                  'bit needs about %.1f (ASSUMED).' % (reach, DRIVER_REACH_MM))
-            if reach < DRIVER_REACH_MM:
-                install_fails.append(
-                    'the M3 counterbore opens %.2f mm from the servo lobe and a '
-                    'driver needs about %.1f - the elbow retention bolt cannot '
-                    'be turned with the servo in place'
-                    % (reach, DRIVER_REACH_MM))
+                'robotarm_j3_servo_cap is not in this document. Every clearance '
+                'above exists BECAUSE the servo pad lifts off; measured with a '
+                'pad in place all three of these failed')
 
     print('')
     print('GATE j3_installs   : %s' % ('PASS' if not install_fails else 'FAIL'))
