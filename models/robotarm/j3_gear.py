@@ -52,6 +52,7 @@ for _stale in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.'
 import adsk.core
 import adsk.fusion
 
+from lib.design_rules import FASTENER_MM as _FASTENERS  # noqa: E402
 from lib.gears import J3_PAIR  # noqa: E402
 from lib.palette import hints_for  # noqa: E402
 
@@ -124,7 +125,10 @@ def run(_context: str):
     param('collar_l', PREFIX + 'plate_t + ' + PREFIX + 'free',
           'derived: the journal spans the plate, plus the running gap that\n'
           '           keeps the gear disc off the plate face')
-    param('bolt_clear', '3.4 mm', 'M3 clearance - the retention bolt down the elbow axis')
+    param('bolt_clear', '%.4f mm' % _FASTENERS['M3']['clearance'],
+          'M3 clearance - lib/design_rules.py FASTENER_MM. upper_arm.py bores\n'
+          '           the SAME number down the elbow axis and asserts the two agree;\n'
+          '           j3_axle taps for the same screw.')
     param('bolt_head', '6.0 mm', 'M3 socket head - design_rules')
     param('bolt_head_d', '3.2 mm', 'head counterbore depth, head sunk below the tooth face')
     param('lead_in', '0.6 mm', 'chamfer on the hex nose')

@@ -6,6 +6,16 @@ styled per specs/robotarm/_style.md.
 Local frame: origin on the J3 ELBOW axis. +X along it, +Y forward toward the
 wrist, +Z up. The J2 shoulder axis is at y = -ua_l1.
 
+ONE HOLE IN IT IS NOT DECORATION. A Ø3.4 bore runs down the ELBOW AXIS,
+through the cable duct, from the j3_gear side to j3_axle on the other. It is
+the only thing holding the geared elbow together. Every other hub in this arm
+is trapped by a flange too big to pass its bore, seating in a counterbore on
+the OUTER face; at J3 both stops are inboard - j3_gear's hex bottoms in this
+part's socket and its disc lands on the forearm plate's outer face - so
+nothing at all stops the group sliding apart and pulling a 3.8 hex clear of a
+3.4 socket. An M3 down the axis is what stops it. It carries no load: the hex
+takes the torque and the journal takes the radial. See j3_gear.py's docstring.
+
 THE SIMPLEST PART IN THE ARM, and that is a consequence of a decision made
 three parts ago rather than luck. The forearm forks at both ends because it
 had to; the shoulder bracket forks for the same reason. So this link is
@@ -38,13 +48,17 @@ BODY_NAME = 'upper_arm'
 PREFIX = 'ua_'
 WRIST = 'wr_'
 STYLE = 'sty_'
-PHASES = ['link form', 'elbow sockets', 'shoulder sockets', 'cable route', 'finish']
+PHASES = ['link form', 'elbow sockets + bolt', 'shoulder sockets',
+          'cable route', 'finish']
 MATERIAL_NAME = 'PET Plastic'
 # _style.md rule 5: two-tone by PART. A link is light.
 # COLOUR LIVES IN lib/palette.py, not here. It used to be typed in this
 # file and sixteen others, so a re-theme meant editing seventeen files
 # and hoping you found them all.
+from lib.design_rules import FASTENER_MM as _FASTENERS  # noqa: E402
 from lib.palette import hints_for  # noqa: E402
+
+_M3 = _FASTENERS['M3']
 APPEARANCE_HINTS = hints_for('upper_arm')
 
 
@@ -123,6 +137,15 @@ def run(_context: str):
           '           and hollows the drums on its way through, so it is the only\n'
           '           lightening feature the part needs. 2 mm of rail top and bottom.')
     param('duct_x', '7.0 mm', 'half width of the cable duct')
+    # THE RETENTION BOLT. Read from design_rules, not typed: j3_gear cuts the
+    # matching clearance and j3_axle taps for the same screw, so this is a
+    # three-file number and the one thing this project reliably gets wrong is
+    # a datum only one file reads. The assert at the bottom checks j3_gear
+    # agrees whenever it is in the same document.
+    param('bolt_clear', '%.4f mm' % _M3['clearance'],
+          'M3 clearance - lib/design_rules.py FASTENER_MM. The elbow retention\n'
+          '           bolt runs the full width down the J3 axis, through the duct,\n'
+          '           from j3_gear into j3_axle.')
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
 
     # ---- idempotent rebuild ---------------------------------------------------
@@ -225,6 +248,12 @@ def run(_context: str):
         return extrude(profiles(sk, expected=1), CUT,
                        '-' + PREFIX + 'half_x', PREFIX + 'socket_d', name)
 
+    def yz_circle(name, y_c, z_c, d, x0, dx, op):
+        """A cylinder on an axis parallel to X. The bolt bore is the only one."""
+        sk = sketch(comp.yZConstructionPlane, 'sk_' + name)
+        sk.sketchCurves.sketchCircles.addByCenterRadius(mpt(sk, 0, y_c, z_c), d / 2)
+        return extrude(profiles(sk, expected=1), op, x0, dx, name)
+
     def xz_rect(name, x0, x1, z0, z1, y0, dy, op):
         sk = sketch(comp.xZConstructionPlane, 'sk_' + name)
         sk.sketchCurves.sketchLines.addTwoPointRectangle(
@@ -244,6 +273,16 @@ def run(_context: str):
     rail = val('waist_z') - val('duct_z')
     assert rail >= val('wall') - 1e-9, (
         'the duct leaves only %.2f mm of rail at the waist' % (rail * 10))
+    # The bolt bore must land INSIDE the duct's cross-section. If it did not,
+    # it would drill two blind pockets into solid instead of one through hole,
+    # and the screw would have nowhere to go.
+    assert val('bolt_clear') / 2 < min(val('duct_x'), val('duct_z')), (
+        'the %.2f bolt bore is wider than the %.1f x %.1f duct it has to pass '
+        'through' % (val('bolt_clear') * 10, val('duct_x') * 20, val('duct_z') * 20))
+    socket_floor_wall = (r_c - val('bolt_clear') / 2)
+    assert socket_floor_wall >= val('wall') - 1e-9, (
+        'the bolt bore leaves only %.2f mm of hex socket floor'
+        % (socket_floor_wall * 10))
 
     # ---- phase 1: link form ----------------------------------------------------
     t0 = design.timeline.count
@@ -259,6 +298,13 @@ def run(_context: str):
         t = design.timeline.count
         for sx in (-1, 1):
             hex_socket('socket_%s_%d' % (tag, sx), y_c, sx)
+        if tag == 'j3':
+            # ONE cut, right across. The duct is already open in the middle,
+            # so this only has to make it through the two socket floors - but
+            # cutting it as a single full-width cylinder is what keeps it on
+            # the axis by construction rather than by two numbers agreeing.
+            yz_circle('elbow_bolt_bore', y_c, 0.0, val('bolt_clear'),
+                      '-' + PREFIX + 'half_x', '2 * ' + PREFIX + 'half_x', CUT)
         group(t, PHASES[phase])
 
     # ---- phase 4: cable route ------------------------------------------------------
@@ -371,6 +417,50 @@ def run(_context: str):
         val('drum_r') * 10, r_fil * 10, waist * 10))
     print('4 hex sockets %.1f af x %.1f deep, %.2f of wall beside the duct' % (
         wval('pivot_af') * 10, val('socket_d') * 10, socket_wall * 10))
+
+    # ---- the elbow retention bolt, checked against the parts it joins -------
+    # Same pattern as fa_elbow_clear above: read the OTHER file's parameter
+    # when it is in the document rather than restating its number here. A
+    # bolt whose three holes are three independently typed 3.4s is exactly
+    # the failure this project keeps paying for.
+    _jg = ups.itemByName('jg_bolt_clear')
+    if _jg is not None:
+        assert abs(_jg.value - val('bolt_clear')) < 1e-9, (
+            'jg_bolt_clear is %.2f and ua_bolt_clear is %.2f - the retention '
+            'bolt does not have one diameter'
+            % (_jg.value * 10, val('bolt_clear') * 10))
+    _ja_sock = ups.itemByName('ja_socket_d')
+    if _ja_sock is not None:
+        assert abs(_ja_sock.value - val('socket_d')) < 1e-9, (
+            'ja_socket_d is %.2f and ua_socket_d is %.2f - j3_axle\'s hex does '
+            'not match the socket it bottoms in'
+            % (_ja_sock.value * 10, val('socket_d') * 10))
+
+    # WHAT LENGTH SCREW TO BUY. Stated, because nothing else in the repo says
+    # it and a bolt that is 5 mm short is a joint that comes apart on the
+    # bench with every gate passing.
+    _need = [n for n in ('jg_face', 'jg_bolt_head_d', 'jg_collar_l',
+                         'wr_reach', 'ja_tap_l') if ups.itemByName(n) is None]
+    if not _need:
+        def _g(n):
+            return ups.itemByName(n).value * 10
+        head_to_hex = _g('jg_face') - _g('jg_bolt_head_d') + _g('jg_collar_l') + _g('wr_reach')
+        across = 2 * (val('half_x') - val('socket_d')) * 10
+        to_tap = head_to_hex + across
+        full = to_tap + _g('ja_tap_l')
+        min_eng = to_tap + 1.5 * val('bolt_clear') * 10
+        print('elbow bolt: %.1f clear on the J3 axis, through the duct. From the '
+              'head underside:' % (val('bolt_clear') * 10))
+        print('   %.1f through j3_gear + %.1f across this part = %.1f to the '
+              'j3_axle tap' % (head_to_hex, across, to_tap))
+        print('   M3 x %.0f gives 1.5d of engagement, M3 x %.0f bottoms the '
+              '%.1f tap - BUY M3 x %.0f'
+              % (5 * round(min_eng / 5.0 + 0.499), 5 * round(full / 5.0 + 0.499),
+                 _g('ja_tap_l'), 5 * round(min_eng / 5.0 + 0.499)))
+    else:
+        print('elbow bolt: %.1f clear on the J3 axis, through the duct. Screw '
+              'length not stated - %s not in this document'
+              % (val('bolt_clear') * 10, ', '.join(_need)))
     print('POLYGONAL: %.1f mm facet on %d silhouette arcs, %.1f on %d socket flats;'
           ' %.2f mm of wall left at the duct corner'
           % (sval('facet') * 10, n_arc, sval('ef') * 10, n_line, duct_wall_mm))

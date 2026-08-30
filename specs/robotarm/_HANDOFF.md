@@ -257,10 +257,15 @@ g['run'](_context)
    own clearance circle. Note the J3 drive-side flange counterbore also has
    to go: `j3_gear` has no flange, and leaving it would cut the journal's
    bearing length from 7.5 to 5.0 against a hub built for the full plate.
-3. **`upper_arm.py` needs one Ø3.4 hole** on the elbow axis, through the
-   cable duct, for the M3 that clamps `j3_gear` + upper arm + `j3_axle`
-   into one rotating group. The gear cannot be flange-trapped — both its
-   stops are inboard. Independent of §9; can be done any time.
+3. ~~`upper_arm.py` needs one Ø3.4 hole~~ **DONE 2026-08-30.** The bore runs
+   the full width on the J3 axis, through the cable duct; upper_arm 45299.852
+   → 45207.244 mm³. Swept with `pointContainment`, 0 of 96 stations blocked,
+   against a control 6 mm off-axis that finds solid at 69 of 96. The M3 is
+   now one datum across three files — `lib/design_rules.py FASTENER_MM`, read
+   by `j3_gear` (clearance), `upper_arm` (clearance, and it asserts j3_gear
+   agrees) and `j3_axle` (pilot). **`ja_tap_d` was 2.5 while its own comment
+   cited design_rules, which says 2.6**; it reads the table now. **Buy M3 × 40** —
+   33.7 mm from the head underside to the tap, printed by the build.
 4. **Re-run `_check_loads`** and confirm the 87 % → ~44 % and the payload.
    The J3 servo now sits 33.95 mm toward the wrist rather than on the elbow
    axis, which is +45 g·cm on J3. The extra width in §9 costs nothing here,

@@ -55,6 +55,7 @@ import adsk.core
 import adsk.fusion
 
 from lib.bearings import B608ZZ  # noqa: E402
+from lib.design_rules import FASTENER_MM as _FASTENERS  # noqa: E402
 from lib.palette import hints_for  # noqa: E402
 
 COMPONENT = 'robotarm_j3_axle'
@@ -125,7 +126,10 @@ def run(_context: str):
     param('journal_l', PREFIX + 'brg_w + 0.5 mm',
           'derived: through the bearing and 0.5 proud, so the bearing is seated\n'
           '           on the collar and not on the end of the journal')
-    param('tap_d', '2.5 mm', 'M3 self-tapping pilot into PETG - design_rules')
+    param('tap_d', '%.4f mm' % _FASTENERS['M3']['pilot'],
+          'M3 self-tapping pilot - lib/design_rules.py FASTENER_MM. It said\n'
+          '           "design_rules" and was 2.5; design_rules says 2.6. Now it reads\n'
+          '           the table instead of quoting it from memory.')
     param('tap_l', '9.0 mm', 'thread engagement for the elbow retention M3')
     param('lead_in', '0.5 mm', 'insertion chamfer on the journal nose')
     param('ef', '0.4 mm', 'elephant-foot chamfer, bed face')
