@@ -80,6 +80,13 @@ PLATE_OF = {
     'pruner_blade': 2, 'pruner_rack': 2,
     'base_lid': 2, 'upper_arm': 2, 'forearm': 2,
 }
+# A SUBSET, when some of it is already on the bench. Empty means everything.
+# Parts not named in PLATE_OF land in a bucket that opens new plates as it
+# fills, instead of asserting - the deliberate grouping is for the full build
+# and does not apply to whatever happens to be left.
+ONLY = []
+AUTO_SPLIT = False
+
 PLATE_NOTE = {
     1: 'THE J1 ANSWER + the head. Supports OFF, no brim - uniform settings.',
     2: 'The long parts. base_lid BRIM, forearm SUPPORTS, nothing else.',
@@ -138,6 +145,8 @@ def run(_context: str):
     # ---- measure every piece in its PRINT orientation ----------------------
     pieces = []
     for name, qty, spec, note in ORIENT:
+        if ONLY and name not in ONLY:
+            continue
         full = 'robotarm_' + name
         assert full in comps, '%s not in this document' % full
         comp = comps[full]
@@ -182,6 +191,9 @@ def run(_context: str):
     # them, and a part that lets go does not sweep the others on its way.
     groups = {}
     for pc in pieces:
+        if AUTO_SPLIT:
+            groups.setdefault(99, []).append(pc)
+            continue
         assert pc['name'] in PLATE_OF, '%s has no plate assigned' % pc['name']
         groups.setdefault(PLATE_OF[pc['name']], []).append(pc)
 
@@ -193,7 +205,7 @@ def run(_context: str):
         # identically-sized twin turntable_stator had already opened. Shelf
         # packing wants like depths adjacent; height only decides ties.
         items = sorted(groups[key], key=lambda p: (-p['d'], -p['h'], -p['w']))
-        shelves = []
+        shelves, items_done = [], []
         for pc in items:
             assert (pc['w'] <= BED_X - 2 * MARGIN
                     and pc['d'] <= BED_Y - 2 * MARGIN), (
@@ -218,6 +230,12 @@ def run(_context: str):
                 if done:
                     break
             if done:
+                # BOOK IT ONTO THE PLATE. Missing this line placed the part
+                # correctly and then dropped it from the plate's own list:
+                # the run reported '12 pieces' and exported five, because
+                # everything that shared an existing shelf was positioned and
+                # then forgotten.
+                items_done.append(pc)
                 continue
             top = MARGIN
             for sh in shelves:
@@ -227,16 +245,23 @@ def run(_context: str):
             if pc['d'] > pc['w'] and top + pc['w'] <= BED_Y - MARGIN + 1e-9:
                 pc['yaw'] = True
                 pc['w'], pc['d'] = pc['d'], pc['w']
-            assert top + pc['d'] <= BED_Y - MARGIN + 1e-9, (
-                'plate %d is full: %s (%.1f x %.1f) will not fit. Move '
-                'something to the other plate in PLATE_OF rather than letting '
-                'a packer decide - the grouping is deliberate.'
-                % (key, pc['name'], pc['w'], pc['d']))
+            if top + pc['d'] > BED_Y - MARGIN + 1e-9:
+                if AUTO_SPLIT:
+                    plates.append(items_done)
+                    items_done, shelves = [], []
+                    top = MARGIN
+                else:
+                    raise AssertionError(
+                        'plate %d is full: %s (%.1f x %.1f) will not fit. Move '
+                        'something to the other plate in PLATE_OF rather than '
+                        'letting a packer decide - the grouping is deliberate.'
+                        % (key, pc['name'], pc['w'], pc['d']))
             sh = dict(y=top, d=pc['d'], x=MARGIN)
             pc['x'], pc['y'] = sh['x'], sh['y']
             sh['x'] += pc['w'] + GAP
             shelves.append(sh)
-        plates.append(items)
+            items_done.append(pc)
+        plates.append(items_done)
 
     # the conflict rule is now structural, but assert it anyway - a future
     # edit to PLATE_OF is exactly the kind of thing that quietly breaks it
@@ -326,7 +351,19 @@ def run(_context: str):
                         and bb.minPoint.y * 10 > -0.01
                         and bb.maxPoint.y * 10 < BED_Y + 0.01), (
                     'plate %d: %s lands outside the bed' % (i + 1, o.component.name))
+        # A HIDDEN OCCURRENCE EXPORTS AS AN EMPTY FILE. Lighting the plate
+        # itself is not enough - each child occurrence inside it carries its
+        # own state, and it inherits whatever the source occurrence had when
+        # it was added. Any earlier script that toggled bulbs for a render
+        # leaves them off, and the export comes back as a 1.7 KB header.
         pocc.isLightBulbOn = True
+        for k in range(pc.occurrences.count):
+            pc.occurrences.item(k).isLightBulbOn = True
+        lit = sum(1 for k in range(pc.occurrences.count)
+                  if pc.occurrences.item(k).isLightBulbOn)
+        assert lit == pc.occurrences.count, (
+            'plate %d: only %d of %d parts are visible - the export would be '
+            'short' % (i + 1, lit, pc.occurrences.count))
         path = os.path.join(OUT_DIR, 'plate_%d_v%d.3mf' % (i + 1, VERSION))
         assert not os.path.exists(path), '%s exists - bump VERSION' % path
         em = design.exportManager
@@ -349,7 +386,12 @@ def run(_context: str):
         print('PLATE %d - %d pieces, %.0f g, tallest %.1f mm, %.0f%% of the bed'
               % (n, len(plate), g, tall,
                  100.0 * used / (BED_X * BED_Y)))
-        print('  %s' % PLATE_NOTE.get(n, ''))
+        # PLATE_NOTE describes the FULL build's grouping. On a subset the
+        # plates are whatever is left, so the note would be describing a plate
+        # that does not exist - it once read 'forearm SUPPORTS' on a plate
+        # with no forearm on it.
+        if not ONLY:
+            print('  %s' % PLATE_NOTE.get(n, ''))
         print('  supports: %s | brim: %s'
               % (', '.join(needs) if needs else 'NONE - leave them off',
                  ', '.join(brims) if brims else 'none'))
@@ -371,8 +413,11 @@ def run(_context: str):
         print('')
     print('%d pieces, %.0f g of PETG total' % (len(pieces), total_g))
     print('')
-    print('SUPPORTS: forearm only. OFF everywhere else - on turntable_stator')
-    print('  that is not a preference, the axle bridge is load-bearing.')
+    _sup = sorted(set(p['name'] for pl in plates for p in pl
+                      if p['name'] == 'forearm'))
+    print('SUPPORTS: %s. OFF everywhere else - on turntable_stator that is'
+          % (', '.join(_sup) if _sup else 'NONE on these plates'))
+    print('  not a preference, the axle bridge is load-bearing.')
     print('BRIM: base_lid. Budget 5-8 mm of extra footprint for it.')
     print('Orientations are BAKED IN. If you auto-arrange in the slicer, keep')
     print('  rotation locked or gripcut_finger and pruner_rack will flip.')
