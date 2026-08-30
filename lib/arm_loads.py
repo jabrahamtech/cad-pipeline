@@ -40,6 +40,8 @@ unit and nothing is compared across units without a conversion on the line.
 
 import math
 
+from lib.gears import J3_PAIR as _J3_PAIR
+
 # --- what a gram of printed plastic actually weighs -------------------------
 # Identical to lib/arm_budget.py, deliberately: if these two files disagree
 # about density then one of them is lying about every mass it prints.
@@ -55,6 +57,54 @@ SOLID_TO_PRINTED = PETG_FILAMENT_DENSITY * REAL_INFILL / 1000.0
 STALL_KGCM = {'J1': 1.6, 'J2': 9.4, 'J3': 2.0, 'J4': 2.0, 'J5': 1.6}
 DUTY_FRACTION = 0.5
 DUTY_KGCM = {k: v * DUTY_FRACTION for k, v in STALL_KGCM.items()}
+
+# --- joint reductions -------------------------------------------------------
+# A SERVO DOES NOT ALWAYS DRIVE ITS JOINT 1:1, AND THIS FILE USED TO ASSUME IT
+# DID. J3 has run through a printed 2:1 spur pair since 2026-08-30 - three
+# parts, a gate and a forearm rework - and none of it was visible here, so
+# this model would have gone on reporting the elbow at 87 % of duty while the
+# hardware was at half that. That is the project's recurring failure in its
+# usual shape: a datum that only the files which CUT it ever read.
+#
+# The ratio is imported, not typed. If someone changes J3_PAIR's tooth counts
+# the number here moves with them or the import fails.
+#
+# EFFICIENCY IS ASSUMED, AND IT IS THE WEAK NUMBER IN THIS BLOCK. 0.90 for a
+# single printed spur mesh, PETG on PETG, running dry. A machined steel pair
+# would be 0.97-0.99; printed plastic is rougher, and this has NOT been
+# measured on the bench. It is deliberately pessimistic - if the real pair is
+# better, the joint has more margin than reported, which is the direction an
+# unmeasured number should err in.
+MESH_EFFICIENCY = 0.90
+
+REDUCTION = {
+    'J3': {'ratio': _J3_PAIR.ratio,
+           'efficiency': MESH_EFFICIENCY,
+           'what': 'printed %dT/%dT spur pair, lib/gears.py J3_PAIR'
+                   % (_J3_PAIR.z_pinion, _J3_PAIR.z_gear)},
+}
+
+
+def joint_reduction(joint):
+    """(ratio, efficiency) between a joint's servo and the joint itself."""
+    r = REDUCTION.get(joint)
+    return (r['ratio'], r['efficiency']) if r else (1.0, 1.0)
+
+
+def duty_at_joint_kgcm(joint):
+    """What the servo will HOLD at the joint, after any reduction.
+
+    Torque multiplies by the ratio and is spent by the mesh; TRAVEL divides
+    by the ratio, which is the other half of the same trade and is reported
+    alongside so nobody reads the torque win without the travel cost.
+    """
+    ratio, eff = joint_reduction(joint)
+    return DUTY_KGCM[joint] * ratio * eff
+
+
+def travel_at_joint_deg(joint, servo_travel_deg=180.0):
+    ratio, _ = joint_reduction(joint)
+    return servo_travel_deg / ratio
 
 # --- material, for the section checks ---------------------------------------
 # knowledge/loads_strength.md "Verifying without FEA": sigma = M.c/I against
@@ -103,14 +153,20 @@ def duty_report(joint, items):
     """What this joint is asked for, against what its servo will hold."""
     assert joint in DUTY_KGCM, 'no duty figure for %s' % joint
     required_gcm = joint_moment(items)
-    duty_gcm = DUTY_KGCM[joint] * 1000.0
+    ratio, eff = joint_reduction(joint)
+    duty_gcm = duty_at_joint_kgcm(joint) * 1000.0
     frac = required_gcm / duty_gcm if duty_gcm else float('inf')
     return {
         'joint': joint,
         'required_gcm': required_gcm,
         'required_kgcm': required_gcm / 1000.0,
-        'duty_kgcm': DUTY_KGCM[joint],
+        'duty_kgcm': duty_at_joint_kgcm(joint),
+        'servo_duty_kgcm': DUTY_KGCM[joint],
         'stall_kgcm': STALL_KGCM[joint],
+        'ratio': ratio,
+        'efficiency': eff,
+        'reduction': REDUCTION.get(joint, {}).get('what', 'direct drive'),
+        'travel_deg': travel_at_joint_deg(joint),
         'fraction': frac,
         'margin': (duty_gcm / required_gcm) if required_gcm else float('inf'),
         'over': frac > 1.0,

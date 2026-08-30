@@ -362,18 +362,63 @@ def run(_context: str):
         print('  %-10s %.4f of its length (%.2f mm)  arm_budget says %.3f - %s'
               % (tag, frac, com_mm, assumed, note))
     print('')
-    print('%-7s %11s %11s %9s %9s  %s'
-          % ('joint', 'required', 'duty', 'of duty', 'margin', ''))
+    print('%-7s %11s %11s %9s %9s  %-28s %s'
+          % ('joint', 'required', 'duty', 'of duty', 'margin', 'drive', ''))
     duty_fail = []
+    geared = []
     for joint, items in (('J2', j2_items), ('J3', j3_items), ('J4', j4_items)):
         r = al.duty_report(joint, items)
         flag = 'OVER DUTY' if r['over'] else ''
-        print('%-7s %8.2f kgcm %8.2f kgcm %8.0f%% %9.2f  %s'
+        if r['ratio'] == 1.0:
+            drive = 'direct'
+        else:
+            drive = ('%.1f:1 x %.0f%% eff, %.0f deg travel'
+                     % (r['ratio'], r['efficiency'] * 100, r['travel_deg']))
+            geared.append((joint, r))
+        # DUTY IS NOW THE DUTY AT THE JOINT, not at the servo. Those differ
+        # by the reduction, and reporting the servo's figure against a joint
+        # moment is how this model would have kept calling the elbow 87 %.
+        print('%-7s %8.2f kgcm %8.2f kgcm %8.0f%% %9.2f  %-28s %s'
               % (joint, r['required_kgcm'], r['duty_kgcm'],
-                 r['fraction'] * 100, r['margin'], flag))
+                 r['fraction'] * 100, r['margin'], drive, flag))
+    for joint, r in geared:
+        print('   %s runs through a %s.' % (joint, r['reduction']))
+        print('   servo holds %.2f kg.cm; at the joint that is %.2f kg.cm, '
+              'and the joint swings %.0f deg not 180.'
+              % (r['servo_duty_kgcm'], r['duty_kgcm'], r['travel_deg']))
+        print('   mesh efficiency %.0f%% is ASSUMED (lib/arm_loads.py '
+              'MESH_EFFICIENCY) - not measured on the bench.'
+              % (r['efficiency'] * 100))
         if r['over']:
             duty_fail.append('%s at %.0f%% of duty' % (joint,
                                                        r['fraction'] * 100))
+    # ---- what payload the arm would actually carry -------------------------
+    # The rated payload was a NUMBER IN _assembly.md and nothing computed it.
+    # It is not free either: it is whatever the first joint to reach its duty
+    # limit allows, and which joint that is moves when a reduction lands. The
+    # handoff estimated "25 g -> roughly 60 g" for the geared elbow; estimates
+    # are what this file exists to replace.
+    ceiling = []
+    for joint, items in (('J2', j2_items), ('J3', j3_items), ('J4', j4_items)):
+        r = al.duty_report(joint, items)
+        pay = [i for i in items if i.source == 'PAYLOAD']
+        if not pay:
+            continue
+        radius_cm = pay[0].radius_mm / 10.0
+        headroom_gcm = r['duty_kgcm'] * 1000.0 - r['required_gcm']
+        ceiling.append((joint, PAYLOAD_G + headroom_gcm / radius_cm))
+    if ceiling:
+        binder, cap = min(ceiling, key=lambda t: t[1])
+        print('')
+        print('RATED PAYLOAD: %.0f g at the jaws, and %s is what binds it.'
+              % (cap, binder))
+        print('   per joint: %s'
+              % ',  '.join('%s %.0f g' % c for c in sorted(ceiling)))
+        print('   PAYLOAD_G is currently %.0f g. The figure above is the ceiling'
+              % PAYLOAD_G)
+        print('   the geometry allows, not a recommendation - it is static, and')
+        print('   it spends the binding joint to 100% of its duty limit.')
+
     print('')
     print('J3 detail - the elbow sets the payload, so show its work:')
     for i in sorted(j3_items, key=lambda x: -x.moment_gcm):

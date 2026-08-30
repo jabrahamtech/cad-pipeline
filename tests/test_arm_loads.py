@@ -51,12 +51,61 @@ def test_duty_limit_is_half_stall():
 
 
 def test_duty_report_flags_over():
-    """An MG90S at J3 holds 1.0 kg.cm. 1.5 must report OVER, not silently."""
+    """An MG90S at J4 holds 1.0 kg.cm DIRECT. 1.5 must report OVER."""
     items = [al.Item('lump', 150.0, 100.0, 'ESTIMATED')]   # 1500 g.cm
-    r = al.duty_report('J3', items)
+    r = al.duty_report('J4', items)
     assert r['required_kgcm'] == pytest.approx(1.5)
     assert r['over'] is True
     assert r['estimated_items'] == ['lump']
+
+
+# --- the J3 reduction. These exist because the model did NOT know about it --
+# for three commits after the gear train was built and gated, and would have
+# gone on reporting the elbow at 87 % of duty while the hardware sat at half
+# that. A ratio that only the parts CUT FROM it ever read is not a contract.
+
+def test_direct_drive_joints_are_untouched():
+    for j in ('J1', 'J2', 'J4', 'J5'):
+        assert al.joint_reduction(j) == (1.0, 1.0)
+        assert al.duty_at_joint_kgcm(j) == pytest.approx(al.DUTY_KGCM[j])
+        assert al.travel_at_joint_deg(j) == pytest.approx(180.0)
+
+
+def test_j3_ratio_comes_from_the_gear_pair_not_a_typed_number():
+    from lib.gears import J3_PAIR
+    ratio, eff = al.joint_reduction('J3')
+    assert ratio == pytest.approx(J3_PAIR.ratio)
+    assert ratio == pytest.approx(J3_PAIR.z_gear / float(J3_PAIR.z_pinion))
+    assert 0.0 < eff <= 1.0
+
+
+def test_j3_reduction_multiplies_duty_and_spends_it_on_the_mesh():
+    ratio, eff = al.joint_reduction('J3')
+    assert al.duty_at_joint_kgcm('J3') == pytest.approx(
+        al.DUTY_KGCM['J3'] * ratio * eff)
+    # and it is strictly better than direct drive, or it is not worth having
+    assert al.duty_at_joint_kgcm('J3') > al.DUTY_KGCM['J3']
+
+
+def test_the_reduction_costs_travel_and_says_so():
+    ratio, _ = al.joint_reduction('J3')
+    assert al.travel_at_joint_deg('J3') == pytest.approx(180.0 / ratio)
+    assert al.travel_at_joint_deg('J3') < 180.0
+
+
+def test_a_load_over_duty_direct_is_within_duty_geared():
+    """The whole point of the elbow reduction, as one assertion.
+
+    1.5 kg.cm is over an MG90S driving direct - see the J4 case above - and
+    within it through the J3 pair. If this ever stops being true the pair is
+    not earning the travel it costs.
+    """
+    items = [al.Item('lump', 150.0, 100.0, 'MEASURED')]     # 1500 g.cm
+    assert al.duty_report('J4', items)['over'] is True
+    r = al.duty_report('J3', items)
+    assert r['over'] is False
+    assert r['ratio'] == pytest.approx(2.0)
+    assert 'spur pair' in r['reduction']
 
 
 def test_duty_report_surfaces_estimated_items():

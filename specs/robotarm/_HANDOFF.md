@@ -273,10 +273,33 @@ g['run'](_context)
    agrees) and `j3_axle` (pilot). **`ja_tap_d` was 2.5 while its own comment
    cited design_rules, which says 2.6**; it reads the table now. **Buy M3 × 40** —
    33.7 mm from the head underside to the tap, printed by the build.
-4. **Re-run `_check_loads`** and confirm the 87 % → ~44 % and the payload.
-   The J3 servo now sits 33.95 mm toward the wrist rather than on the elbow
-   axis, which is +45 g·cm on J3. The extra width in §9 costs nothing here,
-   because it is along the joint axis.
+4. ~~Re-run `_check_loads`~~ **DONE 2026-08-30 — and the load model did not
+   know the reduction existed.** `lib/arm_loads.py`, `lib/arm_budget.py` and
+   `_check_loads.py` contained no mention of the ratio: the gear train was
+   built, gated and installed, and this model would have gone on reporting
+   the elbow at 87 % while the hardware sat at half that. §3's failure for
+   the fourth time. `lib/arm_loads.py` now imports `J3_PAIR` and carries a
+   `REDUCTION` table; six new tests in `tests/test_arm_loads.py` hold it.
+
+   | joint | required | duty at the joint | of duty | drive |
+   |---|---|---|---|---|
+   | J2 | 2.84 kg·cm | 4.70 | 60 % | direct |
+   | J3 | 0.89 kg·cm | **1.80** | **49 %** | 2:1 × 90 % eff, 90° travel |
+   | J4 | 0.36 kg·cm | 1.00 | 36 % | direct |
+
+   **J3 87 % → 49 %**, margin 2.03. `GATE loads duty` and `GATE loads
+   sections` both PASS, and `GATE ledger` passes on all 18 parts at 0.000
+   delta in a fresh document.
+
+   **Rated payload 103 g at the jaws, not the ~60 g estimated — and J2 binds
+   it now, not J3.** Per joint: J2 103 g, J3 106 g, J4 119 g. `_check_loads`
+   computes and prints this; it used to be a number in `_assembly.md` that
+   nothing derived. **The elbow is no longer the bottleneck; the shoulder
+   is.** `PAYLOAD_G` is still 25 — raising it is a decision, not a
+   consequence, and the figure is static with no slew, stop or impact.
+
+   The one weak number: `MESH_EFFICIENCY = 0.90` is ASSUMED for a printed
+   PETG spur pair running dry, not measured. It is deliberately pessimistic.
 5. **Re-export the plates.** The J3 parts are on none of them, and the
    full-build plates in `exports/robotarm/plates/plate_[12]_v6.3mf` came
    from a document where `shoulder_bracket` still had the old arm length —
