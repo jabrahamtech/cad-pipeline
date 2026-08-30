@@ -384,19 +384,52 @@ end, y −1.62 … 11.60 — 9.75 mm wide on the centreline, 13.22 mm at the
 lobe's top and bottom edges. The elbow-side remainder is inside the gear
 circle and is cut away too.
 
-**So the J3 servo becomes a cantilever off the J4 end of the forearm**,
-carrying its own 2.0 kg·cm stall reaction across a 9.60 mm standoff on a
-~10 mm web. That is a structural change to the part, not a detail.
+**So the J3 servo hangs off the J4 end of the forearm**, carrying its own
+2.0 kg·cm stall reaction across a 9.60 mm standoff on a ~10 mm web. That is
+a real change to the part's load path — but see the pricing below: the web
+is stiff enough by a wide margin, and this reads worse than it is.
 
 Going over the top of the pinion does not obviously rescue it: the pinion
 circle only clears at |z| ≥ 12.90, `fa_waist_z` is 12.0, and the silhouette
 at that station reaches roughly 12.9 — there is no room for a strap without
 growing the link's outline.
 
-Three ways out, none of them yet priced:
+### Priced 2026-08-30: option 1 is fine, and "cantilever" overstated it
 
-1. **Accept the cantilever** and gate it — a stress check on the web, not a
-   clearance check. Nothing else changes.
+The web is not a thin unsupported finger. The pinion circle never reaches
+y ≥ 1.85 **at any z**, so the web is full height there, and the J4 boss
+(r 13.78 about y 0) backs the whole span. It is a short stubby prism —
+b 9.75 (Y) × h 17.60 (Z) × L 9.60 (X) — loaded in TORSION about its own long
+axis, which is the stiffest way a block that shape can be loaded.
+
+At the MG90S's **stall** 2.0 kg·cm, not its duty limit:
+
+| | value | against | margin |
+|---|---|---|---|
+| peak shear | 0.281 MPa | ~20 MPa PETG interlayer | **71×** |
+| twist | 0.0164° | — | — |
+| lost motion at the pinion pitch radius | 0.0032 mm | 0.20 mm designed backlash | **1.6 %** |
+
+Interlayer is the right allowable to check: the forearm builds along +X, so
+the layers lie normal to X and this loading is across them — the weak
+direction. β/α are the handbook rectangular-torsion coefficients for
+h/b = 1.5 used at h/b = 1.81, which understates J and α and so **overstates**
+both the twist and the stress.
+
+FIRST-ORDER, NOT A GATE. E 1700 MPa and ~20 MPa interlayer are book values
+for PETG, not measured on this printer, and the web is idealised as one
+prism when the real one tapers into the lobe. But it is not close: the
+decision does not turn on a factor of two, or of ten.
+
+**Recommendation: take option 1.** Options 2 and 3 buy stiffness that is
+already 60× more than the joint can use, and both cost real geometry.
+
+Three ways out:
+
+1. **Accept the web as it falls** and add a gate that measures it — priced
+   above, and it passes with room to spare. Nothing else changes. The word
+   "cantilever" below was mine and it was alarmist; the physics does not
+   support it.
 2. **Grow the silhouette at the J3 station** so a strap passes over and
    under the pinion, making the standoff a closed yoke instead of a
    cantilever. Costs mass on the forearm, which §4's `fa_l2` comment calls
