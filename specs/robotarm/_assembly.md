@@ -12,7 +12,17 @@ from it. Reference image: a 5-DOF desktop arm on a drum turntable
 A 5-DOF desktop arm with a parallel-jaw gripper, built from the servos
 already in hand: **1 × MG995, 2 × MG90S, 3 × SG90** (one SG90 stays spare)
 and **6 × 608ZZ** (3 used). Shoulder-to-wrist reach **150 mm**, rated
-payload **25 g**. Electronics live in the base. Every servo lead runs
+payload **25 g**.
+
+> **STALE, 2026-08-30.** Three of those numbers moved when J3 gained a 2:1
+> spur reduction and none of this section was updated: **4 × 608ZZ are used**,
+> not 3 — the elbow idler runs in one. J3 swings **90°, not ±90°**, and its
+> servo sits one centre distance toward the wrist rather than on the elbow
+> axis. The measured payload ceiling is **92 g** and **J2 binds it, not J3**.
+> `PAYLOAD_G` is still 25 because raising it is a decision, not a consequence.
+> The joint table below still says "servo shaft + printed idler stub" for J3;
+> it is a gear pair and a 608ZZ. Read `_HANDOFF.md` §9–10 and `_build.md`
+> before trusting anything in this file about the elbow. Electronics live in the base. Every servo lead runs
 inside the links, through each joint axis, under a clip-on cover.
 
 Overall: Ø150 base × ~330 mm tall folded, ~300 mm horizontal reach from the
@@ -443,10 +453,14 @@ STATE. Steps are re-walked and corrected at Phase A step 5 of workflow 02.
 7. Check the stroke by hand before the arm ever sees it: both jaws must
    reach the end stops without the pinion skipping.
 
-**Arm, wrist down to base** — steps 8–24, written once the piece geometry
-exists; the rule is that every servo lead is routed and zip-tied before the
-cover that hides it goes on, and every link's idler stub is seated in its
-drum's far cap before the horn screw is driven.
+**Arm, wrist down to base** — ~~steps 8–24, written once the piece geometry
+exists~~. **WRITTEN 2026-08-30: `specs/robotarm/_build.md`.** The geometry
+exists, so the promise came due. The elbow steps there are gate-backed by
+`GATE j3_installs`; the rest is walked on paper and says so.
+
+The rule still holds and is repeated there: every servo lead is routed and
+zip-tied before the cover that hides it goes on, and every link's idler stub
+is seated in its drum's far cap before the horn screw is driven.
 
 ## Fit-check plan
 

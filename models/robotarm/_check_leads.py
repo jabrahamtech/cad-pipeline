@@ -85,10 +85,23 @@ MOUNTS = [
          shaft=(29.6, 0.0, 0.0),
          xa=('z', -1), za=('x', -1),
          insert=(-1.0, 0.0, 0.0), travel=45.0),
-    dict(tag='J3 elbow', host='forearm', servo='MG90S',
-         shaft=(-25.4, -45.0, 0.0),
-         xa=('y', +1), za=('x', +1),
-         insert=(1.0, 0.0, 0.0), travel=30.0),
+    # J3 DOES NOT MOUNT IN THE FOREARM ANY MORE, and this row went on saying
+    # it did for four commits after the 2:1 landed. It read
+    # shaft=(-25.4, -45.0, 0.0): the OLD tab plane, on the OLD elbow axis,
+    # in a host that no longer carries the servo. The reduction moved it one
+    # centre distance toward the wrist and 9.60 mm further out, onto
+    # j3_servo_cap - so "leads 6/6 CLEAR" was checking thin air for this one,
+    # which is the exact failure this file was rewritten to stop making.
+    #
+    # The frame is the CAP's: origin on the pinion axis at its INNER face,
+    # +X along the arm toward the wrist, +Z out of the seating face toward
+    # the servo. The tab plane is the cap's outer face, so the shaft origin
+    # sits at z = sc_t. Insertion is into the cap OFF THE ARM, which is the
+    # whole point of the cap existing - see _HANDOFF.md section 10.
+    dict(tag='J3 elbow', host='j3_servo_cap', servo='MG90S',
+         shaft=(0.0, 0.0, 5.5),
+         xa=('x', +1), za=('z', +1),
+         insert=(0.0, 0.0, -1.0), travel=30.0),
     dict(tag='J4 wrist', host='forearm', servo='MG90S',
          shaft=(25.4, 0.0, 0.0),
          xa=('y', -1), za=('x', -1),

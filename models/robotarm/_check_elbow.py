@@ -376,6 +376,56 @@ def run(_context: str):
                 'the 18T pinion is r %.2f and the tightest aperture on its '
                 'path is r %.2f at x %.2f' % (r_pin, ap_p, at_p))
 
+        # -- 4. the 608ZZ into its pocket -------------------------------------
+        # It is pocketed from the plate's INNER face, so it is carried in
+        # along the arm INSIDE the straddle and then pressed outward. That
+        # means it goes in BEFORE the upper arm does, and nothing said so
+        # until this gate did. Probed just inside the pocket wall, so the
+        # intended press does not read as an obstruction.
+        w = gv_mm('fa_brg_w')
+        pocket_r = gv_mm('fa_brg_pocket_d') / 2.0
+        r_probe = pocket_r - 0.05
+        x_carry = plate_in - w / 2.0
+
+        def brg_hits(x_c, y_c, rr):
+            bad = 0
+            for k in range(24):
+                a = 2 * math.pi * k / 24
+                for xo in (-w / 2 + 0.3, 0.0, w / 2 - 0.3):
+                    pt = P3((x_c + xo) / 10.0, (y_c + rr * math.cos(a)) / 10.0,
+                            (rr * math.sin(a)) / 10.0)
+                    if fa_body.pointContainment(pt) != OUTSIDE:
+                        bad += 1
+            return bad
+
+        carry_bad, y = 0, -L2 - 26.0
+        while y <= -L2 + 1e-9:
+            carry_bad += brg_hits(x_carry, y, r_probe)
+            y += 3.25
+        press_bad, x = 0, x_carry
+        while x <= plate_in + w / 2.0 + 1e-9:
+            press_bad += brg_hits(x, -L2, r_probe)
+            x += 1.75
+        print('4. the 608ZZ carried in along the straddle at x %.2f, then '
+              'pressed to x %.2f:' % (x_carry, plate_in + w / 2.0))
+        print('   carry %s, press-in %s (probed at r %.2f, just inside the '
+              '%.2f pocket wall)'
+              % ('clear' if not carry_bad else '%d BLOCKED' % carry_bad,
+                 'clear' if not press_bad else '%d BLOCKED' % press_bad,
+                 r_probe, pocket_r))
+        if carry_bad or press_bad:
+            install_fails.append(
+                'the 608ZZ cannot reach its pocket: %d blocked on the way in '
+                'along the arm, %d on the press' % (carry_bad, press_bad))
+        ctl_b = brg_hits(plate_in + w / 2.0, -L2, pocket_r + 1.0)
+        print('   CONTROL, the same ring 1.0 outside the pocket wall: %d in '
+              'material - %s' % (ctl_b, 'the probe can see' if ctl_b else
+                                 'THE PROBE SEES NOTHING'))
+        if not ctl_b:
+            install_fails.append(
+                'the bearing probe found nothing 1.0 outside its own pocket '
+                'wall - it is measuring nothing')
+
         # -- THE CONTROL. Every aperture above is a "nothing found" reading,
         # and a probe that can never find anything would report exactly the
         # same. Push it into the fork plate, which is solid.
