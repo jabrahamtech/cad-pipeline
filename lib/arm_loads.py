@@ -174,6 +174,77 @@ def duty_report(joint, items):
     }
 
 
+# --- J1 yaw: the one joint gravity does not load ----------------------------
+# _assembly.md has rated J1 as "inertia + friction only" since it was written
+# and NOTHING EVER COMPUTED IT. That is an assertion, not a number, and the
+# question "should J1 be geared" cannot be answered without it - a reduction
+# there costs yaw travel 1:1, so it has to be bought with something real.
+#
+# Gravity produces no moment about a vertical axis, so the load is:
+#   inertia   I * alpha, with I = sum(m r^2) about the yaw axis
+#   friction  three 608ZZ under the rotating weight, plus seal drag
+#
+# THE MOMENT ARM IS NOT THE SAME ONE THE PITCH JOINTS USE. About J2 an item's
+# arm is its distance along the arm; about J1 it is its HORIZONTAL distance
+# from the yaw axis. With the arm straight out and J2 sitting on the yaw axis
+# those coincide, which is the worst case and the one used here. Fold the arm
+# and I falls; that is why this is computed straight out.
+
+# Rolling friction of a deep-groove ball bearing under light load. HANDBOOK
+# range is 0.0010-0.0015 for 608-class; the top of it is taken.
+BEARING_ROLLING_MU = 0.0015
+# ZZ shields drag. ASSUMED - not measured, and it is the weak number here.
+# Small against the inertia term, which is what this calculation is for.
+SHIELD_DRAG_NMM_EACH = 0.15
+
+
+def yaw_inertia_gmm2(items):
+    """Second moment of the rotating mass about the yaw axis, in g.mm^2.
+
+    Takes the same Item list the pitch joints use. Their radius_mm is the
+    horizontal distance from the axis when the arm is straight out, which is
+    exactly what is wanted here.
+    """
+    return sum(i.mass_g * i.radius_mm ** 2 for i in items)
+
+
+def yaw_slew_report(items, sweep_deg=90.0, seconds=1.0, roller_r_mm=27.0,
+                    n_rollers=3):
+    """What J1 must produce to slew `sweep_deg` in `seconds`, and hold.
+
+    Triangular velocity profile - accelerate for half the move, decelerate
+    for the other half - so peak alpha = 4 * theta / t^2. That is the
+    textbook worst case for a point-to-point move and it needs no guess
+    about the servo's internal profile.
+    """
+    I_gmm2 = yaw_inertia_gmm2(items)
+    I_kgm2 = I_gmm2 * 1e-9
+    theta = math.radians(sweep_deg)
+    alpha = 4.0 * theta / (seconds ** 2)            # rad/s^2
+    t_inertia_nm = I_kgm2 * alpha
+
+    mass_g = sum(i.mass_g for i in items)
+    weight_n = to_newtons(mass_g)
+    roll_nm = (BEARING_ROLLING_MU * weight_n * (roller_r_mm / 1000.0))
+    drag_nm = n_rollers * SHIELD_DRAG_NMM_EACH / 1000.0
+    t_friction_nm = roll_nm + drag_nm
+
+    total_nm = t_inertia_nm + t_friction_nm
+    return {
+        'inertia_gmm2': I_gmm2,
+        'mass_g': mass_g,
+        'alpha_rad_s2': alpha,
+        'inertia_kgcm': t_inertia_nm / 9.80665 * 100.0,
+        'friction_kgcm': t_friction_nm / 9.80665 * 100.0,
+        'inertia_nm': t_inertia_nm,
+        'friction_nm': t_friction_nm,
+        'total_nm': total_nm,
+        'total_kgcm': total_nm / 9.80665 * 100.0,
+        'duty_kgcm': duty_at_joint_kgcm('J1'),
+        'fraction': (total_nm / 9.80665 * 100.0) / duty_at_joint_kgcm('J1'),
+    }
+
+
 # --- section checks ---------------------------------------------------------
 
 def rect_section_modulus_mm3(width_mm, height_mm):

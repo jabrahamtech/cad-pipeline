@@ -445,6 +445,29 @@ def run(_context: str):
         print('   the geometry allows, not a recommendation - it is static, and')
         print('   it spends the binding joint to 100% of its duty limit.')
 
+    # ---- J1 yaw: the assertion nobody had computed --------------------------
+    # _assembly.md has rated J1 "inertia + friction only" since it was
+    # written. True - gravity makes no moment about a vertical axis - but it
+    # is not a number, and "should J1 be geared?" cannot be answered without
+    # one, because a reduction there costs yaw travel 1:1.
+    print('')
+    print('=== B2. J1 yaw, arm straight out (the worst pose for inertia) ===')
+    for sweep, secs in ((90.0, 1.0), (90.0, 0.5), (180.0, 1.0)):
+        y = al.yaw_slew_report(j2_items, sweep_deg=sweep, seconds=secs)
+        print('  %5.0f deg in %.1f s: alpha %6.2f rad/s2 -> inertia %.3f + '
+              'friction %.3f = %.3f kg.cm, %3.0f%% of the %.2f duty'
+              % (sweep, secs, y['alpha_rad_s2'], y['inertia_kgcm'],
+                 y['friction_kgcm'], y['total_kgcm'], y['fraction'] * 100,
+                 y['duty_kgcm']))
+    _y = al.yaw_slew_report(j2_items)
+    print('  rotating I = %.0f g.mm2 about the yaw axis, %.1f g of it'
+          % (_y['inertia_gmm2'], _y['mass_g']))
+    print('  friction is %.1f%% of the total - the rollers are not the problem'
+          % (100.0 * _y['friction_kgcm'] / _y['total_kgcm']))
+    print('  ASSUMED: triangular slew, bearing mu %.4f, %.2f N.mm of shield drag'
+          % (al.BEARING_ROLLING_MU, al.SHIELD_DRAG_NMM_EACH))
+    print('  NOT modelled: cutting reaction at the jaws, or any side load.')
+
     print('')
     print('J3 detail - the elbow sets the payload, so show its work:')
     for i in sorted(j3_items, key=lambda x: -x.moment_gcm):

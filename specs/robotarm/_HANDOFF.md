@@ -692,3 +692,54 @@ Not diagnosed, because it cannot be from CAD. What is known:
 
 **Print `gauge_verify_v2` before any more full parts.** ~29 g against the ~75 g
 of reprints §11 already costs.
+
+---
+
+## 13. J1 is speed-limited, and gearing it will not fix that — 2026-08-31
+
+`_assembly.md` line 170 has rated J1 **"inertia + friction only … n/a"** since
+it was written. The first half is true — gravity makes no moment about a
+vertical axis — but "n/a" is an assertion nobody had ever computed, and it is
+wrong. `lib/arm_loads.py` now has the model (`yaw_slew_report`), and
+`_check_loads` reports it.
+
+Arm straight out, the worst pose for inertia. **I = 5.68 × 10⁶ g·mm²**:
+
+| move | α | required | of the 0.80 duty |
+|---|---|---|---|
+| 90° in 1.0 s | 6.28 rad/s² | 0.369 kg·cm | 46 % |
+| 180° in 1.0 s | 12.57 | 0.733 | **92 %** |
+| 90° in 0.5 s | 25.13 | 1.462 | **183 %** |
+
+Friction is **1.5 %** of the total. The three 608ZZ were never the problem.
+
+### Why gearing does not rescue it
+
+A reduction multiplies available joint torque by `r` and leaves the required
+torque unchanged, so it does help acceleration. But it divides the joint's top
+speed by `r` as well, and a point-to-point move needs both.
+
+For 90° in 0.5 s the peak joint rate is 360 °/s. At 2:1 the servo would have
+to turn 720 °/s; an SG90 is rated about 600 °/s unloaded. **2:1 fails that move
+on speed even after it passes on torque** (102 % of the geared duty), and it
+costs half the yaw travel to do it.
+
+**So: leave J1 direct.** What the numbers actually say is not "gear it" but
+**"do not slew J1 fast"** — 90° in 1 s sits at 46 % and is comfortable; 180° in
+1 s is at 92 % and is not. That is a motion-profile limit, and it belongs in
+the firmware, not in the gearbox.
+
+### Caveats
+
+- `j2_items` is the mass list used, which is everything outboard of the
+  shoulder: **191.6 g**. It omits `shoulder_bracket` and `turntable_ring`,
+  which also rotate — about 46 g at an effective radius near 25 mm, roughly
+  0.5 % of I. Understated, negligibly.
+- Triangular slew assumed, which is the textbook worst case for a
+  point-to-point move.
+- `BEARING_ROLLING_MU` 0.0015 is the top of the handbook range;
+  `SHIELD_DRAG_NMM_EACH` 0.15 is **ASSUMED and unmeasured**. Both are inside
+  the 1.5 % friction term, so neither changes the answer.
+- **Cutting reaction at the jaws is not modelled.** Pruning pushes back, and
+  that reaction has a moment about J1 that none of this covers. It is the one
+  thing that could still make a case for gearing.
