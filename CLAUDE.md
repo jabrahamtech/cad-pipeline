@@ -18,6 +18,39 @@ part history, never extend it, never import from it.
 - `fusion/PLAYBOOK.md` holds the calibrated Fusion API patterns and gotchas
   (units, sketch-space mapping, idempotence, verification snippets). Read it
   before writing any script; add to it when you learn a new quirk the hard way.
+
+## Where the Fusion documents live (set 2026-08-31)
+Build output has a home now. Hub project **`robotarm`**, three folders:
+
+| folder | holds |
+|---|---|
+| `robotarm/parts/` | one saved design per part, named `robotarm_<part>` |
+| `robotarm/assemblies/` | designs that INSERT those parts as external references |
+| `robotarm/gates/` | the `_check_*` / `_preview_*` documents |
+
+`models/robotarm/_build_parts.py` builds every part script into its own
+saved file. This does NOT change the rule above — the scripts are still the
+source of truth and these files are still disposable output. What changed is
+that each part now has its own version history and can be referenced by an
+assembly, neither of which was possible when all 23 lived as components in
+one scratch document (`robotarm_parts`, Default Project).
+
+Two things this convention broke, both now fixed and both worth knowing:
+
+1. **`design.allComponents` includes the ROOT component.** Once a part lives
+   in its own saved file, Fusion names that root after the document — which
+   is exactly `COMPONENT`. Every idempotent-rebuild loop then tried to rename
+   the root and raised `3 : root component name cannot be changed`, so
+   nothing rebuilt. 27 scripts now skip the root explicitly.
+2. **Five parts read a sibling's user parameters**, which only ever worked
+   because they shared one document: `gripcut_finger`→`pb_`,
+   `j3_gear`/`j3_servo_cap`→`fa_`, `j3_axle`→`ua_`, `upper_arm`→`fa_`/`ja_`/
+   `jg_` — and `upper_arm`↔`j3_axle` is CIRCULAR. Only `j3_servo_cap` asserts
+   when the interface is missing; the rest fall back silently, which is this
+   repo's named failure mode: a datum only one file reads is a decoration,
+   not a contract. `_build_parts.py` DEPS works around it by rebuilding the
+   dependency in the part's document and deleting its body. **Every DEPS
+   entry is a to-do**: move that interface into `lib/`. Empty is the goal.
 - `lib/design_rules.py` is the single numeric source for printer limits and
   calibrated fits. Scripts mirror these values as Fusion **user parameters**
   with a comment noting the source (`- design_rules`, `- MEASURED`,
@@ -116,8 +149,9 @@ matching feature — these encode the failures already paid for:
 - **Persist every session:** the final generating script for each part is
   committed to `models/<project>/<part>.py` in the same commit as its spec.
 - **Start read-only** in an unfamiliar document: query, measure, screenshot
-  before the first mutating script. Save documents only when asked;
-  `isModified` state belongs to the user.
+  before the first mutating script. Documents under `robotarm/parts/` are
+  build output and `_build_parts.py` saves them as a matter of course;
+  anywhere else, save only when asked — `isModified` belongs to the user.
 - **Every script passes the lint:** `pytest tests/ -q` checks the repo's
   script conventions statically (run signature, no try/except, adsk imports,
   printed diagnostics, no legacy imports).

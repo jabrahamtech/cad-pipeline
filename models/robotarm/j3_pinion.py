@@ -157,6 +157,12 @@ def run(_context: str):
     STALE = COMPONENT + '_stale_'
     for i in range(design.allComponents.count):
         c = design.allComponents.item(i)
+        # SKIP THE ROOT. Once this part lives in its own saved file the root
+        # component carries the DOCUMENT's name, which is COMPONENT - and a
+        # root component cannot be renamed, so the rename below raised
+        # "3 : root component name cannot be changed" and no part rebuilt.
+        if c == design.rootComponent:
+            continue
         if c.name == COMPONENT or c.name.startswith(COMPONENT + ' ('):
             c.name = STALE + str(i)
     for occ in list(root.occurrences):

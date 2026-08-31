@@ -207,7 +207,7 @@ def run(_context: str):
     sk.sketchCurves.sketchCircles.addByCenterRadius(P3(0, 0, 0),
                                                     val('od') / 2.0 / 10.0)
     ext = extrudes.addSimple(sk.profiles.item(0),
-                             V('%s thk' % PREFIX), NEW)
+                             V('%sthk' % PREFIX), NEW)
     ext.name = 'disc blank'
     body = ext.bodies.item(0)
     body.name = BODY_NAME
@@ -238,11 +238,14 @@ def run(_context: str):
                                                     val('pocket_d') / 2.0 / 10.0)
     inp = extrudes.createInput(sk.profiles.item(0), CUT)
     inp.participantBodies = ONLY
+    # DOWNWARD from the servo-side face. Cut Positive from thk first, which
+    # put the pocket in the air ABOVE the disc and removed nothing - the body
+    # volume came out 121.9 mm3 heavy, which is the pocket exactly.
     inp.setOneSideExtent(
-        adsk.fusion.DistanceExtentDefinition.create(V('%s pocket_h' % PREFIX)),
-        adsk.fusion.ExtentDirections.PositiveExtentDirection)
+        adsk.fusion.DistanceExtentDefinition.create(V('%spocket_h' % PREFIX)),
+        adsk.fusion.ExtentDirections.NegativeExtentDirection)
     inp.startExtent = adsk.fusion.OffsetStartDefinition.create(
-        V('%s thk' % PREFIX))
+        V('%sthk' % PREFIX))
     extrudes.add(inp)
 
     # Two radial slots, on the horn's LONG axis. lib/servo.py records the
@@ -279,7 +282,7 @@ def run(_context: str):
         inp = extrudes.createInput(sk.profiles.item(i), CUT)
         inp.participantBodies = ONLY
         inp.setOneSideExtent(
-            adsk.fusion.DistanceExtentDefinition.create(V('%s thk * 2' % PREFIX)),
+            adsk.fusion.DistanceExtentDefinition.create(V('%sthk * 2' % PREFIX)),
             adsk.fusion.ExtentDirections.PositiveExtentDirection)
         extrudes.add(inp)
 
@@ -292,7 +295,7 @@ def run(_context: str):
         inp = extrudes.createInput(sk.profiles.item(i), CUT)
         inp.participantBodies = ONLY
         inp.setOneSideExtent(
-            adsk.fusion.DistanceExtentDefinition.create(V('%s slot_cb_h' % PREFIX)),
+            adsk.fusion.DistanceExtentDefinition.create(V('%sslot_cb_h' % PREFIX)),
             adsk.fusion.ExtentDirections.PositiveExtentDirection)
         extrudes.add(inp)
 
@@ -317,7 +320,7 @@ def run(_context: str):
         inp = extrudes.createInput(sk.profiles.item(i), CUT)
         inp.participantBodies = ONLY
         inp.setOneSideExtent(
-            adsk.fusion.DistanceExtentDefinition.create(V('%s out_pilot_h' % PREFIX)),
+            adsk.fusion.DistanceExtentDefinition.create(V('%sout_pilot_h' % PREFIX)),
             adsk.fusion.ExtentDirections.PositiveExtentDirection)
         extrudes.add(inp)
 
