@@ -31,6 +31,8 @@ MATERIAL_NAME = 'PET Plastic'
 # file and sixteen others, so a re-theme meant editing seventeen files
 # and hoping you found them all.
 from lib.palette import hints_for  # noqa: E402
+from lib.design_rules import SLIDING_FIT_CLEARANCE_MM as _SLIDE  # noqa: E402
+from lib.servo import micro_arm_w as _MICRO_ARM_W  # noqa: E402
 APPEARANCE_HINTS = hints_for('gripper_pinion')
 PHASES = ['gear teeth', 'horn interface', 'finish']
 
@@ -82,7 +84,14 @@ def run(_context: str):
     param('tooth_sink', '0.5 mm', 'how far a tooth profile reaches inside the root circle')
     param('hub_d', '6.95 mm', 'SG90 horn hub 8.0 + press 0.15 - 2026-08-27 horn audit\n           MEASURED 2026-08-28: hub is 6.8, not the modelled 8.0 - at 8.15 this pocket was 1.35 loose and no press at all.')
     param('hub_depth', '3.1 mm', 'horn hub 3.0 + 0.1 so the shells set the axial gap - horn audit')
-    param('arm_w', '5.85 mm', 'horn arm width AT the r 6 trim: 5.5 + press 0.15.\n           The arm tapers 5.5 -> 3; 3.95 was thickness-as-width - horn audit\n           MEASURED 2026-08-28: the arm is 5.7 at the r 6 trim, so 5.65 was 0.05 UNDER it - an interference, not a press fit.')
+    param('arm_w', '%.4f mm' % (_MICRO_ARM_W(6.0) + _SLIDE),
+          'MEASURED micro arm width at the r 6 trim, from lib/servo.py, plus\n'
+          '           design_rules\' CALIBRATED sliding clearance. It was 5.85 - the\n'
+          '           same arm plus a 0.15 PRESS - and a printed slot comes out\n'
+          '           undersize, so that was an interference and the horn would not\n'
+          '           go in. This slot KEYS TORQUE; the hub bore and the horn screw\n'
+          '           are what retain the pinion. Jonathan, 2026-08-31: "the actual\n'
+          '           horn tips dont fit in anywhere".')
     param('arm_r', '6.0 mm', 'horn arm TRIMMED to this radius at assembly - see spec')
     param('arm_depth', '2.1 mm', 'horn blade 2.0 + 0.1 seating - horn audit')
     param('screw_d', '5.5 mm', 'driver access to the horn retaining screw - fasteners_inserts')

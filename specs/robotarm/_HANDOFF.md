@@ -796,3 +796,64 @@ duty` and `loads sections`.
 edges — the two surviving J3 corners are 1.00 mm stubs, below the radius. That
 is reported, not silent, but the number is stale and should either be re-probed
 or the J3 block accepted as unfilleted.
+
+---
+
+## 15. Bench, 2026-08-31 — "the actual horn tips dont fit in anywhere"
+
+### The likely whole answer: the arms have to be cut off first
+
+The measured horn's long axis is **34.4 mm tip to tip — each arm reaches
+r 17.20**. Nothing in this project accepts an arm that long:
+
+| feature | slot r | trim per arm |
+|---|---|---|
+| turret cross | 16.4 | **0.80 mm** |
+| `gripper_pinion` | 6.0 | **11.20 mm** |
+| `j3_pinion` | 6.0 | **11.20 mm** |
+
+**An untrimmed horn fits nothing here.** That is by design — three docstrings
+say so and `_build.md` §3 step 1 says so — but if the arms are still full
+length, "the tips don't fit anywhere" is exactly what you would see, and no
+amount of slot widening will change it.
+
+### The real bug it uncovered: the slots were press fits
+
+`gripper_pinion` and `j3_pinion` cut their cross slots at **arm + 0.15**, i.e.
+0.15 mm *over* a measured 5.7 arm and called a press. A printed slot comes out
+**undersize**, so the real slot lands at or under 5.7 — an interference, and
+the arm will not enter however well it is trimmed.
+
+Fixed. **The bore is a press; the slot is not.** The Ø6.95 bore on the 6.8 hub
+retains the pinion, along with the horn's own screw; the cross slot's job is to
+key torque. It takes `design_rules.SLIDING_FIT_CLEARANCE_MM` = 0.25, which is
+marked CALIBRATED for printed parts, so **5.85 → 5.95**. `gripper_pinion` reads
+`micro_arm_w()` now instead of carrying its own copy of 5.7.
+
+### And a fitted line that missed its own data
+
+`MICRO_HORN_TAPER_PER_MM` was **0.121**. Its two endpoints are MEASURED — 5.7
+at r 6, 4.0 at r 17 — and those imply **0.1545**. At 0.121 the model ran up to
+**0.37 mm wide** at the tip. It is derived from the endpoints now, with an
+assert. Note the direction: that bug made slots *sloppy*, not tight, so it was
+never what stopped a horn going in. `shoulder_bracket` +20.8 mm³ as the turret
+slots narrow to the corrected profile.
+
+Ledger PASS on all 19, loads duty and sections PASS, payload 93 g.
+
+### What is still unmeasured, and it is the important part
+
+None of the above is confirmed against the horns in your hand. Two readings
+would settle it:
+
+1. **Arm width at the r 6 trim line** — the number every pinion slot is cut
+   from. Model says 5.70.
+2. **Whether the tip flares.** The model tapers monotonically to 4.0 at r 17,
+   but the outermost hole is Ø1.4 centred at r 17.0, which leaves only 1.3 mm
+   of material either side. Real horns often widen around that hole. If yours
+   does, the turret slot at r 16.4 is cut for 4.09 and the real arm there is
+   wider — and that would explain the turret failing on width as well as
+   length.
+
+`gauge_verify_v2.3mf` is still unprinted and its CROSS station tests exactly
+this at 1:1.

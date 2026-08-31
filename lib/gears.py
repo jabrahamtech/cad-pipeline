@@ -285,13 +285,23 @@ class HornPinion:
         return self.press_to - self.press_from
 
 
-def horn_pinion(servo, pair, arm_r=6.0, arm_w=5.7, press=0.15,
-                case_gap=0.4, hub_margin=0.5, slot_extra=0.1):
+def horn_pinion(servo, pair, arm_r=6.0, arm_w=None, press=0.15,
+                slot_clear=None, case_gap=0.4, hub_margin=0.5, slot_extra=0.1):
     """Solve the pinion's seat face for a servo and a gear pair.
 
-    arm_w is the RAW measured arm width; `press` is added here, once. The
-    old j3_pinion.py carried the already-pressed 5.85 as its input, which is
-    exactly how a datum acquires a second, wrong home.
+    arm_w defaults to lib/servo.py's MEASURED micro arm width at `arm_r`, so
+    it is not a second copy of that number.
+
+    THE BORE IS A PRESS; THE SLOT IS NOT. `press` sizes the round bore on the
+    horn hub - that is what retains the pinion, along with the horn's own
+    screw. `slot_clear` sizes the CROSS SLOT, whose job is to key torque, not
+    to grip. The slot used to take `press` too, i.e. it was cut 0.15 OVER a
+    measured 5.7 arm and called a press fit; a printed slot comes out
+    undersize, so the real thing was an interference and the arm would not
+    enter. It takes design_rules' CALIBRATED sliding clearance now.
+
+    Jonathan, at the bench 2026-08-31: "the actual horn tips dont fit in
+    anywhere".
 
     arm_r / arm_w are MEASURED, not datasheet - specs/robotarm/_horn_numbers.md
     (caliper 2026-08-28: the model said the micro hub was 8.0 and it is 6.8,
@@ -304,6 +314,13 @@ def horn_pinion(servo, pair, arm_r=6.0, arm_w=5.7, press=0.15,
     behind it, since the pinion's far face looks at the fork plate across a
     running gap and a proud hub would rub it.
     """
+    from lib.design_rules import SLIDING_FIT_CLEARANCE_MM as _SLIDE
+    from lib.servo import micro_arm_w as _arm_w
+    if arm_w is None:
+        arm_w = _arm_w(arm_r)
+    if slot_clear is None:
+        slot_clear = _SLIDE
+
     case_top = servo.tab_below_top + servo.tab_thk
     boss_top = case_top + servo.boss_h
     blade_top = boss_top + servo.horn_blade_thk
@@ -328,7 +345,7 @@ def horn_pinion(servo, pair, arm_r=6.0, arm_w=5.7, press=0.15,
         press_from=boss_top - seat_z,
         press_to=hub_top - seat_z,
         slot_r=arm_r,
-        slot_w=arm_w + press,
+        slot_w=arm_w + slot_clear,
         slot_depth=(blade_top - seat_z) + slot_extra,
         case_gap=seat_z - case_top,
     )

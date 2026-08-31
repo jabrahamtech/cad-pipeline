@@ -287,7 +287,16 @@ MG995_HORN_ARM_W_AT_8 = 6.5    # MEASURED 2026-08-28 (6-7 at r 8) - the one
 # A CONSTANT-WIDTH slot therefore cannot fit a trimmed arm over any long
 # span: at the turret's r 6.5..16.4 engagement the arm runs 5.3 down to 4.1.
 # Slots must be cut to the width AT THEIR OWN ENGAGEMENT RADIUS, or tapered.
-MICRO_HORN_TAPER_PER_MM = 0.121
+# DERIVED from the two measured ends, not typed. It was 0.121, which does not
+# pass through its own data: 5.7 - 0.121 x 11 = 4.37, and the measured outer
+# width is 4.0. Every slot cut from it ran up to 0.37 mm WIDE at the tip - a
+# sloppy slot rather than a tight one, so it was not what stopped the horns
+# going in, but a fitted line that misses its own endpoints is not a fit.
+MICRO_HORN_TAPER_PER_MM = ((MICRO_HORN_ARM_W_AT_6 - MICRO_HORN_ARM_W_OUTER)
+                           / (17.0 - 6.0))
+assert abs((MICRO_HORN_ARM_W_AT_6 - MICRO_HORN_TAPER_PER_MM * 11.0)
+           - MICRO_HORN_ARM_W_OUTER) < 1e-9, (
+    'the taper must land on the measured outer width at r 17')
 
 
 def micro_arm_w(r_mm: float) -> float:
