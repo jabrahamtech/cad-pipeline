@@ -66,6 +66,7 @@ DEPS = {
 ALL_PARTS = [
     'forearm', 'upper_arm', 'j3_gear', 'j3_pinion', 'j3_axle', 'j3_servo_cap',
     'horn_adapter', 'shoulder_hub', 'shoulder_bracket', 'turntable_stator',
+    'j1_hub',
     'turntable_ring', 'base_lid', 'wrist_hub', 'wrist_roll', 'wrist_rotator',
     'gripper_shell', 'gripper_pinion', 'gripper_rack_jaw', 'gripcut_finger',
     'pruner_shell', 'pruner_rack', 'pruner_blade', 'servo_adapter',

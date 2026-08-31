@@ -11,9 +11,41 @@ at sixty), plus one this joint has and the wrist does not:
 4. THE SERVO IS THE BIGGEST THING AT J2 AND IT IS NOT A PRINTED PART. An
    MG995 is 40.9 x 20 x 36.5 with tabs spanning 54.0, and none of it appears in
    any model file - the bracket only cuts a hole where it goes. So this gate
-   builds the servo as a scratch envelope (case, tab plate, output boss) and
-   sweeps the arm past it. Getting that envelope's ORIGIN wrong is the easy
-   mistake, so it is spelled out below rather than left as three numbers.
+   builds the servo as a scratch envelope (case, tab plate, output boss,
+   spline) and sweeps the arm past it. Getting that envelope's ORIGIN wrong is
+   the easy mistake, so it is spelled out below rather than left as three
+   numbers.
+
+THERE IS NO HORN HERE ANY MORE, AND THAT IS THE 2026-08-31 REPAIR. Until that
+date this file built a stamped MG995 horn - hub, two blades, trimmed to
+r 7.6 - and interfered it against shoulder_hub. shoulder_hub does not have a
+horn pocket now: it BORES STRAIGHT ONTO THE SPLINE (lib/servo_hub.spline_hub,
+the same migration j3_pinion.py had). So the horn envelope sat inside the
+hub's solid collar and reported roughly 250 mm3 at every pitch - a FALSE
+collision, in a gate whose whole job is to be believed. Every sh_horn_*
+parameter it cross-read is gone as well. What turns at J2 is the output boss
+and the spline, so that is what turns here.
+
+THE SPLINE IS MODELLED AT THE BROACHED DIAMETER, NOT THE FREE ONE, and the
+reason is the same argument the output boss already carries below. Ø5.9 of
+steel spline in a Ø5.65 printed bore is a 0.25 mm DESIGNED interference - it
+is how the joint is meant to be assembled - and modelling it free would post
+8.2 mm3 of "interference" at every pose. Constant across a sweep is the tell:
+a real collision moves. The press fit is still checked, as arithmetic, against
+lib/servo.SPLINE_BROACH_INTERFERENCE_MM and shoulder_hub's own sh_broach_d -
+the gate that can measure it is a printed gauge, not this one.
+
+EVERY SERVO NUMBER IS READ FROM lib/servo.py. They used to be typed here -
+case_h 3.65, tab_span 5.40, boss 1.30 x 0.30 - four copies of a datum that
+lives in the library, in a file whose docstring is about the cost of getting
+the envelope wrong. Two of them are on the sweep's critical dimension.
+
+THE POSITIVE CONTROL. The last thing this gate does is drive the output stack
+CONTROL_SHIFT_MM further up the hub's bore and require that the interference
+analysis registers it. A sweep that reports 0.00 mm3 because it is looking at
+nothing reads exactly like a sweep that reports 0.00 mm3 because the joint is
+clean, and the two are not the same result. If the control does not fire,
+nothing above it means anything and the run fails.
 
 THE SERVO ENVELOPE, DERIVED NOT ASSUMED. lib/servo.py puts the origin on the
 output shaft axis at the TAB PLANE - the underside of the mounting tabs, the
@@ -30,11 +62,24 @@ buried in the arm.
 import importlib.util
 import math
 import os
-
-import adsk.core
-import adsk.fusion
+import sys
 
 REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
+if REPO not in sys.path:
+    sys.path.insert(0, REPO)
+# PURGED FIRST. The part scripts this gate execs delete lib.* out of
+# sys.modules themselves, so a stale copy imported by an earlier run of a
+# different gate is exactly the kind of thing that makes two files disagree
+# about a servo. Bind the objects once, here, from a fresh import.
+for _stale in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.')]:
+    del sys.modules[_stale]
+
+import adsk.core  # noqa: E402
+import adsk.fusion  # noqa: E402
+
+from lib.servo import CATALOG, SPLINE_BROACH_INTERFERENCE_MM  # noqa: E402
+
+MG995 = CATALOG['MG995']
 PARTS = ['wrist_hub', 'shoulder_hub', 'upper_arm', 'shoulder_bracket']
 # J2's declared travel. The down end is NOT symmetric and NOT arbitrary: the
 # arm reaches the turntable's retainer ring at about -27 deg (shoulder_bracket.py
@@ -50,6 +95,24 @@ HUB_SPIN_DEG = 90.0
 # _check_pruner is. The loader sets it - `mod.REBUILD = False` - so the pass that
 # does the measuring never touches the geometry it is measuring.
 REBUILD = True
+# How far the positive control drives the output stack up the hub's bore. It
+# has to be bigger than any fit in the stack and smaller than the collar, so
+# that a hit is unambiguous and is still INSIDE the part rather than out the
+# far side of it: sh_collar_l is 7.00 and the boss bore is 2.50 deep, so 4.0
+# lands the Ø13 boss squarely in the Ø5.65 broach bore. Same number, and the
+# same reasoning, as _check_servo_fit.CONTROL_SHIFT_MM.
+CONTROL_SHIFT_MM = 4.0
+# Below this an interference is kernel facet noise on a face two bodies are
+# meant to share, not a collision. _check_j1 carries the same floor and the
+# same argument.
+CONTROL_FLOOR_MM3 = 0.05
+# HOW CLOSE TWO NUMBERS HAVE TO BE TO COUNT AS THE SAME NUMBER, in mm, and it
+# is not an arbitrary epsilon. Every sh_ parameter this gate cross-reads is
+# written by shoulder_hub.py as '%.4f mm', so a value can come back up to half
+# a ten-thousandth off what the library solved. A tolerance tighter than the
+# precision the number was STORED at fails on rounding and reads as a real
+# disagreement, which is the most expensive kind of false alarm a gate has.
+PARAM_ROUNDING_MM = 1e-4
 
 
 def run(_context: str):
@@ -182,22 +245,47 @@ def run(_context: str):
     NEWB = adsk.fusion.FeatureOperations.NewBodyFeatureOperation
     JOINB = adsk.fusion.FeatureOperations.JoinFeatureOperation
 
+    # EVERYTHING IN CENTIMETRES, because that is what Fusion answers in and
+    # what env_box/env_cyl are given. lib/servo.py is in millimetres, so every
+    # library read is divided once, here, and never again.
     case_w = gv('sb_case_w')
     case_l = gv('sb_case_l')
-    case_h = 3.65            # MG995 case_h 36.5 mm, DATASHEET drawing B
-    boss_d, boss_h = 1.30, 0.30
+    case_h = MG995.case_h / 10.0        # lib/servo.py - DATASHEET drawing B
+    boss_d = MG995.boss_dia / 10.0      # the Ø13.0 output collar
+    boss_h = MG995.boss_h / 10.0
+    spline_d = MG995.spline_dia / 10.0  # Ø5.9 of 25-tooth spline above it
+    spline_h = MG995.spline_h / 10.0
+    broach_d = spline_d - SPLINE_BROACH_INTERFERENCE_MM / 10.0
     tab_thk = gv('sb_tab_thk')
-    tab_span = 5.40          # cm - TowerPro official E 54.0, 2026-08-27 audit
+    tab_span = MG995.tab_span / 10.0    # TowerPro official E 54.0
     case_hi = gv('sb_shaft_end')
     case_lo = case_hi - case_l
     tab_plane = plate_out + lobe_t          # the datum. See the docstring.
-    p_off = ups.itemByName('sb_horn_standoff')
-    standoff = p_off.value if p_off is not None else 0.0
-    case_top = plate_out + standoff         # horn audit: stood off, not flush
+    # sb_horn_standoff is RETIRED and shoulder_bracket keeps it as a named
+    # zero so the history stays legible. It is read with gv(), not with a
+    # guarded itemByName: if it is ever actually deleted this gate must stop,
+    # because sb_lobe_t is derived from it and the servo would silently move.
+    standoff = gv('sb_horn_standoff')
+    case_top = plate_out + standoff         # 0.0 since the standoff retired
     assert abs((tab_plane - case_top)
                - (gv('sb_tab_below_top') + gv('sb_tab_thk'))) < 1e-9, (
         'the case top is not tab stack below the tab plane - sb_lobe_t is '
         'not tab_below_top + tab_thk + horn_standoff any more')
+    # THE BRACKET'S COPIES, AGAINST THE LIBRARY. shoulder_bracket declares the
+    # MG995's case and tab dimensions as its own sb_ parameters; lib/servo.py
+    # is where they come from. Nothing in this project checks that the two
+    # still agree, and a bracket cut from a stale case width is precisely the
+    # failure this gate exists to catch and cannot see - a pocket and an
+    # envelope built from the same wrong number agree perfectly.
+    for pname, lib_mm in (('sb_case_w', MG995.case_w),
+                          ('sb_case_l', MG995.case_l),
+                          ('sb_tab_thk', MG995.tab_thk),
+                          ('sb_tab_below_top', MG995.tab_below_top),
+                          ('sb_shaft_end', MG995.shaft_from_end)):
+        assert abs(gv(pname) * 10 - lib_mm) < 1e-6, (
+            '%s is %.3f but lib/servo.py says %.3f - shoulder_bracket and the '
+            'library disagree about the MG995, so this envelope is testing a '
+            'servo that neither of them describes' % (pname, gv(pname) * 10, lib_mm))
     env_box('case', -case_w / 2, case_w / 2, case_lo, case_hi,
             case_top, case_top + case_h, NEWB)
     env_box('tabs', -case_w / 2, case_w / 2,
@@ -209,9 +297,9 @@ def run(_context: str):
 
     # ---- and the output stack, WHICH TURNS --------------------------------
     # A separate component because it is a separate rigid body: the case is
-    # bolted to the bracket and never moves, but the boss, the horn and its
-    # cross all turn with the joint. Modelled as one static lump it reported a
-    # tidy 49 mm3 of interference at every pitch EXCEPT 0 and 90 - which is the
+    # bolted to the bracket and never moves, but the boss and the spline turn
+    # with the joint. Modelled as one static lump the old horn version of this
+    # reported a tidy 49 mm3 at every pitch EXCEPT 0 and 90 - which was the
     # cross's own period, and the giveaway that the fault was the placement.
     OUT = 'robotarm_MG995_output'
     for i in range(design.allComponents.count):
@@ -225,36 +313,63 @@ def run(_context: str):
     out = out_occ.component
     out.name = OUT
     env, out = out, env          # env_box/env_cyl close over `env`
-    # MEASURED 2026-08-28: hub Ø8.7 (the 13.8 this replaces was a community
-    # model 5.1 mm out), blade 2.2 (was 2.5). Hub HEIGHT 3.8 is still model
-    # grade - unmeasured, and the only horn number left that is. Arms are
-    # modelled AT THE TRIM radius sh_horn_arm_r = 7.6, because the envelope
-    # is the TRIMMED horn - an untrimmed tip reads as phantom mm3 in the
-    # slot ends, which is exactly what it did at r 8.0.
-    horn_hub_d, horn_hub_h = 0.87, 0.38
-    blade_thk, arm_r = 0.22, 0.76
-    horn_seat = case_top - boss_h                  # the boss top
-    env_cyl('output_boss', 0.0, 0.0, boss_d, horn_seat, case_top, NEWB)
-    # The horn is fitted BLADE TOWARD THE SERVO, which is the assumption
-    # shoulder_hub.py's relief is cut from - so this is the piece of the
-    # envelope that actually tests it.
-    env_cyl('horn_hub', 0.0, 0.0, horn_hub_d, horn_seat - horn_hub_h, horn_seat, JOINB)
-    for k, (dy, dz) in enumerate(((arm_r, blade_thk / 2), (blade_thk / 2, arm_r))):
-        env_box('horn_arm_%d' % k, -dy, dy, -dz, dz,
-                horn_seat - blade_thk, horn_seat, JOINB)
+    # THE INTERFACE THAT ACTUALLY SHIPS: Ø13.0 x 3.0 of output collar, then
+    # Ø5.9 x 3.6 of spline above it. Both DATASHEET, both read from
+    # lib/servo.py. This stack runs INBOARD from the case top - the servo's
+    # +Z is this frame's -X, see the docstring - so each piece starts where
+    # the one below it ended and the arithmetic never has to be done twice.
+    boss_top = case_top - boss_h                   # top of the Ø13 collar
+    spline_top = boss_top - spline_h               # top of the spline
+    env_cyl('output_boss', 0.0, 0.0, boss_d, boss_top, case_top, NEWB)
+    # AT THE BROACHED DIAMETER, NOT THE FREE ONE - docstring, and the same
+    # argument env_cyl itself carries about the boss. The 0.25 mm of designed
+    # interference is checked as arithmetic below, where it can be read.
+    env_cyl('output_spline', 0.0, 0.0, broach_d, spline_top, boss_top, JOINB)
     env, out = out, env
     assert out.bRepBodies.count == 1, 'output stack came out in %d pieces' % (
         out.bRepBodies.count)
     out.bRepBodies.item(0).name = 'MG995_output'
+
+    # ---- THE HUB'S BORE, AGAINST THE SHAFT IT IS BORED FOR ------------------
+    # Interference can see a bore that is too SMALL. It cannot see a bore that
+    # is bored from the wrong servo, because a hole and a shaft cut from the
+    # same wrong number pass each other perfectly. These four are the whole
+    # spline contract and they are checked unguarded: shoulder_hub is in PARTS,
+    # so if one of them is missing this gate is not looking at the shoulder.
+    hub_seat = tab_plane - gv('sh_seat_z')         # X of the hub's underside
+    hub_top = hub_seat - gv('sh_collar_l')         # ... and of its top face
+    tol_cm = PARAM_ROUNDING_MM / 10.0
+    assert abs(gv('sh_boss_bore_d') - (boss_d + gv('sh_free_fit'))) < tol_cm, (
+        'sh_boss_bore_d is %.3f but the MG995 collar is %.3f and sh_free_fit '
+        'is %.3f - the lower bore no longer clears the boss it is for'
+        % (gv('sh_boss_bore_d') * 10, boss_d * 10, gv('sh_free_fit') * 10))
+    assert abs(gv('sh_broach_d') - broach_d) < tol_cm, (
+        'sh_broach_d is %.3f but the spline is %.3f less the %.3f of designed '
+        'broach interference = %.3f - the press fit this joint is assembled by '
+        'is not the one shoulder_hub is cut for'
+        % (gv('sh_broach_d') * 10, spline_d * 10,
+           SPLINE_BROACH_INTERFERENCE_MM, broach_d * 10))
+    # and the geometric half of the same question: does the spline REACH?
+    engaged = min(boss_top, hub_seat) - max(spline_top, hub_top)
+    assert abs(engaged - gv('sh_engaged')) < tol_cm, (
+        'the spline and the hub overlap over %.3f mm in this assembly but '
+        'sh_engaged says %.3f - the hub is seated somewhere other than where '
+        'lib/servo_hub solved it' % (engaged * 10, gv('sh_engaged') * 10))
+    print('MG995 output: boss Ø%.2f x %.2f then spline Ø%.2f x %.2f, modelled '
+          'at the broached Ø%.2f' % (boss_d * 10, boss_h * 10, spline_d * 10,
+                                     spline_h * 10, broach_d * 10))
+    print('  shoulder_hub seats at X %.2f, tops out at X %.2f, and grips %.2f '
+          'mm of spline - NO HORN in the path' % (hub_seat * 10, hub_top * 10,
+                                                  engaged * 10))
     for name in (ENV, OUT):
         keepers.pop(name, None)
     print('MG995 envelope: tab plane x %.1f, case top x %.1f, case x %.1f..%.1f, '
           'z %.1f..%.1f' % (tab_plane * 10, case_top * 10, case_top * 10,
                             (case_top + case_h) * 10, case_lo * 10, case_hi * 10))
-    print('  output stack inboard of that: boss %.1f x %.1f, horn hub %.1f x %.1f, '
-          'blade %.1f thick to r %.1f, reaching x %.1f' % (
-              boss_d * 10, boss_h * 10, horn_hub_d * 10, horn_hub_h * 10,
-              blade_thk * 10, arm_r * 10, (horn_seat - horn_hub_h) * 10))
+    print('  output stack inboard of that: boss Ø%.1f x %.1f then spline '
+          'Ø%.1f x %.1f, reaching x %.1f' % (
+              boss_d * 10, boss_h * 10, broach_d * 10, spline_h * 10,
+              spline_top * 10))
     print('')
 
     def rot_m(angle, axis):
@@ -387,6 +502,42 @@ def run(_context: str):
     print('printed mass here, solid PETG %.2f g -> ~%.1f g at 40%% infill + 4 walls'
           % (printed * 1000, printed * 1000 * 0.6))
     print('  (+ 55 g of MG995, which this joint carries but does not lift)')
+    print('')
+
+    # ---- POSITIVE CONTROL: can this gate see a hit at all? -------------------
+    # Every number above is a distance or a volume that came back small, and a
+    # small number is what you get from a clean joint AND from an analysis that
+    # is looking at nothing - a hidden occurrence, a timeline marker parked in
+    # the middle of the history, a body that came back degenerate. The
+    # clearance() helper guards its own inputs; the interference() helper has
+    # never had a way to prove it can register anything.
+    #
+    # So: put the output stack CONTROL_SHIFT_MM further up the hub's bore,
+    # where the Ø13 boss has to land in the Ø5.65 broach bore, and require the
+    # analysis to say so. The shift is along the pitch axis itself, so it
+    # commutes with the pose rotation and the control is the SAME assembly with
+    # one part deliberately driven in - not a second, differently-built one.
+    #
+    # This runs BEFORE the gate verdicts print, and stops the run if it fails,
+    # for the reason _check_servo_fit gives in the same situation: a clear
+    # result from a blind check is worse than no result, because it is
+    # indistinguishable from a real pass and it is believed.
+    ctrl_m = rot_m(math.radians(LEAVE_AT_PITCH), VEC(1, 0, 0))
+    ctrl_t = ctrl_m.translation
+    ctrl_t.x = -CONTROL_SHIFT_MM / 10.0
+    ctrl_m.translation = ctrl_t
+    ctrl_occ = root.occurrences.addExistingComponent(out, ctrl_m)
+    ctrl_vol, ctrl_pairs = interference([ctrl_occ, final['hub_drive']])
+    ctrl_occ.deleteMe()
+    print('positive control: output stack driven %.1f mm further up the bore '
+          '-> %.2f mm3 (%s)' % (CONTROL_SHIFT_MM, ctrl_vol,
+                                '; '.join(ctrl_pairs) if ctrl_pairs else 'nothing'))
+    assert ctrl_vol > CONTROL_FLOOR_MM3, (
+        'THE CHECK IS BLIND. The MG995 output stack was driven %.1f mm into '
+        'shoulder_hub and the interference analysis registered %.3f mm3. '
+        'Every clear result above is meaningless until this is fixed - it is '
+        'not evidence that J2 assembles, it is evidence that nothing was '
+        'measured.' % (CONTROL_SHIFT_MM, ctrl_vol))
     print('')
     # ---- GATE: can the drive hub actually be FITTED? ------------------------
     # Found 2026-08-30, on Jonathan trying to assemble J2 with the first hub

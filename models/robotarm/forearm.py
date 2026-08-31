@@ -49,6 +49,17 @@ fork of two servo mounts is support-free in any orientation, and a sagging
 20 mm journal is the worse trade. Split the part on the XZ plane if the
 scarring matters.
 
+THE J4 LOBE IS 0.40 THICKER THAN IT WAS, AND THAT IS THE HORN MIGRATION
+LANDING HERE. wrist_hub.py now bores onto the MG90S SPLINE instead of a
+horn, and lib/servo_hub seats every spline hub ONE RUNNING GAP off the case
+top - wh_seat_z 5.50 -> 5.90. The horn-era stack sat that hub's face FLAT
+on the case top with zero gap while it rotated against it, which is a brake
+rather than a joint. So the J4 tab bearing face stands 0.40 further out
+(fa_j4_lobe_t) and the case top lands 0.40 outboard of fa_plate_out, which
+puts the hub's seating face back exactly on fa_plate_out where every
+downstream wrist dimension already expects it. Cost: 0.40 mm of arm width,
+once. J3 is deliberately untouched - see the note at fa_j4_standoff.
+
 The SHARED wr_* block is defined identically in wrist_hub.py and
 wrist_roll.py. MG90S dimensions are DATASHEET (lib/servo.py) - the tab
 plane is the datum, the case pocket is only clearance.
@@ -69,6 +80,7 @@ import adsk.fusion
 
 from lib.bearings import B608ZZ  # noqa: E402 - the idler runs in one
 from lib.design_rules import FASTENER_MM as _FASTENERS  # noqa: E402
+from lib.design_rules import JOINT_FIT_MM as _FIT  # noqa: E402 - the J4 running gap
 from lib.gears import J3_MOUNT, J3_PAIR  # noqa: E402 - the elbow reduction
 from lib.servo import CATALOG  # noqa: E402 - MEASURED lead bundle
 
@@ -237,8 +249,46 @@ def run(_context: str):
     param('tab_below_top', '3.0 mm', 'case top to the tab TOP, along X - DERIVED from\n           TowerPro F 18.5: case_h - F - tab_thk. Was 1.0, which floated the\n           tabs 2.0 too high and sank the case 1.5 too shallow')
     param('tab_pitch', '27.5 mm', 'MG90S tab hole pitch - DERIVED, holes centred in the\n           tab overhang of TowerPro B/E ((22.8+32.1)/2). The 29.0 it replaces\n           came from a drawing TowerPro\'s own table contradicts. CALIPER\n           before printing anything that screws to these tabs')
     param('lobe_t', PREFIX + 'tab_below_top + ' + PREFIX + 'tab_thk',
-          'derived lobe thickness: the tabs bear on its outer face and the case top\n'
-          '           sits flush with the plate outer face')
+          'derived SERVO STACK, tab bearing face to case top. It is a servo\n'
+          '           dimension and nothing else: the J3 cap is exactly this thick\n'
+          '           (fa_cap_t) and fa_j3_standoff subtracts it. The J4 LOBE is now\n'
+          '           fa_j4_lobe_t, which is this plus a running gap - see there.')
+    # ---- THE J4 RUNNING GAP, AND WHY THE LOBE GOT 0.40 THICKER -------------
+    # wrist_hub.py no longer bores onto a horn; it bores onto the MG90S
+    # spline, and lib/servo_hub seats every spline hub ONE RUNNING GAP above
+    # the case top. wh_seat_z therefore moves 5.50 -> 5.90.
+    #
+    # THE HORN-ERA STACK WAS RUBBING BY CONSTRUCTION. lobe_t 5.50 put the
+    # case top EXACTLY on this plate's outer face, and the hub's seating
+    # face flat on the case top with ZERO gap - while the hub ROTATES
+    # against that case. Nothing was clearance; the joint was a brake.
+    #
+    # WHAT MOVES, AND WHAT DELIBERATELY DOES NOT. The tab bearing face goes
+    # 0.40 further OUT, so the case top lands 0.40 outboard of fa_plate_out
+    # and the hub's seating face lands back ON fa_plate_out where it has
+    # always been. That is the point of standing the servo off rather than
+    # letting the hub move: the pivot journal, wr_reach, the hex socket and
+    # the whole roll housing downstream of it do not move at all. The cost
+    # is 0.40 mm of arm width, once, on the +X side.
+    #
+    # J3 IS UNTOUCHED BY THIS, and that is why it is a separate parameter
+    # instead of 0.40 added to lobe_t. fa_cap_t is lobe_t and fa_j3_standoff
+    # subtracts lobe_t, so widening lobe_t would have thickened
+    # j3_servo_cap's pad and shortened this part's standoff web to
+    # compensate - a change to another part's contract, to buy a gap J3
+    # already has (J3_HUB.seat_z carries its own case_gap).
+    param('j4_standoff', '%.4f mm' % _FIT['free'],
+          'running gap between the MG90S case top and wrist_hub\'s seating\n'
+          '           face. design_rules JOINT_FIT_MM free - the same number\n'
+          '           lib/servo_hub.spline_hub() seats on and wh_case_gap declares.\n'
+          '           The hub ROTATES against that case, so the horn-era 0.00 was\n'
+          '           rubbing by construction.')
+    param('j4_lobe_t', PREFIX + 'lobe_t + ' + PREFIX + 'j4_standoff',
+          'derived J4 lobe thickness, plate outer face to the TAB BEARING\n'
+          '           face. = wh_seat_z 5.90. The servo case travels the whole of it\n'
+          '           during assembly, so the window is cut through all of it and not\n'
+          '           just the lobe_t part - a 0.40 skin over the case top would make\n'
+          '           the servo uninstallable and the shaft unreachable.')
     param('lobe_over', '1.0 mm',
           'the lobe starts INSIDE the plate. Two volumes that meet exactly on a plane\n'
           '           are non-manifold and the fillet fails later - see PLAYBOOK.')
@@ -546,7 +596,7 @@ def run(_context: str):
         'the J4 sweep (%.1f) and the J3 sweep (%.1f) leave only %.1f mm of web on the '
         'centreline at L2 = %.1f' % (wval('sweep_r') * 10, val('elbow_clear') * 10,
                                      web_axis * 10, L2 * 10))
-    assert val('pilot_depth') <= val('lobe_t') + val('lobe_over'), (
+    assert val('pilot_depth') <= val('j4_lobe_t') + val('lobe_over'), (
         'the servo pilot holes break through the lobe into the flange counterbore')
     assert wval('reach') > val('gap'), 'the hub hex does not reach across the running gap'
     # The cable leaves the END face, so it steals LENGTH, not width. The
@@ -698,7 +748,9 @@ def run(_context: str):
         # here nothing could be assembled past it.
         if sx > 0:
             x0 = PREFIX + 'plate_out - ' + PREFIX + 'lobe_over'
-            dx = PREFIX + 'lobe_t + ' + PREFIX + 'lobe_over'
+            # fa_j4_lobe_t, not fa_lobe_t: the block has to reach the tab
+            # bearing face, which the running gap moved 0.40 further out.
+            dx = PREFIX + 'j4_lobe_t + ' + PREFIX + 'lobe_over'
         else:
             x0 = '-(' + PREFIX + 'plate_out + ' + PREFIX + 'j3_standoff)'
             dx = PREFIX + 'j3_standoff + ' + PREFIX + 'lobe_over'
@@ -787,9 +839,14 @@ def run(_context: str):
             continue          # the window, keyway and pilots are on the cap
         c0, c1, screws, _, _ = lobe_geometry(y_p, run)
         if sx > 0:
+            # THE WINDOW STARTS AT THE PLATE FACE AND RUNS THE WHOLE LOBE.
+            # The servo is pushed through it from inside until its tabs land
+            # on the far face, so the running gap cannot be left as solid
+            # material at the inboard end - that 0.40 skin would sit over the
+            # case top, and neither the servo nor the hub could get past it.
             win0 = PREFIX + 'plate_out' + SO(jnt)
-            wind = PREFIX + 'lobe_t'
-            pil0 = (PREFIX + 'plate_out' + SO(jnt) + ' + ' + PREFIX + 'lobe_t - '
+            wind = PREFIX + 'j4_lobe_t'
+            pil0 = (PREFIX + 'plate_out' + SO(jnt) + ' + ' + PREFIX + 'j4_lobe_t - '
                     + PREFIX + 'pilot_depth')
         else:
             win0 = '-(' + PREFIX + 'plate_out' + SO(jnt) + ' + ' + PREFIX + 'lobe_t)'
@@ -1003,6 +1060,19 @@ def run(_context: str):
                           val('cap_pilot_d') * 10, val('cap_pilot_depth') * 10))
     print('   the gear, the pinion and the retention M3 could none of them be '
           'fitted - GATE j3_installs.')
+    print('')
+    print('J4 DRIVE: no horn. wrist_hub bores onto the MG90S spline and seats '
+          '%.2f off the case top,' % (val('j4_standoff') * 10))
+    print('   so the lobe is %.2f thick (servo stack %.2f + running gap %.2f) '
+          'against %.2f before. The case top now sits %.2f OUTBOARD of the '
+          'plate outer face and the hub seats ON it - the wrist does not move, '
+          'the arm is %.2f wider'
+          % (val('j4_lobe_t') * 10, val('lobe_t') * 10,
+             val('j4_standoff') * 10, val('lobe_t') * 10,
+             val('j4_standoff') * 10, val('j4_standoff') * 10))
+    print('   J3 UNCHANGED: fa_cap_t %.2f and fa_j3_standoff %.2f both still '
+          'read fa_lobe_t, so j3_servo_cap and the pinion plane did not move'
+          % (val('cap_t') * 10, val('j3_standoff') * 10))
     print('')
     print('WEB ON THE CENTRELINE: %.1f mm between the two swings '
           '(J4 takes %.1f, J3 takes %.1f)' % (

@@ -3,12 +3,13 @@
 Rebuilds `robotarm_wrist_rotator` (idempotent). Spec:
 specs/robotarm/wrist_rotator.md, styled per specs/robotarm/_style.md.
 
-J5. A disc on the roll SG90's horn, carrying the four M3 inserts every
-effector bolts to. It is the swap point of the whole arm: pull four screws
-and the hand comes off.
+J5. A disc on the roll SG90's OWN OUTPUT SPLINE, carrying the four M3
+inserts every effector bolts to. It is the swap point of the whole arm:
+pull four screws and the hand comes off.
 
-Local frame: the roll axis is +Z. z = 0 is the BACK face, the one that
-faces the servo; the effector bolts to the front.
+Local frame: the roll axis is +Z. z = 0 is the BACK face of the disc; the
+back hub runs -Z toward the servo and the effector bolts to the front. The
+face at -wrt_hub_h is the one that looks at the servo.
 
 The bolt pattern is small (+/-11, +/-9) on purpose. This disc SPINS, so
 every millimetre of pattern is two millimetres of swept diameter, and the
@@ -16,13 +17,105 @@ load on it is trivial: the hand's weight at its centre of mass works out at
 about 1 N per bolt. Spreading the pattern would buy strength nothing needs
 and cost sweep everything notices.
 
-Print orientation: BACK FACE ON THE BED, built +Z. The insert bosses are
-then vertical holes, which is the orientation heat-set inserts want, and
-the horn pocket is a prism opening at the bed. No support.
+NO HORN. THE DISC BORES ONTO THE SPLINE. Jonathan, 2026-08-31: "we should
+not [mount] at the horns but rather add gears that we make". Same migration
+j3_pinion.py has already had, for the same three reasons: the horn is
+stamped plastic that varies by batch (deshipu's teardown, Roger Cheng's
+survey), GATE servo_fit MEASURED it fouling shoulder_bracket by 67.5 mm3,
+and the bench reported three times that the horns will not enter anything
+cut for them ("the actual horn tips dont fit in anywhere"). The whole horn
+interface - the Oe6.95 hub pocket, the r 6.0 arm slot, the 2.1 blade depth,
+and the 2026-08-28 bench numbers behind all three - is gone. Not one of
+those was a dimension this project could hold.
 
-SG90 horn dimensions are DATASHEET (lib/servo.py). The relief swallows the
-output boss as well as the horn, so this disc sits on the servo's case top
-rather than 4.2 mm above it - the roll joint is that much shorter for it.
+THE SPLINE IS NOT PRINTED, and that is a rule rather than a preference. The
+SG90's spline is 20 teeth on a Oe4.9 circle: 0.77 mm of pitch and roughly
+0.24 mm of tooth, against a design_rules.MIN_FEATURE_MM of 0.8 that is
+CALIBRATED on this printer. The teeth are a third of the smallest feature
+the machine can make, so a "splined" printed bore would come out a slightly
+lumpy circle that lies about itself. The bore is therefore ROUND and cut
+UNDERSIZE, and the steel spline broaches its own form into the PETG on
+first assembly - one diameter to get right instead of twenty teeth.
+lib/servo.SPLINE_BROACH_INTERFERENCE_MM is 0.25 and it is ASSUMED: gauge it
+before an effector hangs off it.
+
+TWO DIAMETERS, because the spline sits ABOVE the boss. The SG90 presents
+4.2 mm of Oe5.0 output collar and only then 2.5 mm of Oe4.9 spline, so the
+lower bore CLEARS the collar and only the upper bore grips. That is why a
+thin disc cannot drive a servo at all, and it is the arithmetic this part
+had to pass:
+
+    seating face   7.10 above the tab datum (case top 6.70 + 0.40 gap)
+    boss top      10.90            -> 3.80 of bore is pure clearance
+    spline top    13.40            -> 2.50 of bore actually grips
+    stack        10.00 deep        -> needs 5.80, has 10.00. PASSES.
+
+THE BACK HUB IS WHAT MAKES THIS PART DRIVEABLE, and it was put there for an
+entirely different reason. wrt_hub_h 4.00 exists so the disc does not have
+to be 10 mm of solid PETG everywhere just to swallow a horn; it happens to
+be exactly what lifts the bore-able stack from the disc's 6.00 to 10.00.
+Run the numbers on the DISC ALONE and it is uncomfortably close: 6.00 of
+face seats at 7.10, reaches the boss top at 10.90, and grips only
+6.00 - 3.80 = 2.20 mm of spline - 0.20 over the 2.00 minimum, and with none
+of the 2.5 mm spline to spare. With the hub it takes the whole spline.
+Anyone tempted to delete the hub as "just a boss" is deleting the drive.
+
+THE DISC NOW RUNS 0.40 OFF THE CASE TOP INSTEAD OF ON IT. The horn-era
+relief (wrt_relief_d = boss_h + 3.1) put the hub's back face flat on the
+SG90 case top with no gap at all - and this disc ROTATES relative to that
+case, so it was rubbing by construction. lib/servo_hub's default 0.40
+running gap fixes that and costs 0.40 mm of roll-joint length. wrist_roll.py
+has to stand the J5 servo off by 0.40 more than it does today; that is the
+one dimension outside this file the migration moves.
+
+A WASHER IS REQUIRED under the servo's retaining screw, and it is not
+optional. The SG90's screw is Oe2.5 with a head near Oe5 and the broach bore
+is Oe4.65, so the head would land almost entirely over the hole with nothing
+to clamp. Without a washer the disc walks up the spline and the hand droops.
+wrt_access_d is sized so the washer PASSES down to its seat and then bears
+on the annulus at the top of the broach bore, 3.70 mm below the front face -
+so the screw goes in BEFORE the effector does, which is the same assembly
+order the old horn screw needed.
+
+PRINT ORIENTATION: FRONT FACE ON THE BED (z = wrt_disc_t), BUILT -Z. THIS
+IS A CHANGE, 2026-08-31, and it is the largest single support saving in the
+wrist. Audit: specs/robotarm/_printability.md.
+
+WHAT WAS THERE BEFORE, AND WHY IT WAS NOT "no support". The old line said
+BACK FACE ON THE BED, built +Z, "no bridged floor anywhere. No support."
+Read the two solids it draws. The back hub is Oe10.5 and it runs z -4.0..0.
+The disc is Oe36.0 and it starts at z = 0. So hub-down, the ENTIRE disc
+underside - pi/4 x (36.0^2 - 10.5^2), about 931 mm2 before the scallops take
+their bite - is a flat 90 deg ceiling hanging 4.0 mm above the bed on a
+Oe10.5 post, and the bed contact holding all of it is the hub's own end
+face, an annulus of about 64 mm2. That is not a bridge; nothing anchors it
+at the far side. It is a mushroom, it gets a full support raft under the
+whole disc, and the raft comes off against the face the effector bolts to.
+Jonathan, from the bench: "the worst supports and its just impossible to
+clean". Nothing in this file ever checked it, because the docstring asserted
+the conclusion instead of the geometry.
+
+TURNED OVER, THE SAME TWO SOLIDS ARE SELF-SUPPORTING BY CONSTRUCTION. Front
+face down, the Oe36 disc IS the first layer - about 950 mm2 of bed contact
+instead of 64 - and the Oe10.5 hub sits on top of it. The cross-section only
+ever SHRINKS going up, which is the whole test, and it is asserted below
+rather than asserted in prose. The scallops are cut through the full stack,
+so they stay vertical walls either way up.
+
+WHAT THE FLIP COSTS, because it is not free. The four M3 insert holes are
+cut from the front face, so they now open AT THE BED and are blind at the
+top: each is a Oe4.0 circular roof with wrt_disc_t - wrt_insert_depth = 0.50
+mm of disc skin over it. That skin used to print as a floor and now prints
+as a short bridge - 4.0 mm across, two layers thick. Four small bridges a
+slicer will not even flag, in exchange for 931 mm2 of raft. The inserts
+themselves are unaffected: they still go in down a vertical hole, which is
+the orientation heat-set inserts want, and the bed-face chamfer now doubles
+as their lead-in.
+
+The bores, read from the bed upward, are access -> broach -> boss clearance,
+so they WIDEN going up after one small inward step at the top of the broach
+bore. That step is an annulus (wrt_access_d - wrt_broach_d) / 2 wide - 1.00
+mm - and it is printed, not supported. It is the only 90 deg face left.
 """
 
 import math
@@ -30,16 +123,30 @@ import math
 import adsk.core
 import adsk.fusion
 
+from lib.design_rules import JOINT_FIT_MM, MIN_WALL_MM  # noqa: E402
+from lib.servo import CATALOG as _SERVOS  # noqa: E402
+# IMPORT ORDER IS LOAD-BEARING AND THAT IS A LIBRARY BUG, NOT A STYLE.
+# lib/servo_hub.py imports lib/gears.py at its head and lib/gears.py imports
+# lib/servo_hub.py back at its foot, so whichever of the pair is reached
+# FIRST decides whether the cycle resolves. Reaching for servo_hub first
+# raises "ImportError: cannot import name 'spline_hub' from partially
+# initialized module lib.servo_hub" and the script never runs at all.
+# Touching lib.gears first breaks the tie. models/robotarm/horn_adapter.py
+# has the imports in the other order and is dead on arrival because of it -
+# reported, not fixed here, because lib/ is not this file's to edit.
+import lib.gears  # noqa: E402,F401  - MUST precede lib.servo_hub, see above
+from lib.servo_hub import spline_hub  # noqa: E402
+
 COMPONENT = 'robotarm_wrist_rotator'
 BODY_NAME = 'wrist_rotator'
 PREFIX = 'wrt_'
 STYLE = 'sty_'
 PH_FORM = 'disc'
 PH_SCALLOP = 'scallops'
-PH_HORN = 'horn interface'
+PH_SPLINE = 'spline hub'
 PH_MOUNT = 'effector inserts'
 PH_FINISH = 'finish'
-PHASES = [PH_FORM, PH_SCALLOP, PH_HORN, PH_MOUNT, PH_FINISH]
+PHASES = [PH_FORM, PH_SCALLOP, PH_SPLINE, PH_MOUNT, PH_FINISH]
 
 # _style.md rule 4b: lobed flanges, not plain discs. This part was a plain
 # Ø36 circle until 2026-08-27 - the second most flange-shaped object in the
@@ -62,6 +169,20 @@ PHASES = [PH_FORM, PH_SCALLOP, PH_HORN, PH_MOUNT, PH_FINISH]
 SCALLOP_N = 4
 SCALLOP_AZ0 = 0.0
 MATERIAL_NAME = 'PET Plastic'
+_SG90 = _SERVOS['SG90']
+# The J5 servo, CONFIRMED against models/robotarm/_check_leads.py MOUNTS
+# ('J5 roll', host wrist_roll, servo SG90) rather than assumed.
+
+# Angles, counts and epsilons, not dimensions.
+FULL_TURN_DEG = 360.0
+TOL = 1e-9
+# Least the scallops may bite out of the rim before they read as a defect
+# rather than a lobe, in mm. A styling floor, not a fit.
+SCALLOP_MIN_BITE_MM = 1.0
+# Least spline engagement this disc will accept, in mm. Passed INTO
+# spline_hub so the library's own refusal and the assertion below are
+# arguing from the same number instead of two copies of it.
+ENGAGE_MIN_MM = 2.0
 # _style.md rule 5: two-tone by PART. A rotator is a joint, so it is dark.
 # COLOUR LIVES IN lib/palette.py, not here. It used to be typed in this
 # file and sixteen others, so a re-theme meant editing seventeen files
@@ -107,18 +228,68 @@ def run(_context: str):
           'wall. Any bigger and the swept circle starts to matter')
     param('disc_t', '6.0 mm', 'thick enough to sink an M3 insert from the front')
     param('hub_d', '10.5 mm',
-          'central hub on the BACK face, carrying the rest of the horn relief.\n           A disc thick enough to swallow boss + horn everywhere would be 10 mm\n           of solid PETG; this puts the depth only where it is needed. Sized to\n           run inside the roll housing\'s rotator bore.')
-    param('hub_h', '4.0 mm', 'hub height behind the disc')
+          'central hub on the BACK face, carrying the deep end of the spline\n'
+          '           bore. A disc thick enough to swallow the boss everywhere would\n'
+          '           be 10 mm of solid PETG; this puts the depth only where it is\n'
+          '           needed. Sized to run inside the roll housing\'s rotator bore,\n'
+          '           and wide enough to keep design_rules MIN_WALL around the Oe5.40\n'
+          '           boss bore - asserted below.')
+    param('hub_h', '4.0 mm',
+          'hub height behind the disc. IT IS ALSO THE DRIVE. The disc alone is\n'
+          '           6.00 and grips only 2.20 mm of spline; with the hub the stack is\n'
+          '           10.00 and grips the whole 2.50. Do not delete this as "just a\n'
+          '           boss" - see the docstring arithmetic.')
+    param('stack_h', PREFIX + 'hub_h + ' + PREFIX + 'disc_t',
+          'derived: the WHOLE bore-able height, seating face to front face.\n'
+          '           This is what the spline solve is checked against, not disc_t.')
+    param('free_fit', '%.4f mm' % JOINT_FIT_MM['free'],
+          'design_rules JOINT_FIT_MM free - must never bind')
+    param('case_gap', '%.4f mm' % JOINT_FIT_MM['free'],
+          'running gap between the seating face and the SG90 case top. This\n'
+          '           disc ROTATES relative to that case, so the horn-era 0.00 was\n'
+          '           rubbing by construction - the relief swallowed boss + hub and\n'
+          '           sat the face flat on the case. Costs 0.40 mm of roll length;\n'
+          '           wrist_roll.py has to stand the J5 servo off to match.')
 
-    # --- SG90 horn + boss, DATASHEET (lib/servo.py) ---------------------------
-    param('boss_h', '4.2 mm', 'SG90 output boss height above the case top')
-    param('horn_hub_d', '6.95 mm', 'SG90 horn hub 8.0 + press 0.15 - 2026-08-27 horn audit, lib/servo.py\n           MEASURED 2026-08-28: hub is 6.8, not the modelled 8.0 - at 8.15 this pocket was 1.35 loose and no press at all.')
-    param('horn_arm_w', '5.85 mm', 'horn arm width AT THE r 6 trim: 5.5 + press\n           0.15. The arm TAPERS 5.5 -> 3; the old 3.95 read the blade\n           thickness as its width and no horn would have entered - 2026-08-27 horn audit, lib/servo.py\n           MEASURED 2026-08-28: the arm is 5.7 at the r 6 trim, so 5.65 was 0.05 UNDER it - an interference, not a press fit.')
-    param('horn_arm_r', '6.0 mm', 'horn arm TRIMMED to this radius at assembly')
-    param('relief_d', PREFIX + 'boss_h + '
-          '3.1 mm', 'derived: horn hub 3.0 + 0.1 PLUS the boss, so the disc\n           sits on the case top - 2026-08-27 horn audit, lib/servo.py')
-    param('horn_arm_depth', '2.1 mm', 'horn blade 2.0 + 0.1 - 2026-08-27 horn audit, lib/servo.py')
-    param('screw_d', '5.5 mm', 'driver access to the horn retaining screw')
+    # --- SPLINE HUB, solved in lib/servo_hub.py. WRITTEN, NOT CHOSEN. ------
+    H = spline_hub(_SG90, face=val('stack_h') * 10,
+                   case_gap=val('case_gap') * 10, engage_min=ENGAGE_MIN_MM)
+    param('seat_z', '%.4f mm' % H.seat_z,
+          'servo-z of the SEATING FACE - how far up the SG90 this disc sits,\n'
+          '           measured from the underside of its mounting tabs. wrist_roll.py\n'
+          '           reads this to place the J5 servo, and it moves from 6.70 to 7.10\n'
+          '           because the disc now runs clear of the case instead of on it.')
+    param('boss_bore_d', '%.4f mm' % H.boss_clear_d,
+          'lower bore - CLEARS the Oe5.0 output collar at a free fit. Nothing\n'
+          '           grips the boss; it only has to pass.')
+    param('boss_bore_h', '%.4f mm' % H.boss_clear_to,
+          'how far up the bore stays wide - to the top of the boss. 3.80 of the\n'
+          '           10.00 stack is spent just getting past the SG90 collar, which is\n'
+          '           most of the back hub.')
+    param('broach_d', '%.4f mm' % H.broach_d,
+          'upper bore - THE STEEL SPLINE CUTS THIS. Deliberately UNDERSIZE by\n'
+          '           lib/servo.SPLINE_BROACH_INTERFERENCE_MM. The spline is not\n'
+          '           printed: 20 teeth on Oe4.9 is 0.77 mm of pitch and ~0.24 mm of\n'
+          '           tooth, against a CALIBRATED MIN_FEATURE_MM of 0.8. The\n'
+          '           interference is ASSUMED - gauge it before an effector hangs\n'
+          '           off it.')
+    param('broach_from', '%.4f mm' % H.broach_from, 'derived: the spline starts here')
+    param('broach_to', '%.4f mm' % H.broach_to,
+          'derived: and ends here, 2.30 mm up inside the disc')
+    param('engaged', '%.4f mm' % H.engaged,
+          'how much spline the bore grips - the FULL 2.5 mm of SG90 spline,\n'
+          '           because hub + disc runs past all of it')
+    param('washer_d', '%.4f mm' % H.washer_d,
+          'SMALLEST WASHER THAT WORKS, and it is not optional. The retaining\n'
+          '           screw is Oe%.1f with a head near Oe5 and the broach bore is\n'
+          '           Oe%.2f, so the head would sit over the hole with nothing to\n'
+          '           clamp. Without a washer the disc walks up the spline.'
+          % (H.screw_d, H.broach_d))
+    param('access_d', PREFIX + 'washer_d + ' + PREFIX + 'free_fit',
+          'derived: the washer has to PASS down this bore to reach its seat, so\n'
+          '           it is the washer plus a free fit. It replaces the old 5.50\n'
+          '           wrt_screw_bore as the tool access, and it must still clear the\n'
+          '           insert bosses radially - asserted below.')
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
     param('scallop_r', '4.0 mm', 'radius of each notch cut into the rim - _style.md 4b')
     param('scallop_cr', '20.0 mm',
@@ -154,6 +325,7 @@ def run(_context: str):
     chf = comp.features.chamferFeatures
 
     NEW = adsk.fusion.FeatureOperations.NewBodyFeatureOperation
+    JOIN = adsk.fusion.FeatureOperations.JoinFeatureOperation
     CUT = adsk.fusion.FeatureOperations.CutFeatureOperation
 
     def sketch(plane, name):
@@ -197,26 +369,71 @@ def run(_context: str):
         return extrude(profiles(sk, expected=1), op, z0_expr, dz_expr, name)
 
     # ---- values in cm -----------------------------------------------------------
-    corner = (val('bolt_x') ** 2 + val('bolt_z') ** 2) ** 0.5
+    corner = math.hypot(val('bolt_x'), val('bolt_z'))
     s_cr = val('scallop_cr')
     s_r = val('scallop_r')
+    SEAT = '-' + PREFIX + 'hub_h'          # the face that looks at the servo
     assert corner + val('boss_od') / 2 <= val('disc_d') / 2, (
         'the bolt bosses reach %.2f mm, past the %.2f mm disc radius'
         % ((corner + val('boss_od') / 2) * 10, val('disc_d') / 2 * 10))
-    # The relief and the inserts are radially separate, not stacked - the check
-    # is that each has depth, and that they do not overlap in RADIUS.
-    assert val('relief_d') <= val('disc_t') + val('hub_h') - val('tol'), (
-        'the horn relief (%.2f) runs out of the back of the disc + hub (%.2f)'
-        % (val('relief_d') * 10, (val('disc_t') + val('hub_h')) * 10))
+    # THE SPLINE STACK AND THE INSERTS ARE RADIALLY SEPARATE, not stacked -
+    # the checks are that the bore has somewhere to end and that the two do
+    # not overlap in RADIUS. The old version of this checked a horn relief
+    # against disc_t + hub_h; the bore it now checks is the same length but
+    # it means something, because spline_hub() has already refused anything
+    # that could not reach the spline.
+    assert val('broach_to') <= val('stack_h') + TOL, (
+        'the spline tops out %.2f into a %.2f stack - the washer would have '
+        'no face to bear on' % (val('broach_to') * 10, val('stack_h') * 10))
+    assert val('engaged') * 10 >= ENGAGE_MIN_MM - TOL, (
+        'only %.2f mm of spline engagement, want %.2f'
+        % (val('engaged') * 10, ENGAGE_MIN_MM))
+    assert val('broach_d') < val('washer_d') < val('access_d'), (
+        'the Oe%.2f washer has to be BIGGER than the Oe%.2f broach bore to '
+        'have anything to bear on and SMALLER than the Oe%.2f access bore to '
+        'reach its seat' % (val('washer_d') * 10, val('broach_d') * 10,
+                            val('access_d') * 10))
+    hub_wall = (val('hub_d') - val('boss_bore_d')) / 2
+    assert hub_wall * 10 >= MIN_WALL_MM - TOL, (
+        'only %.2f mm of back-hub wall around the Oe%.2f boss bore, and '
+        'design_rules wants %.2f'
+        % (hub_wall * 10, val('boss_bore_d') * 10, MIN_WALL_MM))
     assert val('insert_depth') <= val('disc_t'), 'the inserts run out of the disc'
     assert corner - val('boss_od') / 2 > val('hub_d') / 2, (
         'the insert bosses overlap the central hub')
+    # The access bore is the widest hole that reaches into the DISC, which is
+    # where the insert bosses live. hub_d is wider, but it stops at z = 0.
+    assert corner - val('boss_od') / 2 > val('access_d') / 2, (
+        'the Oe%.2f access bore reaches r %.2f and the insert bosses start at '
+        'r %.2f' % (val('access_d') * 10, val('access_d') / 2 * 10,
+                    (corner - val('boss_od') / 2) * 10))
+    # ---- PRINTABILITY GATE, front face on the bed, built -Z ----------------
+    # THE ONE TEST THIS ORIENTATION RESTS ON: turned front-face-down, the
+    # cross-section has to SHRINK going up, and here that is exactly the
+    # statement that the back hub is no wider than the disc it stands on. The
+    # old docstring claimed self-support and checked nothing, which is how a
+    # 931 mm2 raft under the effector face survived to the bench. Say it in
+    # code so the next person who widens the hub is stopped here and not by a
+    # print. specs/robotarm/_printability.md carries the full audit.
+    assert val('hub_d') <= val('disc_d'), (
+        'the Oe%.2f back hub is wider than the Oe%.2f disc it stands on - '
+        'front-face-down stops being self-supporting and this part goes back '
+        'to needing a raft under the whole disc'
+        % (val('hub_d') * 10, val('disc_d') * 10))
+    # The four insert holes now open at the bed and are roofed by whatever
+    # disc is left above them. It is thin - thinner than MIN_WALL - so it is
+    # NOT asserted, it is DECLARED: a Oe4.0 bridge two layers thick. Anything
+    # that shortens the disc or deepens the inserts makes it thinner.
+    insert_roof = val('disc_t') - val('insert_depth')
+    # The bores widen going up apart from one inward step where the washer
+    # access bore meets the broach bore. That annulus is the only 90 deg face
+    # on the part; it prints unsupported because it is 1.00 mm of reach.
+    bore_ledge = (val('access_d') - val('broach_d')) / 2
 
     # ---- phase 1: the disc --------------------------------------------------------
     t0 = design.timeline.count
     disc('rotator_disc', 0, 0, val('disc_d'), '0.0 mm', PREFIX + 'disc_t', NEW)
-    disc('horn_hub', 0, 0, val('hub_d'), '-' + PREFIX + 'hub_h', PREFIX + 'hub_h',
-         adsk.fusion.FeatureOperations.JoinFeatureOperation)
+    disc('spline_boss', 0, 0, val('hub_d'), SEAT, PREFIX + 'hub_h', JOIN)
     group(t0, PH_FORM)
 
     # ---- phase 1b: scallops, _style.md rule 4b -------------------------------
@@ -229,18 +446,17 @@ def run(_context: str):
     disc_r_mm = val('disc_d') / 2 * 10
     boss_r_mm = val('boss_od') / 2 * 10
     corner_mm = corner * 10
-    WALL_MM = 1.6
     reach_in_mm = s_cr_mm - s_r_mm
-    assert reach_in_mm < disc_r_mm - 1e-9, (
+    assert reach_in_mm < disc_r_mm - TOL, (
         'the scallops reach r %.2f and the disc is r %.2f - they would not cut '
         'the rim at all' % (reach_in_mm, disc_r_mm))
-    assert disc_r_mm - reach_in_mm >= 1.0, (
+    assert disc_r_mm - reach_in_mm >= SCALLOP_MIN_BITE_MM, (
         'the scallops bite only %.2f mm out of the rim - under a millimetre '
         'reads as a defect, not a lobe' % (disc_r_mm - reach_in_mm))
     insert_az = [math.degrees(math.atan2(sz * val('bolt_z'), sx * val('bolt_x')))
                  for sx in (-1, 1) for sz in (-1, 1)]
     for i in range(SCALLOP_N):
-        az = SCALLOP_AZ0 + i * 360.0 / SCALLOP_N
+        az = SCALLOP_AZ0 + i * FULL_TURN_DEG / SCALLOP_N
         a = math.radians(az)
         # NO NOTCH MAY BREAK INTO AN INSERT BOSS. This is the achievable half
         # of 4b, and it is what turntable_ring actually asserts too.
@@ -248,29 +464,32 @@ def run(_context: str):
             d_mm = math.sqrt(s_cr_mm ** 2 + corner_mm ** 2
                              - 2 * s_cr_mm * corner_mm
                              * math.cos(math.radians(az - iaz)))
-            assert d_mm > s_r_mm + boss_r_mm + WALL_MM, (
+            assert d_mm > s_r_mm + boss_r_mm + MIN_WALL_MM, (
                 'scallop at az %.0f is %.2f mm from the insert boss at az %.2f '
                 '- it needs %.2f. Lower SCALLOP_N or move scallop_cr out.'
-                % (az, d_mm, iaz, s_r_mm + boss_r_mm + WALL_MM))
+                % (az, d_mm, iaz, s_r_mm + boss_r_mm + MIN_WALL_MM))
         disc('scallop_%d' % i, s_cr * math.cos(a), s_cr * math.sin(a),
-             val('scallop_r') * 2, '-' + PREFIX + 'hub_h',
-             PREFIX + 'hub_h + ' + PREFIX + 'disc_t', CUT)
+             val('scallop_r') * 2, SEAT, PREFIX + 'stack_h', CUT)
     group(ts, PH_SCALLOP)
 
-    # ---- phase 2: horn interface ----------------------------------------------------
+    # ---- phase 2: spline hub ----------------------------------------------------
     t1 = design.timeline.count
-    disc('horn_relief', 0, 0, val('horn_hub_d'), '-' + PREFIX + 'hub_h',
-         PREFIX + 'relief_d', CUT)
-    sk_arm = sketch(comp.xYConstructionPlane, 'sk_horn_arm_slot')
-    sk_arm.sketchCurves.sketchLines.addTwoPointRectangle(
-        mpt(sk_arm, -val('horn_arm_r'), -val('horn_arm_w') / 2, 0),
-        mpt(sk_arm, val('horn_arm_r'), val('horn_arm_w') / 2, 0))
-    extrude(profiles(sk_arm, expected=1), CUT,
-            PREFIX + 'boss_h - ' + PREFIX + 'hub_h',
-            PREFIX + 'horn_arm_depth', 'horn_arm_slot')
-    disc('horn_screw_bore', 0, 0, val('screw_d'), '-' + PREFIX + 'hub_h',
-         PREFIX + 'hub_h + ' + PREFIX + 'disc_t', CUT)
-    group(t1, PH_HORN)
+    # THREE BORES, and the order is the SG90's own stack read upward from the
+    # case. It used to be a horn hub relief, an arm slot at the boss height
+    # and a separate 5.50 screw bore. Now:
+    #   boss_bore    clears the Oe5.0 output collar for 3.80. Pure clearance.
+    #   spline_bore  UNDERSIZE. The steel spline broaches this on assembly.
+    #   access_bore  passes the washer down to its seat, then the tool.
+    # TWO DIAMETERS ON THE DRIVEN PART, because the spline sits ABOVE the
+    # boss: a disc shorter than boss_bore_h never reaches the spline at all,
+    # however good its bore is. That is what spline_hub() refuses on, and it
+    # is why hub_h is load-bearing rather than decorative.
+    disc('boss_bore', 0, 0, val('boss_bore_d'), SEAT, PREFIX + 'boss_bore_h', CUT)
+    disc('spline_bore', 0, 0, val('broach_d'), SEAT + ' + ' + PREFIX + 'broach_from',
+         PREFIX + 'engaged', CUT)
+    disc('washer_access_bore', 0, 0, val('access_d'), SEAT + ' + ' + PREFIX + 'broach_to',
+         PREFIX + 'stack_h - ' + PREFIX + 'broach_to', CUT)
+    group(t1, PH_SPLINE)
 
     # ---- phase 3: effector inserts ----------------------------------------------------
     t2 = design.timeline.count
@@ -284,7 +503,12 @@ def run(_context: str):
 
     # ---- phase 4: finish ------------------------------------------------------------
     t3 = design.timeline.count
-    for z_pick, nm in ((-val('hub_h'), 'bed_face_chamfer'), (val('disc_t'), 'front_face_chamfer')):
+    # THE ELEPHANT-FOOT CHAMFER FOLLOWS THE BED, and the bed moved. Both faces
+    # were already being chamfered at sty_ef, so turning the part over costs
+    # nothing here but the two names - which have to be right, because the
+    # bed-face chamfer is the one that answers to design_rules
+    # ELEPHANT_FOOT_CHAMFER_MM and it is now also the inserts' lead-in.
+    for z_pick, nm in ((val('disc_t'), 'bed_face_chamfer'), (-val('hub_h'), 'hub_back_chamfer')):
         col = adsk.core.ObjectCollection.create()
         for e in comp.bRepBodies.item(0).edges:
             eb = e.boundingBox
@@ -321,11 +545,13 @@ def run(_context: str):
             break
 
     bb = body.boundingBox
+    _case_top = _SG90.tab_thk + _SG90.tab_below_top
+    _disc_only = val('disc_t') * 10 - val('boss_bore_h') * 10
     print('body: %r | material: %s | appearance: %s' % (
         body.name, body.material.name, used_appearance))
     print('SCALLOPS: %d lobes at az %s - _style.md 4b. The inserts sit on the'
-          % (SCALLOP_N, [round(SCALLOP_AZ0 + 180.0 / SCALLOP_N
-                               + i * 360.0 / SCALLOP_N) for i in range(SCALLOP_N)]))
+          % (SCALLOP_N, [round(SCALLOP_AZ0 + FULL_TURN_DEG / 2 / SCALLOP_N
+                               + i * FULL_TURN_DEG / SCALLOP_N) for i in range(SCALLOP_N)]))
     print('  lobes because the notches are in the GAPS: a rectangular bolt')
     print('  pattern has no lobe count that lands on all four.')
     print('  notch r %.1f at r %.1f, biting %.1f mm out of an %.1f rim'
@@ -335,8 +561,37 @@ def run(_context: str):
     print('disc OD %.1f x %.1f | effector pattern 4 x M3 at +/-%.1f, +/-%.1f (corner %.2f)' % (
         val('disc_d') * 10, val('disc_t') * 10, val('bolt_x') * 10, val('bolt_z') * 10,
         corner * 10))
-    print('horn relief %.2f deep (swallows the %.1f mm boss) through a %.1f mm back hub' % (
-        val('relief_d') * 10, val('boss_h') * 10, val('hub_h') * 10))
+    print('seats %.2f up the SG90 (%.2f clear of its case top) - wrist_roll.py '
+          'must stand the J5 servo off to match'
+          % (val('seat_z') * 10, val('seat_z') * 10 - _case_top))
+    print('spline hub: boss bore Oe%.2f to %.2f, then Oe%.2f BROACHED %.2f..%.2f'
+          % (val('boss_bore_d') * 10, val('boss_bore_h') * 10,
+             val('broach_d') * 10, val('broach_from') * 10, val('broach_to') * 10))
+    print('  %.1f mm of spline engaged | NO HORN | needs a Oe%.1f washer under '
+          'the screw, passed down a Oe%.2f access bore'
+          % (val('engaged') * 10, val('washer_d') * 10, val('access_d') * 10))
+    print('  bore-able stack %.2f (back hub %.2f + disc %.2f) against a %.2f '
+          'minimum - the DISC ALONE would grip only %.2f mm'
+          % (val('stack_h') * 10, val('hub_h') * 10, val('disc_t') * 10,
+             H.min_height, _disc_only))
+    print('back-hub wall around the boss bore: %.2f mm' % (hub_wall * 10))
+    hub_r_mm = val('hub_d') / 2 * 10
+    shadow_mm2 = math.pi * (disc_r_mm ** 2 - hub_r_mm ** 2)
+    print('PRINTABILITY - FRONT FACE ON THE BED (z %.1f), BUILT -Z, SUPPORT OFF.'
+          % (val('disc_t') * 10))
+    print('  cross-section shrinks all the way up: Oe%.1f disc -> Oe%.1f hub, so'
+          % (val('disc_d') * 10, val('hub_d') * 10))
+    print('  every outer face is vertical or up-facing. Bed contact ~%.0f mm2.'
+          % (math.pi * disc_r_mm ** 2))
+    print('  HUB-DOWN, WHICH IS WHAT THIS FILE USED TO SAY, the disc underside')
+    print('  is %.0f mm2 of flat 90 deg ceiling on a Oe%.1f post with %.0f mm2 of'
+          % (shadow_mm2, val('hub_d') * 10,
+             math.pi * (hub_r_mm ** 2 - (val('boss_bore_d') / 2 * 10) ** 2)))
+    print('  bed contact - a full raft against the effector face. That is the')
+    print('  support Jonathan could not clean. Do not turn this part back over.')
+    print('  left over air, declared not gated: 4 x Oe%.1f insert roofs under '
+          '%.2f mm of disc, and a %.2f mm bore ledge at the broach bore top.'
+          % (val('insert_d') * 10, insert_roof * 10, bore_ledge * 10))
     print('inserts %.1f deep from the front, %.2f mm clear of the hub radially' % (
         val('insert_depth') * 10, (corner - val('boss_od') / 2 - val('hub_d') / 2) * 10))
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f' % (

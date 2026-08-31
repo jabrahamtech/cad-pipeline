@@ -57,7 +57,6 @@ from lib.design_rules import (
     JOINT_FIT_MM,
     MIN_WALL_MM,
 )
-from lib.gears import LEWIS_Y, SpurPair
 from lib.servo import CATALOG, micro_arm_w
 
 # --- what the horn's holes actually are ----------------------------------
@@ -473,6 +472,15 @@ def solve_stage(name, servo, target_ratio, max_centre_mm, torque_nm,
     Returns (SpurPair, notes) or (None, why_not). Nothing is typed: the
     packaging limit and the bolt circle pick the teeth.
     """
+    # IMPORTED HERE, NOT AT THE TOP, AND THAT IS LOAD-BEARING. lib/gears.py
+    # imports spline_hub() from this module at its foot, so a module-level
+    # `from lib.gears import ...` here closes a cycle: `import lib.servo_hub`
+    # on its own then raises "cannot import name 'spline_hub' from partially
+    # initialized module", and models/robotarm/horn_adapter.py - whose import
+    # block reaches servo_hub first - was dead on arrival because of it.
+    # Deferring the import to the one function that needs it breaks the cycle
+    # without either module having to know about the other's order.
+    from lib.gears import LEWIS_Y, SpurPair
     floor = min_root_r if min_root_r is not None else hub_face().min_gear_root_r
     tried, best = [], None
     for module in modules:

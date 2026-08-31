@@ -135,6 +135,12 @@ def run(_context: str):
     param('slide', '0.25 mm', 'sliding fit, rack in channel - design_rules CALIBRATED')
     param('free', '0.4 mm', 'free fit, must never bind - design_rules')
     param('loc', '0.2 mm', 'locational fit - design_rules')
+    param('case_gap', PREFIX + 'free',
+          'running gap between the pinion BACK FACE and the SG90 case top.\n'
+          '           The pinion ROTATES relative to that case, so it cannot sit on\n'
+          '           it; this is design_rules JOINT_FIT_MM free, which is what\n'
+          '           lib/servo_hub seats every spline hub at and what\n'
+          '           gripper_pinion.py declares as gp_case_gap. Edit neither here.')
 
     # --- outer form ---------------------------------------------------------
     param('x', '24.0 mm', 'half width at the hand; also half the channel guide length')
@@ -158,8 +164,33 @@ def run(_context: str):
     param('tab_thk', '2.4 mm', 'SG90 mounting tab thickness - DATASHEET')
     param('tab_plane', '17.0 mm', 'case bottom to the tab UNDERSIDE - DATASHEET')
     param('boss_h', '4.2 mm', 'output boss height above the case top - DATASHEET')
-    param('case_top', '-(' + SHARED + 'face / 2 + ' + PREFIX + 'boss_h)',
-          'derived: the pinion back face sits on the horn, the horn on the boss')
+    # THE PINION PLANE IS NO LONGER y = 0, AND THIS IS THE WHOLE OF THE
+    # HORN MIGRATION AS IT LANDS ON THIS PART. gripper_pinion.py used to
+    # perch its back face on the horn blade at the OUTPUT BOSS TOP, servo-z
+    # 10.90. It now bores THROUGH the boss and seats one running gap off the
+    # case top, servo-z 7.10 - so the pinion, and both rack channels that
+    # mesh on its plane, come 3.80 mm TOWARD THE CASE. The 3.80 is not typed:
+    # it is boss_h 4.20 minus the case_gap 0.40 that replaces it, so if
+    # either moves this follows.
+    #
+    # THE SERVO BAY DOES NOT MOVE. gs_case_top comes out at -8.20 exactly as
+    # before, because it is now derived BACK from the gear plane instead of
+    # the gear plane being pinned to y = 0. That is deliberate: back_y, the
+    # tail cavity, both lead notches and the tab slots are all sited off the
+    # case, and the alternative - holding the pinion at y = 0 and walking the
+    # servo forward - would have moved every one of them and shortened the
+    # shell by 3.80 for no reason anyone asked for.
+    param('gear_y', '-(' + PREFIX + 'boss_h - ' + PREFIX + 'case_gap)',
+          'derived: the pinion MID plane, and with it both rack channels. It is\n'
+          '           -3.80 - how far the pinion dropped toward the servo when its bore\n'
+          '           started swallowing the Oe5.0 output boss instead of perching on\n'
+          '           it. gripper_pinion.py gp_seat_z 10.90 -> 7.10 is the same move,\n'
+          '           measured up the servo instead of along the arm.')
+    param('case_top', PREFIX + 'gear_y - ' + SHARED + 'face / 2 - ' + PREFIX + 'case_gap',
+          'derived: the pinion back face sits one running gap off the case top,\n'
+          '           and the case top is that much further back again. NOT the horn\n'
+          '           stack it replaces - there is no horn and no blade in this\n'
+          '           machine any more. Comes out at the SAME -8.20 it always was.')
     param('case_bot', PREFIX + 'case_top - ' + PREFIX + 'case_h', 'derived case bottom')
     param('case_far', PREFIX + 'case_l - ' + PREFIX + 'shaft_end', 'derived shaft to the FAR case end')
     param('tab_over', '(' + PREFIX + 'tab_span - ' + PREFIX + 'case_l) / 2',
@@ -196,12 +227,44 @@ def run(_context: str):
     # --- fasteners -----------------------------------------------------------
     param('bolt_d', '3.4 mm', 'M3 clearance - design_rules FASTENER_MM')
     param('bolt_x', '19.0 mm', 'clamshell bolts, +/- this in x')
-    param('bolt_y1', '-8.0 mm', 'front clamshell bolt: clear of the channel and the arm')
+    # DERIVED NOW, AND IT HAD TO BE. It was a typed -8.00, which sat 3.88 mm
+    # behind a channel whose rear wall was at -4.125. With the channel 3.80
+    # further back its rear wall is at -7.925 and a Oe3.4 hole centred on
+    # -8.00 breaks INTO the channel over 1.63 mm - the rack would run past an
+    # open bolt hole. So the bolt is now placed off the channel it has to
+    # clear rather than typed beside where the channel used to be.
+    param('bolt_y1',
+          PREFIX + 'gear_y - ' + PREFIX + 'chan_y - ' + PREFIX + 'wall - '
+          + PREFIX + 'bolt_d / 2',
+          'front clamshell bolt: one wall behind the rack channel\'s rear face.\n'
+          '           It moves with gs_gear_y - see the note there. It crosses gs_mid_y\n'
+          '           into the taper, which is fine (the tail is one joined solid and\n'
+          '           still 23.8 wide there) and is checked below.')
     param('bolt_y2', '-24.0 mm',
           'rear clamshell bolt - ALSO the wrist interface: the bracket ears clamp '
           'the tail on these two, so an effector swap needs no extra fastener')
-    param('pocket_x', '21.0 mm', 'lightening pocket in the rear rail, +/- this')
+    # gs_pocket_x IS GONE, WITH THE POCKET IT SIZED. rear_rail_pocket
+    # lightened the RAIL - the band of solid material between the rack
+    # channel's rear wall and the servo bay behind it, most of it the servo
+    # bay's roof. It was 4.68 mm deep in y and took ~1.3 cm3 out of a part
+    # that carries almost nothing there.
+    #
+    # THE 3.80 DROP TOOK THE RAIL, NOT JUST THE POCKET. The channel's rear
+    # wall moved from y -4.125 to -7.925 and the SG90 case top is at -8.20,
+    # so what is left between them is 0.275 mm - 0.175 after the pocket's
+    # locational fit. There is no rail any more, and a pocket inset one wall
+    # into each side of it came out 0.88 mm wide: under MIN_FEATURE_MM 0.8's
+    # useful range, and at the split face a 0.88 mm LAND between two cuts
+    # that each want a 0.4 chamfer. That is what failed the build -
+    # ASM_BL_UNFIN_SHEET on split_face_chamfer - and shrinking the chamfer to
+    # fit a sliver would have been dressing a vestige rather than removing
+    # it. So the pocket is deleted. The 0.6 g it used to save is real and
+    # this costs it; the alternative is an unprintable feature.
     param('max_bridge', '40.0 mm', 'longest clean unsupported bridge - design_rules')
+    param('min_feature', '0.8 mm',
+          'smallest positive feature this printer makes - design_rules\n'
+          '           MIN_FEATURE_MM, CALIBRATED. Used to prove no LAND at the\n'
+          '           split face is too thin to carry its sty_ef chamfer.')
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
 
     # ---- idempotent rebuild ------------------------------------------------
@@ -324,6 +387,7 @@ def run(_context: str):
     front_y = val('front_y')
     mid_y = val('mid_y')
     back_y = val('back_y')
+    gear_y = val('gear_y')
     chan_y = val('chan_y')
     pin_r = val('pin_r')
     pin_y = val('pin_y')
@@ -334,12 +398,79 @@ def run(_context: str):
     tab_lo = val('tab_lo')
     loc = val('loc')
     facet = tval('facet')
-    pocket_x = val('pocket_x')
+    # The servo pocket's CEILING, taken flush to the rack channel's rear
+    # wall rather than one locational fit over the case top - see the cut.
+    srv_front = gear_y - chan_y
     bolt_r = val('bolt_d') / 2
     bolt_x = val('bolt_x')
 
     assert chan_y < pin_y, 'the pinion recess must be at least as wide as the rack channel'
     assert case_far + tab_over < x_half, 'the servo tabs stick out past the shell'
+
+    # ---- WHAT THE 3.80 DROP HAD TO BE CHECKED AGAINST ----------------------
+    # Everything that keys off the pinion plane, asserted rather than hoped
+    # for. The drop is small and it is entirely toward the servo, so it is
+    # the REAR of the mechanism that runs out of room, never the front.
+    chan_rear = gear_y - chan_y
+
+    # ---- SPLIT-FACE LANDS: ZERO, OR THICK ENOUGH TO CHAMFER ---------------
+    # THIS IS THE CHECK THAT WAS MISSING, AND IT COST A BUILD. Phase 5
+    # chamfers EVERY edge in the plane z = 0 at sty_ef 0.4. Two cuts that
+    # both open on the split face and stop a hair apart leave a LAND that has
+    # to carry two of those chamfers, and Fusion fails the WHOLE feature -
+    # "3 : Chamfer2 / Compute Failed // ASM_BL_UNFIN_SHEET" on
+    # split_face_chamfer - rather than the one edge that cannot take it. The
+    # -3.80 gear-plane drop left two such lands (0.175 mm between the rack
+    # channel and the servo pocket, 0.88 mm across rear_rail_pocket) and the
+    # build died 130 lines below here with nothing pointing back at gs_gear_y.
+    #
+    # These are the Y lands, because gs_gear_y is what moves things in Y.
+    # A land may be NEGATIVE (the two cuts overlap and merge, no edge) or
+    # ZERO (they meet flush, one edge) or at least MIN_FEATURE_MM. It may not
+    # be a sliver in between.
+    for _nm, _gap in (
+            ('servo pocket ceiling to rack channel rear',
+             chan_rear - srv_front),
+            ('rack channel rear to the front clamp bolt',
+             chan_rear - (val('bolt_y1') + bolt_r)),
+            ('rack channel front to the mouth', 0.0),
+            ('front clamp bolt to rear clamp bolt',
+             (val('bolt_y1') - bolt_r) - (val('bolt_y2') + bolt_r))):
+        assert _gap < val('tol') or _gap >= val('min_feature'), (
+            'the split face leaves a %.3f mm land, %s. sty_ef is %.2f, so two '
+            'chamfers want %.2f of it and split_face_chamfer will fail whole. '
+            'Make it flush or make it at least %.2f - gs_gear_y is what moves '
+            'these' % (_gap * 10, _nm, tval('ef') * 10, tval('ef') * 2 * 10,
+                       val('min_feature') * 10))
+
+    # AND THE OTHER HALF OF THAT RULE. The pocket ceiling is taken flush
+    # BECAUSE the natural land is unprintable. If gs_gear_y ever moves
+    # forward far enough to put a real wall back between the rack channel and
+    # the SG90 case top, taking the ceiling flush is throwing that wall away
+    # and this says so rather than quietly costing the part its rib.
+    _natural = chan_rear - (case_top + val('loc') / 2)
+    assert _natural < val('min_feature'), (
+        'there is %.2f mm between the rack channel and the SG90 case top now '
+        '- a printable wall - and this file still takes the servo pocket '
+        'ceiling flush to the channel and throws it away. Put the ceiling '
+        'back on gs_case_top + gs_loc / 2' % (_natural * 10))
+    assert val('bolt_y1') + bolt_r <= chan_rear - val('wall') + val('tol'), (
+        'the front clamshell bolt reaches y %.2f and the rack channel backs '
+        'onto %.2f - the bolt hole opens into the channel the rack slides in'
+        % ((val('bolt_y1') + bolt_r) * 10, chan_rear * 10))
+    # The bolt has crossed mid_y into the tapered tail, so the outline is no
+    # longer x_half where it sits. Measure the taper at the bolt's far edge.
+    _by = val('bolt_y1') - bolt_r
+    _half_at_bolt = (x_half if _by >= mid_y else
+                     x_half + (rear_x - x_half) * (mid_y - _by) / (mid_y - back_y))
+    assert bolt_x + bolt_r + val('wall') <= _half_at_bolt + val('tol'), (
+        'the front clamshell bolt reaches x %.2f at y %.2f where the shell is '
+        'only %.2f half wide' % ((bolt_x + bolt_r) * 10, _by * 10,
+                                 _half_at_bolt * 10))
+    assert case_top < chan_rear, (
+        'the SG90 case top at y %.2f is not behind the rack channel at %.2f - '
+        'the servo would stand in the rack\'s way'
+        % (case_top * 10, chan_rear * 10))
 
     # ---- phase 1: outer form (BEFORE any internal cut) ----------------------
     t0 = design.timeline.count
@@ -371,12 +502,28 @@ def run(_context: str):
     # Everything forward of the channel comes out below the top plate: that is
     # the mouth the jaws reach through, and the reason there is no front wall.
     box('mouth', -x_half - val('wall'), x_half + val('wall'),
-        chan_y, front_y + val('wall'), '0.0 mm', PREFIX + 'chan_z', CUT)
+        gear_y + chan_y, front_y + val('wall'), '0.0 mm', PREFIX + 'chan_z', CUT)
     # The channel runs the FULL width and is open at both ends - the rack is
     # longer than the shell and slides out past it at full open.
-    box('rack_channel', -x_half - val('wall'), x_half + val('wall'), -chan_y, chan_y,
+    box('rack_channel', -x_half - val('wall'), x_half + val('wall'),
+        gear_y - chan_y, gear_y + chan_y,
         '0.0 mm', PREFIX + 'chan_z', CUT)
-    bore('pinion_recess', 0, 0, pin_r, '-' + PREFIX + 'pin_y', PREFIX + 'pin_y * 2', CUT)
+    # THE RECESS MOVES WITH THE PLANE, AND ITS AXIS IS A QUESTION THIS EDIT
+    # DID NOT ANSWER. As written the recess is a cut about Z - bore() sketches
+    # on XY and extrudes along Z - while the pinion's axis is Y: gr_offset is
+    # measured in Z from the axis to the rack pitch line, and the rack travels
+    # in X, so the axis can only be Y. The `assert chan_y < pin_y` below reads
+    # gs_pin_y as a HALF WIDTH IN Y, which the extrusion then uses as a Z
+    # range. The two readings cannot both be right and this file has a bore_y()
+    # that would build the other one. That is a PRE-EXISTING disagreement, not
+    # something the horn migration introduced, and correcting it is a geometry
+    # change nobody has been able to rebuild and look at - so it is recorded
+    # here rather than guessed at. The shift below tracks the plane under the
+    # code AS WRITTEN (the circle centre is the y position of a Z-axis cut);
+    # if the recess is ever corrected to bore_y, gs_gear_y moves to the
+    # EXTRUSION START instead, '-gs_pin_y' -> 'gs_gear_y - gs_pin_y'.
+    bore('pinion_recess', 0, gear_y, pin_r, '-' + PREFIX + 'pin_y',
+         PREFIX + 'pin_y * 2', CUT)
     group(t1, PH_MOUTH)
 
     # ---- phase 3: servo bay -------------------------------------------------
@@ -384,8 +531,20 @@ def run(_context: str):
     # Cut to the SYMMETRIC half-width case_far, not the real case outline, so
     # the servo drops in either way round and one shell serves both halves.
     # The tabs, not the case, are the datum (lib/servo.py).
+    # THE POCKET CEILING IS THE RACK CHANNEL'S REAR WALL, NOT case_top +
+    # loc/2, AND THE 3.80 DROP IS WHY. The channel now backs onto y -7.925
+    # and the case top is at -8.20: 0.275 mm apart, 0.175 after the
+    # locational fit. That is a curtain thinner than the nozzle between two
+    # voids - it cannot print, and at the split face it is a land two 0.4
+    # chamfers have to share, which is the ASM_BL_UNFIN_SHEET that stopped
+    # the build. There is no wall to be had here, because the pinion now
+    # seats 0.40 off the case top and the rack is coplanar with it, so the
+    # two cuts are made FLUSH instead. Nothing is lost: the servo is located
+    # in y by its TAB SLOTS, this face was only clearance over the case top,
+    # and the rack rides at z 7.7..14.6 while this pocket stops at 6.2 - so
+    # the channel keeps its rear wall over the whole height the rack uses.
     box('servo_case_pocket', -(case_far + loc / 2), case_far + loc / 2,
-        case_bot, case_top + loc / 2, '0.0 mm',
+        case_bot, srv_front, '0.0 mm',
         PREFIX + 'case_w / 2 + ' + PREFIX + 'loc / 2', CUT)
     # Only the OUTER tab pair needs slotting: a symmetric pocket of half-width
     # case_far already swallows whichever tab lands on the near side.
@@ -434,9 +593,9 @@ def run(_context: str):
              '0.0 mm', PREFIX + 'half_z', CUT)
         bore('clamp_bolt_rear_%d' % sx, sx * bolt_x, val('bolt_y2'), bolt_r,
              '0.0 mm', PREFIX + 'half_z', CUT)
-    box('rear_rail_pocket', -pocket_x, pocket_x,
-        mid_y + val('wall'), -chan_y - val('wall'),
-        '0.0 mm', PREFIX + 'chan_z - ' + PREFIX + 'wall', CUT)
+    # (rear_rail_pocket was cut here. It is gone - see the note where
+    # gs_pocket_x used to be declared. The rail it lightened does not exist
+    # any more.)
     group(t3, PH_FASTEN)
 
     # ---- phase 5: finish -----------------------------------------------------
@@ -484,7 +643,10 @@ def run(_context: str):
 
     tail_wall = (rear_x + (x_half - rear_x) * (case_bot - back_y) / (mid_y - back_y)
                  - (case_far + loc / 2))
-    bridges = (('channel floor', chan_y * 2), ('servo bay roof', mid_y - case_bot),
+    # The roof spans from the case bottom to the pocket CEILING, which is now
+    # the channel's rear wall rather than gs_mid_y - 4.08 mm more than the
+    # figure this line used to quote.
+    bridges = (('channel floor', chan_y * 2), ('servo bay roof', srv_front - case_bot),
                ('tail cavity cap', (rear_x - val('pocket_inset')) * 2))
     for nm, span in bridges:
         assert span <= val('max_bridge'), (
@@ -499,6 +661,27 @@ def run(_context: str):
         facet * 10, tval('radius') * 10, tval('ef') * 10))
     print('channel floor %.2f mm | half width %.3f mm | pinion recess r %.2f mm' % (
         val('chan_z') * 10, chan_y * 10, pin_r * 10))
+    print('pinion/rack plane y %.2f (was 0.00 on the horn) | channel y %.2f..%.2f '
+          '| mouth opens at %.2f' % (
+              gear_y * 10, (gear_y - chan_y) * 10, (gear_y + chan_y) * 10,
+              (gear_y + chan_y) * 10))
+    print('  NO HORN: the pinion bores THROUGH the Oe%.1f boss and seats %.2f '
+          'off the case top, so it and both rack channels came %.2f toward the '
+          'servo. gs_case_top is unmoved at %.2f' % (
+              val('boss_h') * 10, val('case_gap') * 10,
+              (val('boss_h') - val('case_gap')) * 10, case_top * 10))
+    print('  front clamshell bolt y %.2f, DERIVED one wall behind the channel '
+          '(it was a typed -8.00, which the moved channel now runs through)'
+          % (val('bolt_y1') * 10))
+    print('  rear_rail_pocket DELETED: the rail it lightened is gone. The '
+          'channel backs onto %.2f and the case top is at %.2f, %.3f apart, '
+          'so the servo pocket ceiling is taken FLUSH to the channel instead '
+          'of leaving an unprintable curtain'
+          % (chan_rear * 10, case_top * 10, _natural * 10))
+    print('  PRE-EXISTING and NOT moved by gs_gear_y (it is an X land, not a '
+          'Y one): the front bolt passes %.2f mm outboard of the servo pocket '
+          'wall. It built at HEAD at this width, so it is reported here and '
+          'not asserted' % ((bolt_x - bolt_r - (case_far + loc / 2)) * 10))
     print('servo bay y %.2f..%.2f | tabs at y %.2f | far-tab slot x %.1f..%.1f' % (
         case_bot * 10, case_top * 10, tab_lo * 10, case_far * 10, (case_far + tab_over) * 10))
     print('J5 roll interface: 4 x M3 at x +/-%.1f, z +/-%.1f through a %.1f mm wall' % (

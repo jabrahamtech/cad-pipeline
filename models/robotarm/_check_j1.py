@@ -53,14 +53,64 @@ WHAT IS NOT IN ANY MODEL FILE, AND SO IS BUILT HERE AS AN ENVELOPE:
   MG995       bolted to the rotor's pad and pointing DOWN. It is the biggest
               thing on the rotating half and shoulder_bracket's lower bound on
               sb_stand_h exists solely to keep it off the ring. It TURNS.
-  SG90        in the platter's column, pointing UP, FIXED. Its horn turns.
+  SG90        in the platter's column, pointing UP, FIXED. Its spline turns.
+  J1 HUB      specs/robotarm/j1_hub.md - broached onto that spline and BOLTED
+              FLAT to the rotor's underside on three M3 at r 8.0. The script
+              for it is NOT WRITTEN, so nothing in models/ builds it and the
+              one part that carries the whole of J1's torque would otherwise
+              be the one part this gate cannot see. Built here as a plain
+              Ø tt_hub_od x tt_hub_h cylinder on the axis: the bolt holes and
+              the broach bore change nothing about what it can COLLIDE with,
+              and its outline is what has to fit between the servo pad and the
+              rotor.
+
+THERE IS NO HORN AT J1 ANY MORE, AND THAT IS THE 2026-08-31 REPAIR. Until
+that date this file built a four-arm SG90 horn - hub, two crossed blades -
+and drove it into a cross pocket in the rotor. Both hosts have deleted that
+pocket: turntable_stator and shoulder_bracket cut a bolted spline hub now, and
+tt_horn_z, tt_horn_span, tt_horn_w, ts_horn_hub_h and ts_horn_blade_t no
+longer exist as parameters. gv() asserts on a missing name, so this gate did
+not report a wrong answer - it stopped at line one of the placement block and
+reported NOTHING, which for a gate is the same failure wearing a better suit.
+
+WHAT THAT CHANGES IN THE VERDICT, and it is a strengthening rather than a
+swap. The horn's hub diameter was the one INVENTED number in this file, so
+every mm3 it touched had to be quarantined in an "ASSUMED" bucket that could
+neither pass nor fail the gate. The hub's outline is DERIVED - J1_HUB_OD_MM
+from the bolt circle, a self-tap boss and MIN_WALL - so the bucket is gone and
+the hub is judged like everything else.
+
+AND THE CONTRACT INVERTS. The horn had to stay INSIDE a pocket; the hub has to
+TOUCH. Its top face IS the rotor's underside, so hub^rotor must measure 0.000
+and anything above that is the failure this whole migration exists to fix -
+"the turret plate does not touch the bearings", now visible as a gap under a
+part instead of as a feeler gauge on a bench.
 
 THE SG90's DATUM, and it is the one this project already got wrong once. The
 origin is the shaft axis at the TAB PLANE - the underside of the tabs, the
-face the pad bears on - which turntable_stator computes as ts_deck_z. The case
-runs DOWN from tab_thk + tab_below_top above it; the boss and horn run UP.
-And the CASE CENTRE sits ts_shaft_off in +Y so the SHAFT lands on the axis.
-Model the case centred and the horn drives the rotor as a 5.2 mm crank.
+face the pad bears on - which turntable_stator computes as its deck_z. The
+case runs DOWN from tab_thk + tab_below_top above it; the boss and spline run
+UP. And the CASE CENTRE sits ts_shaft_off in +Y so the SHAFT lands on the
+axis. Model the case centred and the drive comes off a 5.2 mm crank.
+
+THE DECK IS READ THE WAY turntable_stator DERIVES IT, downward from the race
+face, and never rebuilt from a different set of terms:
+
+    race face      tt_race_z          the ROLLERS set it
+    hub top        = race face        bolted, face to face
+    hub underside  - tt_hub_h
+    SG90 case top  - tt_hub_seat_z    a running gap over the output boss
+
+The horn-era version of this line ran the other way, upward from the pocket
+floor through the horn - which is how tt_horn_z came to cancel out of its own
+derivation and how the turret ended up sitting on its servo.
+
+THE POSITIVE CONTROL. Each batch lifts the hub CONTROL_LIFT_MM into the rotor
+and requires the interference analysis to register it. Every headline number
+here is a small one, and a small number is what an analysis returns when it is
+looking at nothing at all - a hidden occurrence, a timeline marker left mid
+history. A batch whose control does not fire stops, because a clear result
+from a blind check is indistinguishable from a real pass and is believed.
 
 RUN ORDER. Four parts plus thirteen poses of interference is far over the 60 s
 MCP call limit, so this splits the way _check_ledger does:
@@ -76,11 +126,23 @@ import importlib.util
 import json
 import math
 import os
-
-import adsk.core
-import adsk.fusion
+import sys
 
 REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
+if REPO not in sys.path:
+    sys.path.insert(0, REPO)
+# PURGED FIRST: the part scripts this gate execs delete lib.* out of
+# sys.modules themselves, so a stale copy left by an earlier run of another
+# gate is exactly how two files come to disagree about a servo.
+for _stale in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.')]:
+    del sys.modules[_stale]
+
+import adsk.core  # noqa: E402
+import adsk.fusion  # noqa: E402
+
+from lib.servo import CATALOG  # noqa: E402
+
+SG90 = CATALOG['SG90']
 LEDGER = os.path.join(REPO, 'specs', 'robotarm', '_j1_sweep.json')
 PARTS = ['base_lid', 'turntable_stator', 'turntable_ring', 'shoulder_bracket']
 
@@ -97,24 +159,20 @@ LEAVE_AT_YAW = 0.0
 # rotor is 1-fold, so 15 deg steps see every post-past-window event.
 ROLL_AZ = (90.0, 210.0, 330.0)
 
-# The two numbers no user parameter in this project carries. Both are the
-# BOUGHT part, not ours, and both are read by this gate only.
+# The one number no user parameter in this project carries. It is the BOUGHT
+# part, not ours, and it is read by this gate only.
 ROLLER_BORE_MM = 8.0        # 608ZZ bore - lib/bearings.py
-SG90_BLADE_W_MM = 4.44      # MEASURED 2026-08-28: the arm at the r 16.4 trim
-                            # line, lib.servo.micro_arm_w(16.4). The envelope
-                            # is the ARM, never the pocket - cutting it at the
-                            # slot width would report mm3 that are not there.
-                            # The pocket is now TAPERED (6.04 root -> 4.84 tip)
-                            # and this straight-sided envelope is therefore
-                            # CONSERVATIVE inboard: it overstates the arm near
-                            # the hub, where the O13 relief has the room.
-SG90_HUB_D_MM = 6.8         # MEASURED 2026-08-28 on the bench, at last. It
-                            # has been 6.30 (invented), then 8.0 (community
-                            # model), and the truth is 6.8 - closer to the
-                            # ORIGINAL 7.0 than to the "corrected" 8.0. The
-                            # gauge's hub sweep found it by OVERSHOOTING:
-                            # every bore from 7.4 up took the hub loosely.
-                            # This gate is no longer blocked on a guess.
+# How far the positive control lifts the hub into the rotor it is bolted to.
+# Big enough to be unmistakable against NOISE_FLOOR_MM3 and small enough to
+# stay inside the 5.0 mm disc rather than passing out through its top face,
+# so what registers is a real solid overlap and not an edge case.
+CONTROL_LIFT_MM = 2.0
+# HOW CLOSE TWO NUMBERS HAVE TO BE TO COUNT AS THE SAME NUMBER, in mm. Every
+# tt_hub_ parameter this gate cross-reads is written as '%.4f mm', so a value
+# can come back up to half a ten-thousandth off what lib/servo_hub solved. A
+# tolerance tighter than the precision the number was STORED at fails on
+# rounding and reads as a real disagreement.
+PARAM_ROUNDING_MM = 1e-4
 
 # Two bodies in rolling contact meet on a LINE, and a printed collar meets an
 # inner race on an annulus. Both are exact in the maths and neither is exact in
@@ -127,7 +185,11 @@ NOISE_FLOOR_MM3 = 0.05
 ROLLER_ENV = 'robotarm_608ZZ_rollers'
 MG995_ENV = 'robotarm_MG995_j1_envelope'
 SG90_ENV = 'robotarm_SG90_case_envelope'
-SG90_OUT = 'robotarm_SG90_horn'
+# THE J1 HUB. Named for the part it stands in for - specs/robotarm/j1_hub.md,
+# still unwritten - so that the day models/robotarm/j1_hub.py exists, the two
+# names collide in the document and whoever runs this gate finds out at once
+# rather than measuring an envelope beside the real part.
+J1_HUB_ENV = 'robotarm_j1_hub_envelope'
 
 REBUILD = True
 BATCH = 0
@@ -219,7 +281,14 @@ def run(_context: str):
     collar_h_mm = gv('tt_collar_h') * 10
     stand_h_mm = gv('sb_stand_h') * 10
     rot_fit_mm = gv('tr_rot') * 10
-    horn_z_mm = gv('tt_horn_z') * 10
+    # THE J1 HUB CONTRACT, the tt_ names turntable_stator and shoulder_bracket
+    # both hold. Unguarded: both of those parts are in PARTS, so a missing name
+    # here means the hub migration has been half-reverted and this gate must
+    # stop rather than measure the half that is left.
+    hub_h_mm = gv('tt_hub_h') * 10
+    hub_seat_z_mm = gv('tt_hub_seat_z') * 10
+    hub_od_mm = gv('tt_hub_od') * 10
+    hub_engaged_mm = gv('tt_hub_engaged') * 10
     roller_bore_mm = ROLLER_BORE_MM
 
     # THE PLACEMENT. See the docstring; never a literal.
@@ -379,8 +448,12 @@ def run(_context: str):
     # In the ROTOR's frame: the pad's outer face is the tab plane, the case
     # runs outboard from it in +X, and the case's own long axis is Z.
     mg_tab_x = mg_plate_out_mm + mg_lobe_t_mm
-    _p_soff = design.userParameters.itemByName('sb_horn_standoff')
-    mg_case_x = mg_plate_out_mm + (_p_soff.value * 10 if _p_soff else 0.0)
+    # sb_horn_standoff is RETIRED and shoulder_bracket keeps it as a named
+    # zero so the history stays legible. Read with gv(), not with a guarded
+    # itemByName: sb_lobe_t is derived from it, so if it is ever really
+    # deleted the servo moves and this gate must stop rather than quietly
+    # substitute a zero of its own.
+    mg_case_x = mg_plate_out_mm + gv('sb_horn_standoff') * 10
     mg_hi = mg_shaft_end_mm
     mg_lo = mg_hi - mg_case_l_mm
     box(mg, 'case', mg_case_x, mg_case_x + MG_CASE_H_MM,
@@ -407,14 +480,15 @@ def run(_context: str):
     sg_tab_below_mm = gv('ts_tab_below_top') * 10
     sg_tab_span_mm = gv('ts_tab_span') * 10
     sg_boss_h_mm = gv('ts_boss_h') * 10
-    sg_hub_h_mm = gv('ts_horn_hub_h') * 10
-    sg_blade_t_mm = gv('ts_horn_blade_t') * 10
     sg_off_mm = gv('ts_shaft_off') * 10
-    horn_span_mm = gv('tt_horn_span') * 10
-    horn_w_mm = gv('tt_horn_w') * 10
-    # ts_deck_z, rebuilt from the same parameters the stator derives it from.
-    deck_z_mm = race_z_mm + horn_z_mm - (sg_tab_below_mm + sg_tab_thk_mm
-                                         + sg_boss_h_mm + sg_hub_h_mm)
+    # The spline height has no ts_ parameter - nothing in turntable_stator is
+    # cut to it - so it is READ FROM THE LIBRARY rather than typed here. Same
+    # source turntable_stator solved the whole hub stack from.
+    sg_spline_h_mm = SG90.spline_h
+    # The deck, rebuilt from the same terms turntable_stator derives it from
+    # and in the same direction: DOWNWARD FROM THE RACE FACE. See the
+    # docstring for why the direction is the load-bearing part.
+    deck_z_mm = race_z_mm - hub_h_mm - hub_seat_z_mm
     sg_case_top = deck_z_mm + sg_tab_thk_mm + sg_tab_below_mm
     # THE CASE CENTRE IS OFFSET so the SHAFT lands on the axis.
     sg_y0 = sg_off_mm - sg_case_l_mm / 2
@@ -431,32 +505,51 @@ def run(_context: str):
         'SG90 envelope came out in %d pieces' % sg.bRepBodies.count)
     sg.bRepBodies.item(0).name = 'SG90_envelope'
 
-    # the horn TURNS - separate component, separate rigid body
-    hn_occ = fresh(SG90_OUT)
-    hn = hn_occ.component
-    horn_top_mm = deck_z_mm + (sg_tab_below_mm + sg_tab_thk_mm
-                               + sg_boss_h_mm + sg_hub_h_mm)
-    disc(hn, 'output_boss', 0, 0, SG90_HUB_D_MM, sg_case_top,
-         sg_case_top + sg_boss_h_mm, NEWB)
-    disc(hn, 'horn_hub', 0, 0, SG90_HUB_D_MM, sg_case_top + sg_boss_h_mm,
-         horn_top_mm, JOINB)
-    for k in (0, 1):
-        if k == 0:
-            box(hn, 'horn_arm_0', -SG90_BLADE_W_MM / 2, SG90_BLADE_W_MM / 2,
-                -horn_span_mm / 2, horn_span_mm / 2,
-                horn_top_mm - sg_blade_t_mm, horn_top_mm, JOINB)
-        else:
-            box(hn, 'horn_arm_1', -horn_span_mm / 2, horn_span_mm / 2,
-                -SG90_BLADE_W_MM / 2, SG90_BLADE_W_MM / 2,
-                horn_top_mm - sg_blade_t_mm, horn_top_mm, JOINB)
-    assert hn.bRepBodies.count == 1, (
-        'SG90 horn came out in %d pieces' % hn.bRepBodies.count)
-    hn.bRepBodies.item(0).name = 'SG90_horn'
+    # ---- the J1 HUB, which TURNS -------------------------------------------
+    # A separate component because it is a separate rigid body: the SG90 case
+    # is bolted to the platter and never moves, but the hub is bolted to the
+    # rotor and goes round with it. It is not a printed part in this repo yet -
+    # specs/robotarm/j1_hub.md is the whole of it - so this is an envelope, and
+    # every dimension in it is a tt_ parameter the two hosts already hold.
+    hb_occ = fresh(J1_HUB_ENV)
+    hb = hb_occ.component
+    hub_bottom_mm = race_z_mm - hub_h_mm
+    disc(hb, 'j1_hub', 0, 0, hub_od_mm, hub_bottom_mm, race_z_mm, NEWB)
+    assert hb.bRepBodies.count == 1, (
+        'J1 hub envelope came out in %d pieces' % hb.bRepBodies.count)
+    hb.bRepBodies.item(0).name = 'j1_hub_envelope'
+
+    # ---- and the arithmetic the envelope cannot show ------------------------
+    # The hub's OUTLINE is what the interference sweep can see. Whether the
+    # spline reaches INTO it, and stops short of the rotor, is a stack of four
+    # numbers along one axis - visible here and nowhere in a screenshot.
+    sg_boss_top = sg_case_top + sg_boss_h_mm
+    sg_spline_top = sg_boss_top + sg_spline_h_mm
+    assert hub_bottom_mm > sg_case_top + 1e-6, (
+        'the J1 hub\'s underside is at z %.3f and the SG90 case top is at '
+        '%.3f - the hub is sitting ON the servo, not on its spline'
+        % (hub_bottom_mm, sg_case_top))
+    assert sg_spline_top < race_z_mm - 1e-6, (
+        'the SG90 spline tops out at z %.3f and the rotor race face is at '
+        '%.3f - the servo would jack the rotor off its rollers, which is '
+        'exactly what the horn did' % (sg_spline_top, race_z_mm))
+    # and the engagement, MEASURED off this assembly rather than restated:
+    # the bore grips from the boss top up to whichever ends first.
+    engaged_mm = min(sg_spline_top, race_z_mm) - max(sg_boss_top, hub_bottom_mm)
+    assert abs(engaged_mm - hub_engaged_mm) < PARAM_ROUNDING_MM, (
+        'the spline and the hub bore overlap over %.3f mm where this gate '
+        'places them, but tt_hub_engaged says %.3f - the deck and the hub '
+        'stack disagree' % (engaged_mm, hub_engaged_mm))
     print('SG90 FIXED in the column: deck z %.2f, case z %.2f..%.2f, y %.2f..%.2f'
           % (deck_z_mm, sg_case_top - sg_case_h_mm, sg_case_top, sg_y0, sg_y1))
-    print('  horn blade z %.2f..%.2f into the rotor pocket z %.2f..%.2f'
-          % (horn_top_mm - sg_blade_t_mm, horn_top_mm, race_z_mm,
-             race_z_mm + horn_z_mm))
+    print('  boss top z %.2f, spline top z %.2f, race face z %.2f - %.2f mm of '
+          'overshoot' % (sg_boss_top, sg_spline_top, race_z_mm,
+                         race_z_mm - sg_spline_top))
+    print('J1 hub Ø%.2f x %.2f, z %.2f..%.2f: top face ON the rotor underside, '
+          'gripping %.2f mm of spline' % (hub_od_mm, hub_h_mm, hub_bottom_mm,
+                                          race_z_mm, engaged_mm))
+    print('  NO HORN - specs/robotarm/j1_hub.md, three M3 at r %.1f'
+          % (gv('tt_hub_bolt_r') * 10))
     print('')
 
     # ---- posing -------------------------------------------------------------
@@ -480,7 +573,11 @@ def run(_context: str):
             'sg90': add(sg, M3()),
             'rotor': add(C['shoulder_bracket'], yaw_m(deg, dz_mm)),
             'mg995': add(mg, yaw_m(deg, dz_mm)),
-            'horn': add(hn, yaw_m(deg)),
+            # BOLTED TO THE ROTOR, so it turns with it - but it is authored in
+            # this frame's absolute z, not the rotor's, so it takes the yaw and
+            # NOT the dz. Giving it dz_mm would drop it a rotor's height and it
+            # would read as clean daylight everywhere.
+            'hub': add(hb, yaw_m(deg)),
         }
 
     meas = app.measureManager
@@ -518,7 +615,7 @@ def run(_context: str):
         inp = design.createInterferenceInput(col)
         inp.areCoincidentFacesIncluded = False
         res = design.analyzeInterference(inp)
-        total, pairs, assumed, noise = 0.0, [], 0.0, 0.0
+        total, pairs, noise = 0.0, [], 0.0
         for i in range(res.count):
             r = res.item(i)
             vol = r.interferenceBody.volume * 1000
@@ -527,16 +624,17 @@ def run(_context: str):
             if vol < NOISE_FLOOR_MM3:
                 noise += vol
                 continue
-            # The horn hub is the one INVENTED dimension in this file. It is
-            # not evidence either way, so it cannot pass the gate and it must
-            # not fail it either - it is reported on its own line.
-            if 'SG90_horn' in names:
-                assumed += vol
-                pairs.append('ASSUMED ' + tag)
-                continue
             total += vol
             pairs.append(tag)
-        return total, pairs, assumed, noise
+        # THE "ASSUMED" BUCKET IS GONE, 2026-08-31, and its removal is the
+        # point rather than a tidy-up. It existed to quarantine anything the
+        # SG90 horn touched, because the horn's hub diameter was the one
+        # INVENTED number in this file and invented numbers must neither pass
+        # a gate nor fail one. There is no horn now: the hub's outline is
+        # DERIVED from the bolt circle, a self-tap boss and MIN_WALL, so it is
+        # judged like every other body here. A gate with an exemption in it is
+        # a gate with a hole in it, and this one no longer needs the hole.
+        return total, pairs, noise
 
     want_journal = rot_fit_mm / 2.0          # radial half of the diametral fit
     want_lift = ring_lift_mm
@@ -556,7 +654,13 @@ def run(_context: str):
         print('  MG995^ring     > 0    shoulder_bracket asserts this arithmetically')
         print('                 and has never once measured it. THIS IS THE ONE.')
         print('  rotor^stator   > 0    posts at r 45, cheeks at r 27')
-        print('  horn^rotor     <= %.3f the blade drives the cross pocket' % horn_z_mm)
+        print('  hub^rotor      0.000 EXPECTED: the J1 hub is BOLTED FLAT to the')
+        print('                 rotor underside, so its top face IS that face.')
+        print('                 A gap here is the arm hanging off its servo -')
+        print('                 "the turret plate does not touch the bearings".')
+        print('  hub^SG90       %.3f  tt_hub_seat_z over the case top, the running'
+              % (hub_seat_z_mm - (sg_tab_below_mm + sg_tab_thk_mm)))
+        print('                 gap the hub turns in. Nothing else sets it.')
         print('')
         print('%7s %11s %11s %11s %11s %11s %11s %9s' % (
             'yaw', 'rotor^roll', 'ring^boss', 'ring^rim', 'MG995^ring',
@@ -565,25 +669,60 @@ def run(_context: str):
     rows = []
     for deg in YAW_DEG[lo:hi]:
         p = pose(deg)
-        total, pairs, assumed, noise = interference(list(p.values()))
+        total, pairs, noise = interference(list(p.values()))
         d_rr = clearance(p['rotor'], p['rollers'])
         d_rb = clearance(p['ring'], p['rotor'])
         d_mr = clearance(p['mg995'], p['ring'])
         d_rs = clearance(p['rotor'], p['stator'])
         d_ms = clearance(p['mg995'], p['stator'])
         d_ml = clearance(p['mg995'], p['lid'])
-        d_hr = clearance(p['horn'], p['rotor'])
+        d_hb = clearance(p['hub'], p['rotor'])
+        d_hs = clearance(p['hub'], p['sg90'])
         d_sr = clearance(p['sg90'], p['rotor'])
         print('%6.0fd %11.3f %11s %11s %11.3f %11.3f %11.3f %9.2f' % (
             deg, d_rr, '-', '-', d_mr, d_rs, d_ms, total))
         rows.append({'yaw': deg, 'rotor_roller': d_rr, 'ring_rotor': d_rb,
                      'mg995_ring': d_mr, 'rotor_stator': d_rs,
                      'mg995_stator': d_ms, 'mg995_lid': d_ml,
-                     'horn_rotor': d_hr, 'sg90_rotor': d_sr,
-                     'interference': total, 'pairs': pairs,
-                     'assumed': assumed, 'noise': noise})
+                     'hub_rotor': d_hb, 'hub_sg90': d_hs, 'sg90_rotor': d_sr,
+                     'interference': total, 'pairs': pairs, 'noise': noise})
         for o in p.values():
             o.deleteMe()
+
+    # ---- POSITIVE CONTROL, once per batch -----------------------------------
+    # Everything above is a small number, and a small number is what an
+    # interference analysis returns when it is looking at nothing: a hidden
+    # occurrence, a timeline marker parked mid-history, a body that came back
+    # degenerate. clearance() guards its own inputs; interference() has never
+    # had a way to prove it can register anything at all.
+    #
+    # So lift the hub CONTROL_LIFT_MM into the rotor it is bolted to - the one
+    # pair in this assembly that is face-to-face already, so a lift of 2 mm is
+    # 2 mm of solid overlap and nothing else - and require the analysis to say
+    # so. It runs per BATCH, not once for the sweep, because each batch is a
+    # separate MCP call in a separate state and a batch that was blind would
+    # otherwise be carried by another batch's control through the ledger.
+    ctrl_deg = YAW_DEG[lo]
+    cp = pose(ctrl_deg)
+    ctrl_occ = root.occurrences.addExistingComponent(
+        hb, yaw_m(ctrl_deg, CONTROL_LIFT_MM))
+    ctrl_vol, ctrl_pairs, _ = interference([ctrl_occ, cp['rotor']])
+    ctrl_occ.deleteMe()
+    for o in cp.values():
+        o.deleteMe()
+    print('')
+    print('positive control: the J1 hub driven %.1f mm up into the rotor at '
+          'yaw %.0f -> %.2f mm3 (%s)'
+          % (CONTROL_LIFT_MM, ctrl_deg, ctrl_vol,
+             '; '.join(ctrl_pairs) if ctrl_pairs else 'nothing'))
+    assert ctrl_vol > NOISE_FLOOR_MM3, (
+        'THE CHECK IS BLIND. The J1 hub was driven %.1f mm into the rotor and '
+        'the interference analysis registered %.3f mm3. Every clear number in '
+        'this batch is meaningless until that is fixed - it is not evidence '
+        'that J1 assembles, it is evidence that nothing was measured.'
+        % (CONTROL_LIFT_MM, ctrl_vol))
+    for r in rows:
+        r['control'] = ctrl_vol
 
     have = []
     if os.path.exists(LEDGER):
@@ -609,6 +748,19 @@ def run(_context: str):
     assert len(have) == len(YAW_DEG), (
         'only %d of %d poses are on file - run the earlier batches'
         % (len(have), len(YAW_DEG)))
+    # A LEDGER FROM BEFORE THE HORN CAME OUT IS NOT A PARTIAL RESULT, IT IS A
+    # DIFFERENT MEASUREMENT. Rows written before 2026-08-31 carry horn_rotor
+    # and an 'assumed' bucket and carry no positive control at all, and read
+    # straight into the summary below they would either raise KeyError three
+    # screens further down or, worse, average a horn's clearances into a
+    # verdict about a bolted hub. Named here, where the fix is one deletion.
+    stale = [r['yaw'] for r in have
+             if 'hub_rotor' not in r or 'hub_sg90' not in r or 'control' not in r]
+    assert not stale, (
+        'poses %s on file predate the J1 hub migration - they were measured '
+        'against a servo horn that no part cuts for any more, and they carry '
+        'no positive control. Delete %s and re-run the whole sweep.'
+        % (', '.join('%.0f' % y for y in stale), LEDGER))
     fails = []
     worst_int = max(r['interference'] for r in have)
     for r in have:
@@ -629,6 +781,19 @@ def run(_context: str):
             fails.append('yaw %.0f: the MG995 is touching the base lid' % r['yaw'])
         if r['sg90_rotor'] <= 0.0:
             fails.append('yaw %.0f: the SG90 case is touching the rotor' % r['yaw'])
+        # THE ONE THAT INVERTS. Every other pair here must stay APART; the hub
+        # is bolted to the rotor and must be IN CONTACT. A gap under it is the
+        # arm hanging off the servo spline instead of sitting on its bearings,
+        # which is the failure the whole horn migration exists to remove and
+        # the one no arithmetic in either host part can see.
+        if r['hub_rotor'] > 0.001:
+            fails.append('yaw %.0f: the J1 hub stands %.3f mm off the rotor '
+                         'underside it is bolted to - the arm would be carried '
+                         'by the spline, not by the rollers'
+                         % (r['yaw'], r['hub_rotor']))
+        if r['hub_sg90'] <= 0.0:
+            fails.append('yaw %.0f: the J1 hub is touching the SG90 case - it '
+                         'would grind on it every time J1 moves' % r['yaw'])
 
     print('')
     print('=== whole sweep, %.0f deg to %.0f deg in %.0f deg steps ==='
@@ -643,11 +808,12 @@ def run(_context: str):
             ('mg995_stator', 'MG995^stator', '> 0'),
             ('mg995_lid', 'MG995^lid', '> 0'),
             ('sg90_rotor', 'SG90^rotor', '> 0'),
-            ('horn_rotor', 'horn^rotor', 'in the cross pocket')):
+            ('hub_rotor', 'hub^rotor', '0.000 - it is BOLTED to it'),
+            ('hub_sg90', 'hub^SG90', '> 0, the running gap over the case')):
         vals = [r[key] for r in have]
         print('%-16s %9.3f %9.3f   %s' % (name, min(vals), max(vals), want))
-    worst_assumed = max(r.get('assumed', 0.0) for r in have)
     worst_noise = max(r.get('noise', 0.0) for r in have)
+    weakest_control = min(r.get('control', 0.0) for r in have)
     print('')
     print('GATE J1 interference : worst %.3f mm3 - %s'
           % (worst_int, 'PASS' if worst_int < 1.0 else 'FAIL'))
@@ -656,21 +822,32 @@ def run(_context: str):
         print('   %s' % f)
     print('  contact noise below the %.2f floor: %.3f mm3 at worst - three'
           % (NOISE_FLOOR_MM3, worst_noise))
-    print('  rolling contacts and three collar faces, all of them meant to touch.')
-    if worst_assumed > 0.0:
-        print('')
-        print('GATE J1 OVERALL      : PASS, on measured numbers.')
-        print('  %.3f mm3 sits on the SG90 horn hub Ø, and that number is now'
-              % worst_assumed)
-        print('  MEASURED (6.8, bench 2026-08-28) rather than guessed. It is')
-        print('  still reported on its own line because horn dims vary BY')
-        print('  BATCH - a different bag is a different number, not a fault.')
+    print('  rolling contacts, three collar faces and the hub\'s bolted top')
+    print('  face, all of them meant to touch.')
+    # A control is recorded per batch, so the weakest of them is the weakest
+    # any pose in this sweep was measured with. Restated rather than re-run -
+    # the batch that produced it already refused to go on without it.
+    print('GATE J1 control      : weakest batch %.2f mm3 - %s'
+          % (weakest_control, 'PASS' if weakest_control > NOISE_FLOOR_MM3
+             else 'FAIL, and every number above it is worthless'))
+    assert weakest_control > NOISE_FLOOR_MM3, (
+        'a batch on file was measured BLIND: its positive control registered '
+        '%.3f mm3. Delete %s and re-run the whole sweep - a clear result from '
+        'a check that cannot see is indistinguishable from a real pass, and it '
+        'is the one that gets believed.' % (weakest_control, LEDGER))
     print('')
-    print('MEASURED, AND SO EVIDENCE (2026-08-28 bench):')
-    print('  the SG90 horn hub at Ø%.2f, against tt_screw_bore Ø%.2f.'
-          % (SG90_HUB_D_MM, gv('tt_screw_bore') * 10))
-    print('  Horn dimensions vary BY BATCH, so a different bag of horns is a')
-    print('  re-measurement, not a regression.')
+    print('NOT MEASURED HERE, AND NAMED SO IT IS NOT MISTAKEN FOR MEASURED:')
+    print('  the J1 hub is an ENVELOPE. specs/robotarm/j1_hub.md is written and')
+    print('  models/robotarm/j1_hub.py is NOT, so what turned in this sweep was')
+    print('  a Ø%.2f x %.2f cylinder cut to the tt_hub_ contract, not a part.'
+          % (hub_od_mm, hub_h_mm))
+    print('  Its bolt circle, broach bore and lead-in chamfer are unbuilt and')
+    print('  so untested, and the broach interference behind all of them is')
+    print('  ASSUMED 0.25 mm until a stub is printed.')
+    print('  tt_screw_bore Ø%.2f now carries no load at all: J1 does NOT run'
+          % (gv('tt_screw_bore') * 10))
+    print('  the retaining screw in service - the ring captures the rotor')
+    print('  axially and a second axial datum is what the horn was.')
     print('')
     print('STILL ARITHMETIC, NOT MEASURED HERE:')
     print('  the platter\'s servo column 12.45 x 23.05 against an SG90 at %.2f'

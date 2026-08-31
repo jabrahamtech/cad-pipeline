@@ -24,12 +24,40 @@ So the underside of this part is the turntable disc:
   Ø68 boss, tt_boss_h proud      THE JOURNAL. It turns inside the ring's bore
                                  and it is what locates the arm radially.
   Ø76 rim below that             the ring hooks over it with 0.40 of daylight
-  cross pocket + Ø6 bore         the yaw servo's horn drives this disc
+  flat face + 3 x M3 on r 8.0    the J1 hub bolts here and drives the disc
 
 The ring finishes flush with the boss top, so the plane the fork stands on IS
 the boss top and nothing of the arm ever reaches past r 34.
 
 Nothing caps rotation, so J1 gets the servo's full 180 deg.
+
+NO HORN, AND NO CROSS POCKET. Until 2026-08-31 the yaw servo's stamped
+four-arm horn drove this disc through a tapered cross pocket in its
+underside. The bench reported both halves of that failing: the arms did not
+enter the slots ("the actual horn tips dont fit in anywhere"), and with a
+horn fitted the disc sat ON THE HORN rather than on its rollers ("the turret
+plate does not touch the bearings"). Neither was a tolerance problem - the
+pocket was cut to a modelled arm width no real arm has, and the seating gap
+cancelled out of its own derivation, so it was 0.00 by construction.
+
+What replaces it is FLAT. A separately printed hub is broached onto the
+SG90's spline and bolted up against this underside with three M3 on an
+r 8.00 circle, heads counterbored flush into the boss top. This disc keeps
+no fit of any kind at the drive: a flat face, three deliberately oversize
+clearance holes, and a screw bore that only has to stay clear of things.
+The hub is a NEW part that neither this file nor turntable_stator builds -
+spec: specs/robotarm/j1_hub.md - and the reasoning for a bolted hub rather
+than boring this disc straight onto the spline the way j3_pinion does is at
+the top of the code, with the torque arithmetic. The short version is that
+this part prints ON EDGE, so a broach bore in it would be an XY-facing hole
+in a part that needs it round to a fraction of 0.25 mm.
+
+THE HOLES ARE OVERSIZE ON PURPOSE. There is no register between hub and
+rotor. The hub is centred by the spline, this disc is centred by its O68
+journal in the ring, and the M3 clearance holes carry 1.0 mm of deliberate
+float so the joint takes up whatever is left between the two axes when it is
+tightened. That is lib/servo_hub.py's radial-slot argument and
+MG995_TAB_SLOT_X_MM's, applied to a bolt circle.
 
 THE SERVO POINTS DOWN, AND THAT IS THE WHOLE ARRANGEMENT. An MG995 is 40 mm
 along its own long axis with the shaft 10 mm from one end, so 30 mm of case
@@ -86,8 +114,6 @@ for _stale in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.'
 import adsk.core
 import adsk.fusion
 
-from lib.servo import micro_arm_w  # noqa: E402 - MEASURED horn taper
-
 COMPONENT = 'robotarm_shoulder_bracket'
 BODY_NAME = 'shoulder_bracket'
 PREFIX = 'sb_'
@@ -108,8 +134,149 @@ MATERIAL_NAME = 'PET Plastic'
 from lib.palette import hints_for  # noqa: E402
 from lib.servo import SERVO_CASE_CLEARANCE_MM  # noqa: E402
 from lib.servo import CATALOG as _SERVOS  # noqa: E402
+from lib.servo import spline_z as _spline_z  # noqa: E402
+from lib.design_rules import FASTENER_MM as _FASTENER  # noqa: E402
+from lib.design_rules import JOINT_FIT_MM as _FIT  # noqa: E402
+from lib.design_rules import MIN_WALL_MM as _MIN_WALL  # noqa: E402
+# IMPORT ORDER IS LOAD-BEARING, NOT COSMETIC. lib/gears.py imports
+# lib/servo_hub.py at its tail and lib/servo_hub.py imports lib/gears.py at
+# its head, so `import lib.servo_hub` on its own dies with a partially
+# initialised module. Importing lib.gears FIRST resolves the cycle. That is a
+# defect in lib/ and it is not this file's to fix - do not tidy these apart.
+import lib.gears  # noqa: F401,E402
+from lib.servo_hub import spline_hub  # noqa: E402
 
-_SG_HORN = _SERVOS['SG90']
+_SG90 = _SERVOS['SG90']
+
+# --- THE J1 DRIVE CONTRACT: THE HORN IS OUT OF THE LOAD PATH --------------
+# Jonathan, 2026-08-31: "we should not [mount] at the horns but rather add
+# gears that we make". J3 went first - commit 0a422e2, models/robotarm/
+# j3_pinion.py - and this is J1 following it. J1 had TWO bench failures to
+# answer rather than one, and they are the same root cause seen twice:
+#   "the actual horn tips dont fit in anywhere"          - the CROSS POCKET
+#   "if we put the horn on the base gear the turret       - the SEATING
+#    plate does not touch the bearings"                     STACK
+# The horn's OUTLINE and the horn's HEIGHT were both load-bearing dimensions
+# of a stamped plastic part that varies by batch (deshipu, Roger Cheng).
+# Neither is a dimension this project holds any more.
+#
+# WHY J1 DOES NOT COPY j3_pinion EXACTLY, AND THIS IS THE DECISION.
+# j3_pinion bores its gear STRAIGHT onto the spline. J1 does not, and the
+# full pricing is in specs/robotarm/j1_hub.md. The three reasons, shortest
+# first:
+#   1. PRINT ORIENTATION. shoulder_bracket prints -X face down, so its disc
+#      stands ON EDGE - its own docstring says so. A broach bore cut into it
+#      is an XY-FACING hole, and design_rules is explicit that XY-facing
+#      holes come out non-round and want a teardrop. A broach bore has to be
+#      ROUND to a fraction of the 0.25 mm interference or it is not a fit at
+#      all. j3_pinion could go direct precisely BECAUSE its bore prints
+#      vertical, and it says so in its own print-orientation note.
+#   2. ASSEMBLY. Broaching is a PRESS stroke. The rotor's height is set by
+#      three 608ZZ at r 27 and a ring hooked over its rim; once it is on the
+#      turntable there is no press stroke left, and pressing it on first
+#      makes the O68 journal impossible to enter afterwards. There is no
+#      order in which a direct broach into the rotor can be assembled.
+#   3. ITERATION COST. SPLINE_BROACH_INTERFERENCE_MM is ASSUMED, and
+#      lib/servo.py says in as many words to print the sweep before
+#      committing a gear to it. Committing an ungauged press fit to the
+#      largest structural part in the arm costs a whole shoulder-bracket
+#      print per iteration. A 3 g hub costs minutes, and it is the piece
+#      that should wear out and be replaced anyway.
+# So J1 gets a SEPARATE printed hub, broached onto the spline and bolted to
+# the rotor with three M3 on a bolt circle. It is a NEW part and NEITHER of
+# these two files builds it - see specs/robotarm/j1_hub.md.
+#
+# WHAT THE BOLT CIRCLE IS WORTH, IN NUMBERS. SG90 stall is 1.6 kg.cm =
+# 156.9 N.mm (lib/arm_loads.STALL_KGCM['J1']). Stall, not duty, is the right
+# figure for an INTERFACE: a servo driven into a stop delivers it.
+#   at the broach bore   r 2.33   F 67.5 N over 4.65 x 2.50 = 11.6 mm2   5.81 MPa
+#   at 3 x M3 on r 8.00  F  6.5 N each over 3.0 x 3.7 = 11.1 mm2         0.59 MPa
+# A factor of ten, bought with radius. AND THE HONEST HALF OF THAT: it does
+# NOT reduce the load on the spline. The broach still carries all 156.9 N.mm
+# because the servo has exactly one output. What the bolt circle buys is
+# that the 5.81 MPa lives in a 3 g consumable instead of in the arm's
+# largest structural part, and that the rotor keeps a FLAT interface with no
+# fit on it at all.
+#
+# 2.50 mm OF SPLINE IS ALL AN SG90 HAS. The MG90S that J3 drives has 4.00.
+# spline_hub()'s engage_min is 2.00, so J1 has 0.50 mm of margin and the
+# ring's 0.40 mm of axial float eats most of it - asserted, not assumed,
+# where the servo is placed.
+J1_HUB_OVERSHOOT_MM = 0.5      # ASSUMED - how far the hub bore runs past the
+                               # spline top, so the spline stops short of the
+                               # rotor face instead of jacking it off its
+                               # rollers. This is the number ts_horn_seat was
+                               # trying to be, in a stack where it cannot
+                               # cancel out.
+J1_HUB_PROBE_FACE_MM = 12.0    # NOT A DIMENSION. spline_hub() needs a face
+                               # to solve, and the face is what we are
+                               # solving FOR; this probe is any value past
+                               # min_height, used only to read broach_to back
+                               # out. Nothing is cut to it.
+_J1_PROBE = spline_hub(_SG90, face=J1_HUB_PROBE_FACE_MM)
+J1_HUB_FACE_MM = _J1_PROBE.broach_to + J1_HUB_OVERSHOOT_MM   # DERIVED 6.80
+J1_HUB = spline_hub(_SG90, face=J1_HUB_FACE_MM)
+J1_BOSS_TOP_MM, J1_SPLINE_TOP_MM = _spline_z(_SG90)
+J1_HUB_ENGAGE_MIN_MM = 2.0     # spline_hub()'s own floor, restated here so
+                               # the ring-lift check below has something to
+                               # measure against.
+J1_HUB_SCREW = 'M3'            # M2 would do the torque (6.5 N a bolt) and
+                               # would not survive being taken apart twice.
+J1_HUB_BOLT_R_MM = 8.0         # DERIVED, and boxed in at both ends: a head
+                               # counterbore must clear the screw bore
+                               # (r 3.33 + wall 1.6 + cbore 2.95 = 7.88) and
+                               # the hub's own OD must stay inside the
+                               # connector gate at r 12.2. 8.0 is the only
+                               # half-millimetre that does both.
+J1_HUB_BOLT_AZ_DEG = (90.0, 210.0, 330.0)   # CHOSEN to miss the connector
+                               # gate at az 270 - at r 8.0 a head counterbore
+                               # reaches r 10.95 and the gate starts at 12.2,
+                               # which is 1.25 mm and not a wall. Asserted.
+J1_HUB_FLOAT_MM = 1.0          # DELIBERATE radial float on top of the M3
+                               # clearance, and it is the whole concentricity
+                               # strategy. There is NO register between hub
+                               # and rotor: the hub is centred by the SPLINE,
+                               # the rotor by its O68 journal in the ring, and
+                               # the joint takes up whatever is left between
+                               # them when it is tightened. Same move as
+                               # lib/servo_hub.py's radial slots and
+                               # MG995_TAB_SLOT_X_MM - a slot does not care
+                               # exactly where the other part's feature is.
+                               # A tight register would have to be a round
+                               # bore in a disc that prints on edge, which is
+                               # objection 1 above all over again.
+J1_HUB_HOLE_D_MM = _FASTENER[J1_HUB_SCREW]['clearance'] + J1_HUB_FLOAT_MM
+J1_HUB_HEAD_D_MM = 5.5         # DATASHEET - ISO 4762 M3 socket cap head
+J1_HUB_HEAD_H_MM = 3.0         # DATASHEET - the same head, height
+J1_HUB_CBORE_D_MM = J1_HUB_HEAD_D_MM + _FIT['free']
+J1_HUB_CBORE_H_MM = J1_HUB_HEAD_H_MM
+J1_HUB_OD_MM = 2.0 * (J1_HUB_BOLT_R_MM
+                      + _FASTENER[J1_HUB_SCREW]['pilot'] / 2.0 + _MIN_WALL)
+# THE ROTOR'S SCREW BORE IS NOT ON THE CRITICAL PATH, and the first pass at
+# it was wrong in a way worth recording. It was sized to swallow the SG90's
+# retaining WASHER (O6.25) so the washer could clamp the hub's top face -
+# but the hub's top face IS the face bolted to the rotor, so a washer there
+# is a 1 mm shim between them that the rotor then rides on. The horn failure
+# in a different hat, reinvented from scratch in one afternoon.
+#
+# SO J1 DOES NOT USE THE RETAINING SCREW IN SERVICE, and that is the one
+# place J1 deliberately differs from j3_pinion instead of copying it.
+# j3_pinion needs that screw and its washer because NOTHING ELSE holds the
+# pinion down on the spline; its own docstring says so twice. J1's hub is
+# bolted to a rotor that the retainer ring already captures axially, so the
+# screw would be a SECOND axial datum fighting the first - which is exactly
+# the over-constraint that made the horn hold the turret off its bearings.
+# The screw stays an ASSEMBLY AID: run it in with its washer to pull the hub
+# down while the broach cuts, then take it out before the hub is bolted up.
+# This bore therefore only has to pass that screw's head on the way in and
+# stay clear of everything afterwards. Sized by lib/servo_hub.horn_bolt()'s
+# own head convention - twice the screw diameter - plus a free fit.
+J1_HUB_SCREW_BORE_MM = _SG90.horn_screw_dia * 2.0 + _FIT['free']
+TOL = 1e-9                     # comparison epsilon, not a dimension
+# Volume floor for the hub bolt cut, mm3. Three O4.40 through the 9.40 boss
+# is 429 and the three head counterbores add ~109, so ~538 is expected. This
+# is a PLAYBOOK "the cut did nothing" tripwire, not a dimension.
+HUB_BOLT_MIN_DROP_MM3 = 300.0
 APPEARANCE_HINTS = hints_for('shoulder_bracket')
 
 
@@ -190,35 +357,66 @@ def run(_context: str):
     turret('ring_t', '4.0 mm', 'retainer thickness - SHARED, see turntable_ring.py')
     turret('ring_or', '50.0 mm', 'ring outer radius - it is what the arm pitches down onto')
     turret('ring_lift', '0.40 mm', 'gap between the ring and the rim it holds down')
-    turret('horn_span', '32.8 mm', 'yaw horn LONG-arm pocket span. The real 4-arm\n           horn runs ~33.5 tip to tip (ASYMMETRIC - short axis ~16; slots run\n           full span both ways, a slot longer than its arm is air), and the\n           arms were ALWAYS trimmed at assembly. 32.8 is the ceiling the\n           cable window allows (2 x (cable_ir - wall)) - trim to fit it.\n           2026-08-27 horn audit')
-    # THE SLOTS ARE TAPERED, because the arm is. Widths come from
-    # lib.servo.micro_arm_w() - the MEASURED taper, not a retyped constant,
-    # so a re-measured horn moves this pocket on the next rebuild.
-    _HORN_R_ROOT = 6.5
-    _HORN_R_TIP = 16.4                       # = horn_span / 2, asserted below
-    _HORN_CLEAR = 0.4
-    turret('horn_r_root', '%.2f mm' % _HORN_R_ROOT,
-           'where the tapered arm slots START - just outside the root relief.\n'
-           '           Inboard of this the O13 relief swallows the arm roots whole.')
-    turret('horn_w_root', '%.2f mm' % (micro_arm_w(_HORN_R_ROOT) + _HORN_CLEAR),
-           'slot width at horn_r_root: MEASURED arm %.2f + %.1f clearance -\n'
-           '           lib.servo.micro_arm_w(%.1f), 2026-08-28 bench.'
-           % (micro_arm_w(_HORN_R_ROOT), _HORN_CLEAR, _HORN_R_ROOT))
-    turret('horn_w_tip', '%.2f mm' % (micro_arm_w(_HORN_R_TIP) + _HORN_CLEAR),
-           'slot width at the trim line: MEASURED arm %.2f + %.1f. The old\n'
-           '           CONSTANT 3.4 (modelled 3.0 + 0.4) fit NOWHERE - the real arm\n'
-           '           is 4.0 at its narrowest - and even a constant 4.4 would only\n'
-           '           have taken it outboard of r 13.5. gauge_horn v1 CROSS, first\n'
-           '           drop, 2026-08-28.' % (micro_arm_w(_HORN_R_TIP), _HORN_CLEAR))
-    turret('horn_z', '%.4f mm' % (_SG_HORN.horn_hub_h + 0.4),
-           'derived: the horn\'s FULL protrusion above the output collar,\n'
-           '           plus a 0.4 seating gap. NOT "blade thickness 2.0 + 0.4" -\n'
-           '           what goes into this pocket is the whole horn and the splined\n'
-           '           HUB stands proud of the blade. Pocket depth into this underside.\n'
-           '           2026-08-30, from the bench: the rotor would not sit down on\n'
-           '           its races. See ts_horn_seat - raising this number alone had\n'
-           '           never once changed the clearance.')
-    turret('screw_bore', '6.0 mm', 'driver access to the horn screw, up the centre')
+    # ---- the J1 HUB CONTRACT. THREE files read it, so it lives in tt_. ---
+    # turntable_stator places the SG90 from hub_seat_z + hub_h;
+    # shoulder_bracket cuts the bolt circle, the counterbores and the screw
+    # bore; and robotarm_j1_hub - specs/robotarm/j1_hub.md, not yet built -
+    # is the part itself. Every number is DERIVED at the top of this file
+    # from lib/servo_hub.spline_hub(SG90) and lib/design_rules, so a change
+    # to SPLINE_BROACH_INTERFERENCE_MM moves all three at once. NOTHING here
+    # is typed, and nothing here is a horn dimension.
+    turret('hub_seat_z', '%.4f mm' % J1_HUB.seat_z,
+           'servo-z of the hub UNDERSIDE - one running gap above the SG90 case\n'
+           '           top. lib/servo_hub.spline_hub(). NEVER type this.')
+    turret('hub_h', '%.4f mm' % J1_HUB_FACE_MM,
+           'hub total height, underside to top face. DERIVED: enough to swallow\n'
+           '           the whole %.2f of spline reach plus %.2f of overshoot, so the\n'
+           '           spline stops SHORT of the rotor instead of lifting it off its\n'
+           '           rollers. That lift is what the bench called "the turret plate\n'
+           '           does not touch the bearings".'
+           % (J1_HUB.broach_to, J1_HUB_OVERSHOOT_MM))
+    turret('hub_broach_d', '%.4f mm' % J1_HUB.broach_d,
+           'the hub\'s bore - THE STEEL SPLINE CUTS THIS, it is not printed.\n'
+           '           20 teeth on O4.9 is 0.77 of pitch and ~0.24 of tooth against a\n'
+           '           CALIBRATED MIN_FEATURE_MM of 0.8. Undersize by lib/servo.\n'
+           '           SPLINE_BROACH_INTERFERENCE_MM, which is ASSUMED - gauge it.')
+    turret('hub_engaged', '%.4f mm' % J1_HUB.engaged,
+           'how much spline the bore grips. 2.50 is ALL an SG90 has (the MG90S\n'
+           '           has 4.00) and tt_ring_lift takes 0.40 of it when the rotor\n'
+           '           floats up. Asserted in turntable_stator.py.')
+    turret('hub_od', '%.4f mm' % J1_HUB_OD_MM,
+           'hub outer diameter. DERIVED from the bolt circle plus a self-tap\n'
+           '           boss and MIN_WALL. Declared HERE and not only in the hub file\n'
+           '           because shoulder_bracket has to prove a servo plug coming down\n'
+           '           the connector gate does not land on it.')
+    turret('hub_bolt_r', '%.4f mm' % J1_HUB_BOLT_R_MM,
+           'bolt circle radius. THE WHOLE POINT OF THE SEPARATE HUB: it moves\n'
+           '           the drive from r 2.33 at the broach bore to r 8.00, which with\n'
+           '           three screws is a tenth of the bearing pressure.')
+    turret('hub_bolt_d', '%.4f mm' % J1_HUB_HOLE_D_MM,
+           'clearance hole in the ROTOR - M3 clearance plus %.1f of DELIBERATE\n'
+           '           radial float. There is no register: the hub is centred by the\n'
+           '           spline and the rotor by its journal, and this hole is where the\n'
+           '           difference between the two goes.' % J1_HUB_FLOAT_MM)
+    turret('hub_cbore_d', '%.4f mm' % J1_HUB_CBORE_D_MM,
+           'head counterbore in the BOSS TOP, so the screws finish flush with\n'
+           '           the plane the fork stands on and the ring is level with.')
+    turret('hub_cbore_h', '%.4f mm' % J1_HUB_CBORE_H_MM,
+           'and how deep - an ISO 4762 M3 cap head. DATASHEET.')
+    turret('screw_bore', '%.4f mm' % J1_HUB_SCREW_BORE_MM,
+           'clearance up the rotor centre, DERIVED now rather than the typed\n'
+           '           6.0 it was. It passes the SG90\'s retaining screw head during\n'
+           '           the broach step and then has nothing to do: J1 does NOT run\n'
+           '           that screw in service - the ring captures the rotor axially\n'
+           '           and a second axial datum is what the horn was. It is not a\n'
+           '           fit, it carries no torque, and nothing registers in it.')
+    turret('hub_washer_d', '%.4f mm' % J1_HUB.washer_d,
+           'SMALLEST washer that lands on the hub\'s bore mouth - the retaining\n'
+           '           screw is O%.1f with a head near O5 against a O%.2f bore, so\n'
+           '           without one the head sits over the hole with nothing to bear\n'
+           '           on. Needed only to PULL THE HUB DOWN while the spline broaches\n'
+           '           it; both come off before the hub is bolted to this rotor.'
+           % (J1_HUB.screw_d, J1_HUB.broach_d))
 
     style('ef', '0.4 mm', 'elephant-foot chamfer, functional faces - design_rules')
     style('radius', '6.0 mm', 'silhouette corner radius - _style.md rule 2')
@@ -274,11 +472,13 @@ def run(_context: str):
     # its rollers to feed wires. One keyhole at the window's centre azimuth
     # fixes it: plugs pass one at a time, ribbons then lie in the arc.
     #
-    # THE GATE DELIBERATELY ENTERS THE HORN-ARM CORRIDOR. The astern arm of
-    # the horn cross loses its side walls from gate_ir out to horn_span/2 -
-    # about 3.8 mm of ONE of four arms, each bearing over its full 16 mm. At
-    # 0.8 kg.cm of duty the lost area is nothing. The cable_ir assertion
-    # protects the WINDOW from the horn; the gate floors at the screw bore.
+    # THE GATE USED TO EAT INTO THE HORN-ARM CORRIDOR, and that trade is
+    # gone with the horn: the drive now stops at r tt_hub_od/2 and the gate
+    # starts well outside it. What the gate still has to miss is the HUB and its
+    # bolt heads, and it misses them by AZIMUTH as much as by radius - the
+    # head counterbores reach r 10.95 against a gate at 12.2, which is not a
+    # wall, so the bolt azimuths are chosen away from 270 and asserted below.
+    # The gate still floors at the screw bore.
     param('gate_w', '9.8 mm',
           'connector gate width, tangentially. A servo plug is ~8.7 wide;\n'
           '           +1.1 so it never needs forcing. Stays inboard of the fork'
@@ -301,8 +501,6 @@ def run(_context: str):
           'tab hole pitch along the case, drawing B. Drawing A implies 49.5 - hence\n'
           '           slots, see MG995_TAB_SLOT_X_MM in lib/servo.py')
     param('tab_pitch_y', '10.2 mm', 'tab hole pitch across the case - MG995_TAB_HOLE_PITCH_Y')
-    param('root_relief_d', '13.0 mm',
-          'round relief at the yaw horn cross centre. The arms taper 5.5 -> 3\n           and are wider than the 3.4 slots everywhere inboard of r ~6.5, so\n           Ø13 clears that whole root zone; beyond it the slots take over.\n           2026-08-27 horn audit')
     param('slot_len', '5.6 mm', 'MG995_TAB_SLOT_X_MM - covers every candidate pitch\n           (derived 47.5, drawing B 47.8, clones 49.5)')
     param('slot_w', '2.5 mm', 'M3 self-tapper into PETG')
     param('slot_depth', '5.0 mm',
@@ -533,8 +731,49 @@ def run(_context: str):
         'only %.2f mm of rim outside the journal for the ring to hook over' % rim_mm)
     assert val('cable_ir') + val('wall') < race_in, (
         'the cable window runs into the race band')
-    assert val('cable_ir') >= tval('horn_span') / 2 + val('wall'), (
-        'the cable window runs into the base servo horn')
+    # --- the J1 hub, and the three things it has to miss ---
+    # It is not built here, so what this part can prove about it is that
+    # there is room for it, that its bolt heads land on solid boss top, and
+    # that a servo plug coming down the connector gate does not hit it.
+    assert tval('hub_od') / 2 < val('gate_ir') - TOL, (
+        'the J1 hub is O%.2f, reaching r %.2f, and the connector gate starts '
+        'at r %.2f - a servo plug coming down the gate lands on the hub'
+        % (tval('hub_od') * 10, tval('hub_od') / 2 * 10, val('gate_ir') * 10))
+    assert (tval('hub_bolt_r') - tval('hub_cbore_d') / 2
+            >= tval('screw_bore') / 2 + val('wall') - TOL), (
+        'only %.2f mm between the O%.2f screw bore and the head counterbores '
+        'on r %.2f - MIN_WALL is %.2f'
+        % ((tval('hub_bolt_r') - tval('hub_cbore_d') / 2
+            - tval('screw_bore') / 2) * 10, tval('screw_bore') * 10,
+           tval('hub_bolt_r') * 10, val('wall') * 10))
+    assert (tval('hub_bolt_r') + tval('hub_cbore_d') / 2
+            < val('plate_in') - TOL), (
+        'a head counterbore reaches r %.2f and the fork plates start at |x| '
+        '%.2f - a driver could not reach the screw'
+        % ((tval('hub_bolt_r') + tval('hub_cbore_d') / 2) * 10,
+           val('plate_in') * 10))
+    assert tval('hub_cbore_h') <= disc_t + tval('boss_h') - val('wall') - TOL, (
+        'a %.2f counterbore in a %.2f boss leaves %.2f of floor for the M3 to '
+        'bear on' % (tval('hub_cbore_h') * 10,
+                     (disc_t + tval('boss_h')) * 10,
+                     (disc_t + tval('boss_h') - tval('hub_cbore_h')) * 10))
+    # THE BOLT CIRCLE MISSES THE CONNECTOR GATE BY AZIMUTH, NOT BY RADIUS,
+    # and that is exactly the kind of thing this project has got wrong before
+    # by looking at a radius and calling it clear. Distance from each head
+    # counterbore to the gate RECTANGLE, in millimetres.
+    for _i, _az in enumerate(J1_HUB_BOLT_AZ_DEG):
+        _a = math.radians(_az)
+        _bx = tval('hub_bolt_r') * math.cos(_a) * 10
+        _by = tval('hub_bolt_r') * math.sin(_a) * 10
+        _dx = max(abs(_bx) - val('gate_w') * 10 / 2, 0.0)
+        _dy = max(max(-val('cable_ir') * 10 - _by,
+                      _by + val('gate_ir') * 10), 0.0)
+        _d = math.hypot(_dx, _dy) - tval('hub_cbore_d') * 10 / 2
+        assert _d >= val('wall') * 10 - TOL, (
+            'hub bolt %d at az %.0f leaves %.2f mm between its head '
+            'counterbore and the connector gate, against a %.2f wall - move '
+            'the azimuths, not the radius'
+            % (_i, _az, _d, val('wall') * 10))
     # --- the connector gate's own contracts, in MILLIMETRES ---
     _gate_w_mm = val('gate_w') * 10
     _gate_ir_mm = val('gate_ir') * 10
@@ -547,7 +786,7 @@ def run(_context: str):
         'the gate spans %.1f radially and a plug is %.1f thick'
         % (_gate_span_mm, PLUG_T_MM))
     assert _gate_ir_mm >= (tval('screw_bore') / 2 + val('wall')) * 10, (
-        'the gate reaches r %.1f, into the horn screw bore wall' % _gate_ir_mm)
+        'the gate reaches r %.1f, into the hub screw bore wall' % _gate_ir_mm)
     assert _gate_w_mm / 2 + val('wall') * 10 <= val('plate_in') * 10, (
         'the gate is %.1f wide and the fork plates start at |x| %.1f - it '
         'undercuts a leg' % (_gate_w_mm, val('plate_in') * 10))
@@ -642,43 +881,44 @@ def run(_context: str):
     # Everything here is cut from the RACE FACE upward, because that face is the
     # datum the printed base sets and the only one worth measuring from.
     t3 = design.timeline.count
-    # The base servo's horn, driving this disc: a cross, so it takes the four-arm
-    # horn at 90 deg increments instead of relying on a press fit.
-    half_span = tval('horn_span') / 2
-    r_root = tval('horn_r_root')
-    w_root = tval('horn_w_root') / 2
-    w_tip = tval('horn_w_tip') / 2
-    assert abs(half_span * 10 - _HORN_R_TIP) < 1e-6, (
-        'horn_span/2 is %.2f but the tip width was cut for r %.2f - the taper '
-        'is being evaluated at the wrong radius'
-        % (half_span * 10, _HORN_R_TIP))
-    assert w_root > w_tip, 'the arm tapers OUTWARD in this build - check micro_arm_w'
-    assert 2 * w_root * 10 < val('root_relief_d') * 10, (
-        'the slot is wider at its root (%.2f) than the O%.2f relief that is '
-        'supposed to swallow the arm roots'
-        % (2 * w_root * 10, val('root_relief_d') * 10))
-    for ang, tag in ((0, 'a'), (1, 'b')):
-        # one bowtie per axis: wide at the roots, narrowing to each trim line
-        pts = [(-half_span, -w_tip), (-r_root, -w_root), (r_root, -w_root),
-               (half_span, -w_tip), (half_span, w_tip), (r_root, w_root),
-               (-r_root, w_root), (-half_span, w_tip)]
-        if ang:
-            pts = [(y, x) for (x, y) in pts]
-        sk = sketch(comp.xYConstructionPlane, 'sk_horn_arm_' + tag)
-        lines = sk.sketchCurves.sketchLines
-        for k in range(len(pts)):
-            a = pts[k]
-            b = pts[(k + 1) % len(pts)]
-            lines.addByTwoPoints(mpt(sk, a[0], a[1], 0), mpt(sk, b[0], b[1], 0))
-        extrude(profiles(sk, expected=1), CUT, mm(race_z),
-                TURRET + 'horn_z', 'horn_arm_' + tag)
-    # The arm ROOTS, inboard of horn_r_root: the arm is at its widest there
-    # and the tapered slots stop short of it. One round relief swallows every
-    # root and the screw boss with it.
-    xy_circle('horn_root_relief', 0, 0, val('root_relief_d'), mm(race_z),
-              TURRET + 'horn_z', CUT)
-    xy_circle('horn_screw_bore', 0, 0, tval('screw_bore'), mm(race_z),
+    # THE J1 DRIVE. A flat face, a screw bore and three bolts - and the
+    # whole of it is CLEARANCE. Nothing on this disc is cut to a fit any
+    # more, which is the point: the horn cross pocket was two measured widths
+    # and a depth, all of them the stamped horn's, and all three were wrong
+    # on the bench. What is left here is a hole pattern.
+    #
+    # THE SCREW BORE IS NOT A DRIVE FEATURE AND NOT A FIT. It passes the
+    # SG90's retaining screw head while the hub is being broached onto the
+    # spline, and after that it does nothing: J1 does NOT run that screw in
+    # service - tt_ring_lift's retainer already captures this rotor axially,
+    # and a second axial datum is precisely what the horn was. It carries no
+    # torque and nothing registers in it. It was tt_screw_bore O6.00 for the
+    # horn's hub; it is derived now, and smaller.
+    xy_circle('hub_screw_bore', 0, 0, tval('screw_bore'), mm(race_z),
               mm(disc_t + tval('boss_h')), CUT)
+    # THE BOLTS RUN DOWNWARD, and that is deliberate. Clearance in this disc,
+    # thread in the hub, heads counterbored flush into the BOSS TOP - the
+    # plane the fork stands on and the retainer ring finishes level with, at
+    # |x| well inside the fork plates, so a driver reaches all three from
+    # straight above with the turret fully assembled. Run the other way the
+    # screws would only be reachable from under the base plate, which means
+    # taking the turret off to touch the drive.
+    _vol_before_bolts = comp.bRepBodies.item(0).volume
+    for _i, _az in enumerate(J1_HUB_BOLT_AZ_DEG):
+        _a = math.radians(_az)
+        _bx = tval('hub_bolt_r') * math.cos(_a)
+        _by = tval('hub_bolt_r') * math.sin(_a)
+        xy_circle('hub_bolt_%d' % _i, _bx, _by, tval('hub_bolt_d'),
+                  mm(race_z), mm(disc_t + tval('boss_h')), CUT)
+        xy_circle('hub_cbore_%d' % _i, _bx, _by, tval('hub_cbore_d'),
+                  mm(boss_top - tval('hub_cbore_h')), TURRET + 'hub_cbore_h',
+                  CUT)
+    # PLAYBOOK: when a CUT changes nothing, the cut is in the wrong place.
+    _bolt_drop = (_vol_before_bolts - comp.bRepBodies.item(0).volume) * 1000
+    assert _bolt_drop > HUB_BOLT_MIN_DROP_MM3, (
+        'the three hub bolts and their counterbores removed %.1f mm3 against '
+        'a %.1f floor - wrong place or wrong scale'
+        % (_bolt_drop, HUB_BOLT_MIN_DROP_MM3))
     # The loom, astern of the arm at 270 deg - one of the two azimuths a leg
     # does not occupy.
     xy_arc('cable_window', val('cable_ir'), race_in - val('wall'),
@@ -686,7 +926,7 @@ def run(_context: str):
            mm(disc_t + tval('boss_h')), CUT)
     # The connector gate: a keyhole merging with the window's inner edge at
     # its centre azimuth. See the gate_w/gate_ir comments for why it exists
-    # and why entering the horn-arm corridor is deliberate.
+    # and what it now has to miss, which is the hub and its bolt heads.
     _vol_before_gate = comp.bRepBodies.item(0).volume
     xy_rect('connector_gate', -val('gate_w') / 2, val('gate_w') / 2,
             -val('cable_ir'), -val('gate_ir'), mm(race_z),
@@ -755,11 +995,20 @@ def run(_context: str):
         race_in * 10, race_out * 10, tval('roller_r') * 10))
     print('  ring laps the rim from r %.1f and finishes FLUSH with the boss top' % (
         (tval('boss_d') / 2 + 0.0175) * 10))
-    print('  horn cross %.1f span, TAPERED %.2f wide at r %.1f -> %.2f at the '
-          'trim line, %.2f deep, screw bore %.1f (MEASURED taper 2026-08-28)' % (
-              tval('horn_span') * 10, tval('horn_w_root') * 10,
-              tval('horn_r_root') * 10, tval('horn_w_tip') * 10,
-              tval('horn_z') * 10, tval('screw_bore') * 10))
+    print('  J1 DRIVE, NO HORN: flat face + %d x M3 clearance O%.2f on r %.2f '
+          'at az %s' % (len(J1_HUB_BOLT_AZ_DEG), tval('hub_bolt_d') * 10,
+                        tval('hub_bolt_r') * 10, J1_HUB_BOLT_AZ_DEG))
+    print('    heads O%.2f x %.2f counterbored FLUSH into the boss top; screw '
+          'bore O%.2f is clearance only, no torque'
+          % (tval('hub_cbore_d') * 10, tval('hub_cbore_h') * 10,
+             tval('screw_bore') * 10))
+    print('    the hub itself (O%.2f, broach O%.2f over %.2f of spline) is a '
+          'SEPARATE part - specs/robotarm/j1_hub.md, built by neither host'
+          % (tval('hub_od') * 10, tval('hub_broach_d') * 10,
+             tval('hub_engaged') * 10))
+    print('    holes are M3 clearance + %.2f of DELIBERATE float: no register, '
+          'the spline centres the hub and this joint takes up the difference'
+          % (tval('hub_bolt_d') * 10 - _FASTENER[J1_HUB_SCREW]['clearance']))
     print('CLEARANCES:')
     print('  servo pad reaches r %.1f, fork legs r %.1f, journal boss is r %.1f' % (
         pad_r * 10, leg_r * 10, journal_r * 10))

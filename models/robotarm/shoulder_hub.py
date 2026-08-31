@@ -2,19 +2,83 @@
 
 Rebuilds `robotarm_shoulder_hub` (idempotent). Spec: specs/robotarm/_state.md.
 
-`wrist_hub` with an MG995 horn in it instead of an MG90S one. The hex and
-the journal collar are the shared wr_ contract, unchanged, so the shoulder
-fork is the same fork the forearm already is and the idler side takes an
-ordinary wrist_hub off the same print. The RETENTION is not shared - see
-the next paragraph.
+`wrist_hub` with an MG995 under it instead of an MG90S. The hex and the
+journal collar are the shared wr_ contract, unchanged, so the shoulder fork
+is the same fork the forearm already is and the idler side takes an ordinary
+wrist_hub off the same print. The RETENTION is not shared - see below.
 
 ONE of these is printed. The J2 idler is a plain wrist_hub.
 
-THIS HUB HAS NO RETAINING FLANGE, AND THAT IS THE WHOLE POINT OF THE
-PART. Every other hub in the arm is trapped by a 24.0 flange too big to
-pass its own 20.35 journal bore. On the J2 DRIVE side that flange makes
-the hub impossible to install, and the first one printed had to be
-scrapped:
+NO HORN. THE HUB BORES ONTO THE SPLINE. Jonathan, 2026-08-31: "we should
+not [mount] at the horns but rather add gears that we make". Same migration
+j3_pinion.py has already had, for the same three reasons: the horn is
+stamped plastic that varies by batch (deshipu's teardown, Roger Cheng's
+survey), GATE servo_fit MEASURED it fouling shoulder_bracket by 67.5 mm3,
+and the bench reported three times that the horns will not enter anything
+cut for them. On J2 that mattered more than anywhere else, because this is
+the joint that carries the entire arm.
+
+WHAT CAME OUT. The whole three-step horn pocket is gone: the 15.60 mouth
+sized by the TRIMMED arm sweep, the 90-degree cross slot, the 9.10 hub
+bore, and the audit history behind all three (2026-08-27 horn audit,
+2026-08-28 bench measurement of hub 8.7 / blade 2.2, the sb_horn_standoff
+that was invented to dodge a 13.8 hub that turned out not to exist, and the
+75.59 mm3 of MG995_output^shoulder_hub that _check_shoulder caught when the
+standoff retired). None of it is load path any more. Every one of those
+numbers was a horn number, and not one of them was ours to hold.
+
+THE SPLINE IS NOT PRINTED, and that is a rule rather than a preference. The
+MG995's spline is 25 teeth on a Oe5.9 circle: 0.74 mm of pitch and roughly
+0.22 mm of tooth, against a design_rules.MIN_FEATURE_MM of 0.8 that is
+CALIBRATED on this printer. A "splined" printed bore would come out a
+slightly lumpy circle that lies about itself. So the bore is ROUND and cut
+UNDERSIZE, and the steel spline broaches its own form into the PETG on
+first assembly - one diameter to get right instead of twenty-five teeth.
+lib/servo.SPLINE_BROACH_INTERFERENCE_MM is 0.25 and it is ASSUMED: gauge it
+before this joint carries the arm.
+
+TWO DIAMETERS, because the spline sits ABOVE the boss. The MG995 presents
+3.0 mm of Oe13.0 output collar and only then 3.6 mm of Oe5.9 spline, so the
+lower bore CLEARS the collar and only the upper bore grips. That is why a
+thin hub cannot drive a servo at all, and it is the arithmetic this part
+had to pass:
+
+    seating face  10.20 above the case bottom datum (case top + 0.50)
+    boss top      12.70            -> 2.50 of bore is pure clearance
+    spline top    16.30            -> 3.60 of bore actually grips
+    collar        7.00 deep        -> needs 4.50, has 7.00. PASSES.
+
+The collar is 7.00 because it was already journal + flange_t; nothing had
+to grow. The spline tops out 6.10 into it, 0.90 clear of the fork plate
+datum, so the washer face stays inside the collar.
+
+THE 0.50 CASE GAP IS KEPT, NOT RE-DERIVED. lib/servo_hub.spline_hub seats a
+hub 0.40 off the case top by default. This part already sat at 0.50 and
+shoulder_bracket's servo pad is built to that datum, so 0.50 is passed in
+explicitly and the seating face does not move by a tenth. Note the check it
+falls out of: boss_top - seat_z = 12.70 - 10.20 = 2.50, which is exactly the
+sh_boss_depth this file has been carrying since 2026-08-28. The old pocket
+and the new bore agree about where the boss top is, which is the one number
+the horn version had right.
+
+A WASHER IS REQUIRED under the servo's retaining screw, and it is not
+optional. The MG995's screw is Oe3.0 with a head near Oe6 and the broach
+bore is Oe5.65, so the head would land almost entirely over the hole with
+nothing to clamp. Without a washer the hub walks up the spline and J2 loses
+its index. sh_access_d is sized so the washer PASSES down to its seat and
+then bears on the annulus at the top of the broach bore; the same bore is
+the tool access the 6.50 screw bore used to be.
+
+WHAT IT COSTS: nothing in arm width. The seating face has not moved, the
+collar has not grown, and the fork is untouched. What it costs is that
+_check_shoulder.py still builds an MG995 horn envelope and _gauge_horn.py
+still cross-checks sh_horn_* parameters that no longer exist - both will
+need rework, and neither is this file's to edit.
+
+THIS HUB HAS NO RETAINING FLANGE, AND THAT IS STILL THE POINT OF THE PART.
+Every other hub in the arm is trapped by a 24.0 flange too big to pass its
+own 20.35 journal bore. On the J2 DRIVE side that flange makes the hub
+impossible to install, and the first one printed had to be scrapped:
 
   from inside   the flange must pass the fork's 20.35 journal bore.  24.0.
   from outside  the flange must pass the servo pad's case window, which
@@ -23,55 +87,24 @@ scrapped:
                 face. Tilting a 24.0 disc far enough to clear 20.4 costs
                 at least 21.8 mm of that depth. There is no path.
 
-So the counterbore on the drive plate is unreachable and is left empty,
-and the collar simply runs the full plate thickness instead - the horn
-face lands in exactly the same place it did, sh_collar_l = wr_journal +
-wr_flange_t. Retention is by the two stops that were always there and
-are 3.4 mm apart:
+So the counterbore on the drive plate is unreachable and is left empty, and
+the collar simply runs the full plate thickness instead, sh_collar_l =
+wr_journal + wr_flange_t. Retention is by the two stops that were always
+there and are 3.4 mm apart:
 
   inboard   the hex bottoms in the upper arm's socket (wr_reach 3.8 =
             0.4 running gap + 3.4 socket depth)
   outboard  the MG995's own case top, 0.5 mm off this face
 
-The idler side is unaffected: it takes an ordinary flanged wrist_hub off
-the same print, because nothing is bolted over its counterbore.
+and now, axially on the shaft, by the retaining screw and its washer.
 
 NOTHING ON THIS PART MAY EXCEED wr_hub_d. That is asserted on the built
 body, not on the parameters, because it is the assembly that is at stake
 and a flange is exactly the kind of feature that gets added back.
 
-THE RELIEF IS A THREE-STEP POCKET, AND THAT IS NOT DECORATION. An MG995
-does not present a bare spline: it presents 3.0 mm of 13.0 output boss
-and then the horn hub sitting on it, 6.8 mm of stack above the case top
-going into a hub 7.0 mm deep before its hex starts. Depths below are from
-this face, which stands 0.5 off the case top:
-
-  0.0 - 2.5 mm   15.60 mouth   swallows the boss AND passes the horn arms
-  2.5 - 4.8 mm   cross slot    the blade, keyed at 90 deg increments
-  0.0 - 6.4 mm   9.10 bore     the horn hub (MEASURED 8.7) + 0.4 free
-
-The mouth is 15.60 because of the ARMS, not the 13.0 boss: the arms are
-TRIMMED to r 7.6 at assembly and have to travel down this hole to reach
-their slot. On the boss alone it would be 13.4 and the servo could never
-be fitted. An untrimmed MG995 cross is 33.5 tip to tip and the round horn
-is 22.0 - neither goes in as it comes out of the bag.
-
-The horn goes in BLADE TOWARD THE SERVO. Flipped the other way its blade
-would sit 5 mm deeper, which is inside the hex, and the arm tips would
-break out through the flats.
-
-THE HORN IS SCREWED TO THE SERVO FIRST. Once the hub is on the horn its
-retaining screw is behind the hex, and once the upper arm is on the hex
-there is no access at all. The 6.50 screw bore on this side is driver
-access for that first step and nothing else; on the idler side the same
-bore passes the M3.
-
-The horn slot is a CROSS, not a bar. An MG995 ships with a four-arm horn
-and a round one; the cross takes either at 90 deg increments, and a
-shoulder that carries the entire arm wants positive keying rather than a
-press fit doing the work.
-
-Print orientation: COLLAR FACE ON THE BED, built +Z. As wrist_hub.
+Print orientation: COLLAR FACE ON THE BED, built +Z. As wrist_hub. The
+bores are now plain vertical holes stepping DOWN in diameter as they go up,
+so there is no bridged floor anywhere and no support.
 """
 
 
@@ -80,16 +113,41 @@ import math
 import adsk.core
 import adsk.fusion
 
+from lib.design_rules import JOINT_FIT_MM, MIN_WALL_MM  # noqa: E402
+from lib.servo import CATALOG as _SERVOS  # noqa: E402
+# IMPORT ORDER IS LOAD-BEARING AND THAT IS A LIBRARY BUG, NOT A STYLE.
+# lib/servo_hub.py imports lib/gears.py at its head and lib/gears.py imports
+# lib/servo_hub.py back at its foot, so whichever of the pair is reached
+# FIRST decides whether the cycle resolves. Reaching for servo_hub first
+# raises "ImportError: cannot import name 'spline_hub' from partially
+# initialized module lib.servo_hub" and the script never runs at all.
+# Touching lib.gears first breaks the tie. models/robotarm/horn_adapter.py
+# has the imports in the other order and is dead on arrival because of it -
+# reported, not fixed here, because lib/ is not this file's to edit.
+import lib.gears  # noqa: E402,F401  - MUST precede lib.servo_hub, see above
+from lib.servo_hub import spline_hub  # noqa: E402
+
 COMPONENT = 'robotarm_shoulder_hub'
 BODY_NAME = 'shoulder_hub'
 PREFIX = 'sh_'
 WRIST = 'wr_'
 STYLE = 'sty_'
 PH_FORM = 'hub form'
-PH_HORN = 'horn interface'
+PH_SPLINE = 'spline hub'
 PH_FINISH = 'finish'
-PHASES = [PH_FORM, PH_HORN, PH_FINISH]
+PHASES = [PH_FORM, PH_SPLINE, PH_FINISH]
 MATERIAL_NAME = 'PET Plastic'
+_MG995 = _SERVOS['MG995']
+# The J2 servo, CONFIRMED against models/robotarm/_check_leads.py MOUNTS
+# ('J2 shoulder', host shoulder_bracket, servo MG995) rather than assumed.
+
+# Counts and epsilons, not dimensions.
+HEX_SIDES = 2 * 3
+TOL = 1e-9
+# Least spline engagement this hub will accept, in mm. Passed INTO
+# spline_hub so the library's own refusal and the assertion below are
+# arguing from the same number instead of two copies of it.
+ENGAGE_MIN_MM = 2.0
 # _style.md rule 5: two-tone by PART. A hub is a joint, so it is dark.
 # COLOUR LIVES IN lib/palette.py, not here. It used to be typed in this
 # file and sixteen others, so a re-theme meant editing seventeen files
@@ -146,7 +204,7 @@ def run(_context: str):
     wrist('flange_d', '24.0 mm',
           'retaining flange: too big to pass through the fork plate bore, so the\n'
           '           hub cannot walk out and needs no screw. It sits in a counterbore\n'
-          '           in the plate face.')
+          '           in the plate face. THIS HUB HAS NONE - see the docstring.')
     wrist('flange_t', '2.0 mm', 'flange thickness = the plate counterbore depth')
     wrist('reach', '3.8 mm',
           'hex boss length = the running gap between the fork plate and the roll\n'
@@ -166,29 +224,63 @@ def run(_context: str):
           'derived: the drive hub is FLANGELESS, so its collar runs the whole\n'
           '           plate thickness - the journal bore plus the counterbore the\n'
           '           flange can never reach. Same overall length as the idler\n'
-          '           hub, so the horn face lands on the same datum. 2026-08-30.')
+          '           hub, so the seating face lands on the same datum. 2026-08-30.\n'
+          '           It is ALSO the hub height the spline solve is checked against,\n'
+          '           and at 7.00 against a 4.50 minimum it passes with room.')
+    param('free_fit', '%.4f mm' % JOINT_FIT_MM['free'],
+          'design_rules JOINT_FIT_MM free - must never bind')
+    param('case_gap', '0.5 mm',
+          'running gap between this face and the MG995 case top. lib/servo_hub\n'
+          '           defaults to 0.40; this part has sat at 0.50 since the standoff\n'
+          '           retired and shoulder_bracket\'s servo pad is built to it, so the\n'
+          '           existing datum is passed IN rather than re-derived. Dropping to\n'
+          '           0.40 would move the whole J2 stack by a tenth for nothing.')
 
-    # --- MG90S horn, DATASHEET (lib/servo.py) -------------------------------
-    param('horn_hub_d', '9.10 mm',
-          'MG995 horn hub MEASURED 8.7 (2026-08-28 bench) + 0.4 free. The\n           model said 13.8 and it was 5.1 mm out - the whole reason the J2\n           standoff was invented was to keep a 13.95 relief out of the hex\n           root, and at 9.10 there is 3.35 mm of wall to the hex flats. The\n           standoff is therefore GONE (sb_horn_standoff 0.0).')
-    param('horn_hub_depth', '6.40 mm',
-          'boss 3.0 + MEASURED hub 3.8 = 6.8 of stack above the case top,\n           less the 0.5 this face stands off that top, + 0.1 seating.\n           Hub HEIGHT 3.8 is the last horn number still model-grade.')
-    param('boss_d', '15.6 mm',
-          'the mouth. Sized by the horn ARMS, not the 13.0 output boss it also\n           clears: the arms are trimmed to r 7.6 (horn audit) and have to pass\n           down this hole to reach their slot, so it is 2 x horn_arm_r + 0.4\n           free. On the 13.0 boss alone it would be 13.4 and the servo\n           could never be fitted.')
-    param('boss_depth', '2.50 mm',
-          'the MG995 output boss stands 3.0 proud of the case top and this\n           face sits 0.5 outboard of it, so 2.5 of boss lands inside the hub.\n           Was 0.5 while sb_horn_standoff held the case 2.0 further out;\n           retiring the standoff (the O13.8 hub it dodged does not exist)\n           put the boss back 2.0 deeper - _check_shoulder caught it as\n           75.59 mm3 of MG995_output^shoulder_hub. 2026-08-28.')
-    param('arm_start', PREFIX + 'boss_depth',
-          'derived: the blade plane is one boss height down from this face,\n'
-          '           because the horn is fitted BLADE TOWARD THE SERVO')
-    param('horn_arm_w', '6.65 mm',
-          'horn arm width AT the r 7.6 trim: ~6.5 + press 0.15. The old 2.65\n           was the blade THICKNESS misread as width - no MG995 horn arm\n           would have entered - 2026-08-27 horn audit')
-    param('horn_arm_r', '7.6 mm',
-          'horn arms TRIMMED to this radius at assembly. Was 8.0; the audited\n           6.65 slot corner at hypot(8, 3.3) = 8.66 left 1.34 of collar wall,\n           7.6 restores 1.7. Still past the wrist hub 6.0 - this joint\n           carries the whole arm.')
-    param('horn_arm_depth', '2.30 mm',
-          'MG995 blade MEASURED 2.2 (BL comb, middle slot) + 0.1 seating.\n           The model said 2.5. 2026-08-28 bench.')
-    param('screw_d', '6.5 mm',
-          'driver access to the horn screw on the drive side; on the idler side '
-          'the M3 retaining screw passes through the same bore')
+    # --- SPLINE HUB, solved in lib/servo_hub.py. WRITTEN, NOT CHOSEN. ------
+    # THE HORN IS GONE. This hub bores straight onto the MG995's own output
+    # spline; every sh_horn_* and sh_boss_* parameter this file used to
+    # declare went with it. See the docstring for what they were and why not
+    # one of them was ours to hold.
+    H = spline_hub(_MG995, face=val('collar_l') * 10,
+                   case_gap=val('case_gap') * 10, engage_min=ENGAGE_MIN_MM)
+    param('seat_z', '%.4f mm' % H.seat_z,
+          'servo-z of the SEATING FACE - how far up the MG995 this hub sits,\n'
+          '           measured from the underside of its mounting tabs. This is the\n'
+          '           number shoulder_bracket has to stand the servo off by, and the\n'
+          '           horn migration leaves it UNCHANGED at 10.20 - which is the whole\n'
+          '           reason the bracket needs no rework.')
+    param('boss_bore_d', '%.4f mm' % H.boss_clear_d,
+          'lower bore - CLEARS the Oe13.0 output collar at a free fit. Nothing\n'
+          '           grips the boss; it only has to pass. This is the widest hole in\n'
+          '           the part and it is what sets the collar wall.')
+    param('boss_bore_h', '%.4f mm' % H.boss_clear_to,
+          'how far up the bore stays wide - to the top of the boss. 2.50, and\n'
+          '           the horn-era sh_boss_depth was 2.50 as well: the pocket and the\n'
+          '           bore agree about where the MG995 boss top is.')
+    param('broach_d', '%.4f mm' % H.broach_d,
+          'upper bore - THE STEEL SPLINE CUTS THIS. Deliberately UNDERSIZE by\n'
+          '           lib/servo.SPLINE_BROACH_INTERFERENCE_MM. The spline is not\n'
+          '           printed: 25 teeth on Oe5.9 is 0.74 mm of pitch and ~0.22 mm of\n'
+          '           tooth, against a CALIBRATED MIN_FEATURE_MM of 0.8. The\n'
+          '           interference is ASSUMED - gauge it before J2 carries the arm.')
+    param('broach_from', '%.4f mm' % H.broach_from, 'derived: the spline starts here')
+    param('broach_to', '%.4f mm' % H.broach_to,
+          'derived: and ends here, 6.10 into a 7.00 collar - so the washer face\n'
+          '           sits 0.90 inside the fork plate datum rather than on it')
+    param('engaged', '%.4f mm' % H.engaged,
+          'how much spline the bore grips - the FULL 3.6 mm of MG995 spline,\n'
+          '           because the collar is long enough to run past all of it')
+    param('washer_d', '%.4f mm' % H.washer_d,
+          'SMALLEST WASHER THAT WORKS, and it is not optional. The retaining\n'
+          '           screw is Oe%.1f with a head near Oe6 and the broach bore is\n'
+          '           Oe%.2f, so the head would sit over the hole with nothing to\n'
+          '           clamp. Without a washer the hub walks up the spline and J2\n'
+          '           loses its index.' % (H.screw_d, H.broach_d))
+    param('access_d', PREFIX + 'washer_d + ' + PREFIX + 'free_fit',
+          'derived: the washer has to PASS down this bore to reach its seat, so\n'
+          '           it is the washer plus a free fit. It doubles as the driver\n'
+          '           access the old 6.50 screw bore was, and on the idler side the\n'
+          '           M3 retaining screw still passes through it.')
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
 
     # ---- idempotent rebuild -------------------------------------------------
@@ -275,22 +367,21 @@ def run(_context: str):
     hex_af = val('hex_af')
     journal = wval('journal')
     reach = wval('reach')
+    SEAT = '-' + PREFIX + 'collar_l'      # the face that looks at the servo
 
     # ---- phase 1: collar + hex boss ----------------------------------------
     t0 = design.timeline.count
     # ONE collar, full plate thickness. No flange - see the docstring. The
-    # length is still written as journal + flange_t so the horn face stays
+    # length is still written as journal + flange_t so the seating face stays
     # on the plate's outer datum if either of those ever moves.
-    disc('journal_collar', wval('hub_d'), '-' + PREFIX + 'collar_l',
-         PREFIX + 'collar_l', NEW)
+    disc('journal_collar', wval('hub_d'), SEAT, PREFIX + 'collar_l', NEW)
 
     sk_hex = sketch(comp.xYConstructionPlane, 'sk_hex_boss')
     lines = sk_hex.sketchCurves.sketchLines
-    n_side = 2 * 3
-    r_c = hex_af / 2 / math.cos(math.pi / n_side)
+    r_c = hex_af / 2 / math.cos(math.pi / HEX_SIDES)
     pts = []
-    for i in range(n_side):
-        a = 2 * math.pi * i / n_side
+    for i in range(HEX_SIDES):
+        a = 2 * math.pi * i / HEX_SIDES
         pts.append((r_c * math.cos(a), r_c * math.sin(a)))
     for i in range(len(pts)):
         u, w = pts[i], pts[(i + 1) % len(pts)]
@@ -298,31 +389,26 @@ def run(_context: str):
     extrude(profiles(sk_hex, expected=1), JOIN, '0.0 mm', WRIST + 'reach', 'hex_boss')
     group(t0, PH_FORM)
 
-    # ---- phase 2: horn interface -------------------------------------------
+    # ---- phase 2: spline hub ------------------------------------------------
     t1 = design.timeline.count
-    disc('horn_hub_relief', val('horn_hub_d'), '-' + PREFIX + 'collar_l',
-         PREFIX + 'horn_hub_depth', CUT)
-    # The mouth. Cut second so the step is unambiguous: everything above
-    # boss_depth opens out to clear the output boss and let the arms through.
-    disc('horn_mouth', val('boss_d'), '-' + PREFIX + 'collar_l',
-         PREFIX + 'boss_depth', CUT)
-
-    for ang, tag in ((0, 'a'), (1, 'b')):
-        sk_arm = sketch(comp.xYConstructionPlane, 'sk_horn_arm_slot_' + tag)
-        if ang == 0:
-            p0 = mpt(sk_arm, -val('horn_arm_r'), -val('horn_arm_w') / 2, 0)
-            p1 = mpt(sk_arm, val('horn_arm_r'), val('horn_arm_w') / 2, 0)
-        else:
-            p0 = mpt(sk_arm, -val('horn_arm_w') / 2, -val('horn_arm_r'), 0)
-            p1 = mpt(sk_arm, val('horn_arm_w') / 2, val('horn_arm_r'), 0)
-        sk_arm.sketchCurves.sketchLines.addTwoPointRectangle(p0, p1)
-        extrude(profiles(sk_arm, expected=1), CUT,
-                '-' + PREFIX + 'collar_l' + ' + ' + PREFIX + 'arm_start',
-                PREFIX + 'horn_arm_depth', 'horn_arm_slot_' + tag)
-
-    disc('screw_bore', val('screw_d'), '-' + PREFIX + 'collar_l',
-         PREFIX + 'collar_l + ' + WRIST + 'reach', CUT)
-    group(t1, PH_HORN)
+    # THREE BORES, STEPPING DOWN THEN UP, and the order is the servo's own
+    # stack read from the case upward. It used to be a three-step HORN pocket
+    # - a 15.60 mouth sized by the trimmed arm sweep, a cross slot for the
+    # blade, and a 9.10 hub bore - and every one of those numbers belonged to
+    # a stamped part that varies by batch. Now:
+    #   boss_bore    clears the Oe13.0 output collar. Pure clearance.
+    #   spline_bore  UNDERSIZE. The steel spline broaches this on assembly.
+    #   access_bore  passes the washer down to its seat, then the driver.
+    # TWO DIAMETERS ON THE DRIVING PART, because the spline sits ABOVE the
+    # boss: a hub shorter than boss_bore_h never reaches the spline at all,
+    # however good its bore is. That is what spline_hub() refuses on, and it
+    # is why this part had to be checked rather than assumed.
+    disc('boss_bore', val('boss_bore_d'), SEAT, PREFIX + 'boss_bore_h', CUT)
+    disc('spline_bore', val('broach_d'), SEAT + ' + ' + PREFIX + 'broach_from',
+         PREFIX + 'engaged', CUT)
+    disc('washer_access_bore', val('access_d'), SEAT + ' + ' + PREFIX + 'broach_to',
+         PREFIX + 'collar_l - ' + PREFIX + 'broach_to + ' + WRIST + 'reach', CUT)
+    group(t1, PH_SPLINE)
 
     # ---- phase 3: finish ----------------------------------------------------
     t2 = design.timeline.count
@@ -358,35 +444,33 @@ def run(_context: str):
         if used_appearance != 'none':
             break
 
-    # THE OLD CHECK HERE WAS RADIAL-ONLY (hex flats vs relief radius) and
-    # depth-blind. What actually matters, horn audit 2026-08-27: (1) the hub
-    # bore must STOP inside the body - if it tunnels past journal + flange it
-    # cores the hex boss root, which carries all of J2; (2) the collar wall
-    # around the bore takes the torque across the bore band.
-    body_deep = val('collar_l')
-    assert val('horn_hub_depth') <= body_deep + 1e-9, (
-        'the horn hub bore runs %.2f deep and the body is only %.2f - it '
-        'tunnels into the hex boss root. Lengthen the collar, do not '
-        'thin the hex.' % (val('horn_hub_depth') * 10, body_deep * 10))
-    wall = (wval('hub_d') / 2 - val('horn_hub_d') / 2)
-    assert wall >= 0.16 - 1e-9, (
-        'only %.2f mm of collar wall around the horn hub bore' % (wall * 10))
-    assert val('boss_d') >= 2 * val('horn_arm_r') + 0.04 - 1e-9, (
-        'the mouth is %.2f but the trimmed horn arms sweep %.2f - they cannot '
-        'travel down to their slot and the servo cannot be fitted'
-        % (val('boss_d') * 10, val('horn_arm_r') * 20))
-    mouth_wall = (wval('hub_d') - val('boss_d')) / 2
-    assert mouth_wall >= 0.16 - 1e-9, (
-        'only %.2f mm of collar wall around the %.2f mouth' % (
-            mouth_wall * 10, val('boss_d') * 10))
-    arm_wall = wval('hub_d') / 2 - val('horn_arm_r')
-    assert arm_wall >= 0.16 - 1e-9, (
-        'only %.2f mm of collar wall at the horn arm tips' % (arm_wall * 10))
-    blade_end = val('arm_start') + val('horn_arm_depth')
-    assert blade_end <= val('collar_l') + 1e-9, (
-        'the blade slot ends %.2f mm below this face, past the %.2f mm of collar '
-        '- the arm tips would break out through the hex flats'
-        % (blade_end * 10, val('collar_l') * 10))
+    # THE CHECKS. The old set here was about a horn: hub bore depth against
+    # the collar, collar wall against a 15.60 mouth, blade slot against the
+    # hex flats. Every one of them tested a stamped part's outline. What is
+    # left to get wrong is the SPLINE STACK, so that is what is checked.
+    boss_wall = (wval('hub_d') - val('boss_bore_d')) / 2
+    assert boss_wall * 10 >= MIN_WALL_MM - TOL, (
+        'only %.2f mm of collar wall around the Oe%.2f boss bore, and '
+        'design_rules wants %.2f - this is the widest hole in the part and '
+        'the one the J2 torque runs around'
+        % (boss_wall * 10, val('boss_bore_d') * 10, MIN_WALL_MM))
+    assert val('broach_to') <= val('collar_l') + TOL, (
+        'the spline tops out %.2f into a %.2f collar - the washer would have '
+        'no face to bear on inside the hub'
+        % (val('broach_to') * 10, val('collar_l') * 10))
+    assert val('engaged') * 10 >= ENGAGE_MIN_MM - TOL, (
+        'only %.2f mm of spline engagement and this joint carries the whole '
+        'arm - it needs at least %.2f'
+        % (val('engaged') * 10, ENGAGE_MIN_MM))
+    assert val('broach_d') < val('washer_d') < val('access_d'), (
+        'the Oe%.2f washer has to be BIGGER than the Oe%.2f broach bore to '
+        'have anything to bear on and SMALLER than the Oe%.2f access bore to '
+        'reach its seat' % (val('washer_d') * 10, val('broach_d') * 10,
+                            val('access_d') * 10))
+    hex_wall = (hex_af - val('access_d')) / 2
+    assert hex_wall * 10 >= MIN_WALL_MM - TOL, (
+        'only %.2f mm between the Oe%.2f access bore and the hex flats'
+        % (hex_wall * 10, val('access_d') * 10))
     # THE ASSEMBLY ASSERT. This hub is installed through a servo pad that is
     # already bolted over its counterbore: nothing on it may exceed the journal
     # collar, or it cannot be fitted at all. Measured on the BODY, because a
@@ -395,17 +479,18 @@ def run(_context: str):
     _bb = body.boundingBox
     max_r = max(abs(_bb.minPoint.x), abs(_bb.maxPoint.x),
                 abs(_bb.minPoint.y), abs(_bb.maxPoint.y))
-    assert max_r <= wval('hub_d') / 2 + 1e-6, (
+    assert max_r <= wval('hub_d') / 2 + val('tol'), (
         'this hub is %.2f across at its widest and the drive plate journal bore '
         'is %.2f - it cannot be installed from either side. The drive hub is '
         'FLANGELESS; retention is the arm socket inboard and the MG995 case '
-        'outboard.' % (max_r * 20, wval('hub_d') * 10))
+        'outboard.' % (max_r * 2 * 10, wval('hub_d') * 10))
 
-    hex_corners = hex_af / math.cos(math.pi / 6)
+    hex_corners = hex_af / math.cos(math.pi / HEX_SIDES)
     assert hex_corners < wval('hub_d'), (
         'hex is %.2f across corners but the collar is only %.2f - the hub cannot be '
         'threaded through its own bore' % (hex_corners * 10, wval('hub_d') * 10))
     bb = body.boundingBox
+    _case_top = _MG995.tab_thk + _MG995.tab_below_top
     print('body: %r | material: %s | appearance: %s' % (
         body.name, body.material.name, used_appearance))
     print('hex %.2f af (socket %.1f - %.1f loc) reaching %.1f mm' % (
@@ -413,13 +498,18 @@ def run(_context: str):
     print('hex across corners %.2f, threaded through a %.1f collar bore' % (
         hex_corners * 10, wval('hub_d') * 10))
     print('collar OD %.1f x %.1f (FLANGELESS - widest point %.2f), journal band %.1f' % (
-        wval('hub_d') * 10, val('collar_l') * 10, max_r * 20, journal * 10))
-    print('relief: mouth %.2f x %.2f | blade slot %.2f..%.2f r %.2f | bore %.2f x %.2f'
-          % (val('boss_d') * 10, val('boss_depth') * 10, val('arm_start') * 10,
-             blade_end * 10, val('horn_arm_r') * 10,
-             val('horn_hub_d') * 10, val('horn_hub_depth') * 10))
-    print('walls: hex/bore %.2f | collar/mouth %.2f | collar/arm tips %.2f mm'
-          % (wall * 10, mouth_wall * 10, arm_wall * 10))
+        wval('hub_d') * 10, val('collar_l') * 10, max_r * 2 * 10, journal * 10))
+    print('seats %.2f up the MG995 (%.2f clear of its case top) - shoulder_bracket '
+          'must stand the servo off to match'
+          % (val('seat_z') * 10, val('seat_z') * 10 - _case_top))
+    print('spline hub: boss bore Oe%.2f to %.2f, then Oe%.2f BROACHED %.2f..%.2f'
+          % (val('boss_bore_d') * 10, val('boss_bore_h') * 10,
+             val('broach_d') * 10, val('broach_from') * 10, val('broach_to') * 10))
+    print('  %.1f mm of spline engaged | NO HORN | needs a Oe%.1f washer under '
+          'the screw, passed down a Oe%.2f access bore'
+          % (val('engaged') * 10, val('washer_d') * 10, val('access_d') * 10))
+    print('walls: collar/boss bore %.2f | hex flats/access bore %.2f mm'
+          % (boss_wall * 10, hex_wall * 10))
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f' % (
         bb.minPoint.x * 10, bb.maxPoint.x * 10, bb.minPoint.y * 10,
         bb.maxPoint.y * 10, bb.minPoint.z * 10, bb.maxPoint.z * 10))
