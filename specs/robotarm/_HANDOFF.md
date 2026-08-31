@@ -743,3 +743,56 @@ the firmware, not in the gearbox.
 - **Cutting reaction at the jaws is not modelled.** Pruning pushes back, and
   that reaction has a moment about J1 that none of this covers. It is the one
   thing that could still make a case for gearing.
+
+---
+
+## 14. J3 shrunk to module 1.00 — 2026-08-31
+
+Jonathan: *"is it possible to also make the gears less on the outside"*.
+
+The **width** could not move — the 9.60 mm standoff was the MG90S's own horn
+stack, already at its floor. The **radius** is the module, and it could.
+
+| | as built | now |
+|---|---|---|
+| pair | m1.25 18T/36T f8.0 | **m1.00 18T/36T f10.0** |
+| 36T tip radius | 23.75 | **19.00** |
+| centre distance | 33.950 | **27.200** |
+| root stress | 5.64 | 7.05 of 8.75 |
+| standoff | 9.60 | 10.80 |
+| pinion cuts the 8.80 lobe over | ±9.43 mm | **±5.54 mm** |
+
+**4.75 mm less proud radially for 1.20 mm more width** — and both clearance
+cylinders shrank with the gears, so the standoff web grew. j3_gear 15565 →
+13028 mm³, j3_pinion 2257 → 1511. Payload ticked 92 → 93 g.
+
+All gates re-run: `j3_mesh` 0 of 420 with the control at 116, `j3_installs`
+all four journeys, `j3_contract` 8 terms, `ledger` on all 19 parts, `loads
+duty` and `loads sections`.
+
+### Three things this turned up
+
+1. **`horn_pinion`'s `seat_z` was derived from the wrong thing.** It was
+   `hub_top − face + recess`, pinning the pinion's FAR face a fixed hair above
+   the horn hub — arbitrary, and it made `seat_z` grow with face width. At
+   face 10.0 it put the seat face **0.80 mm inside the servo case** and the
+   `case_gap` check caught it. The real constraints are: clear the case top by
+   a running gap, and be thick enough to swallow the hub. Seating on the first
+   makes `seat_z` — and so the standoff every host has to grow — as small as
+   it can be. That is why the width cost is 1.20 and not the 2.00 estimated.
+2. **A corner inside a pivot boss is not a corner.** The smaller centre
+   distance pulled the servo 6.75 mm toward the elbow, `cap_reach` came with
+   it, and the block's +Y corner landed 13.02 from the J4 axis against a 13.78
+   boss. Fusion said `ASM_INCONS_FACE` at *every* radius — which is the tell
+   that it is not a ceiling to probe for. Those corners are skipped now, with
+   the count reported.
+3. **My first version of that filter used `boss_r + rad`** and quietly took J4
+   from four filleted corners to two. It had rounded all four for months. The
+   test is *inside* the boss, not near it.
+
+### Still open
+
+`fa_lobe_radius_j3` is 4.5, probed for the old geometry. It now fillets **zero**
+edges — the two surviving J3 corners are 1.00 mm stubs, below the radius. That
+is reported, not silent, but the number is stale and should either be re-probed
+or the J3 block accepted as unfilleted.

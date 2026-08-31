@@ -15,7 +15,26 @@ been since the forearm went to 65 mm. Doubling it costs half the elbow's
 travel (a 180 deg servo through 2:1 gives 90 deg at the joint) and buys the
 rated payload back: 25 g -> roughly 60 g.
 
-WHY MODULE 1.25 AND NOT THE HANDBOOK'S 1.5. design_rules.py prefers 1.5 for
+MODULE 1.00, FACE 10.0 - AND THE FACE IS WHAT PAYS FOR THE MODULE.
+2026-08-31: Jonathan asked whether the train could sit less proud of the arm.
+The WIDTH cannot move - the 9.60 mm standoff is the MG90S's own horn stack
+and J3_MOUNT already has it at its floor. The RADIUS is the module, and it
+can: m 1.25 -> 1.00 takes the 36T from r_tip 23.75 to 19.00 and the centre
+distance from 33.95 to 27.20.
+
+Root stress goes the other way, as 1/(face x module): at m 1.00 on the old
+8.0 face it is 8.82 MPa against an 8.75 allowable, which FAILS - validate()
+said so rather than letting it through. Face 8.0 -> 10.0 buys it back to
+7.05. That costs 2.0 mm of standoff, so the part is 4.75 mm less proud
+radially and 2.0 mm wider axially.
+
+What is not a cost: both clearance cylinders in the forearm shrink with the
+gears, so the standoff web GROWS. The pinion circle now cuts the 8.80-tall
+servo lobe over +/-5.54 mm of Y instead of +/-9.43 - considerably more web
+left than the version priced at 71x in _HANDOFF.md section 9.
+
+THE SUPERSEDED ARGUMENT FOR 1.25, kept because it is still the reason 1.5 is
+not here: WHY MODULE 1.25 AND NOT THE HANDBOOK'S 1.5. design_rules.py prefers 1.5 for
 anything carrying torque and floors at 1.0. 1.5 was priced first and the
 package is what rejected it: 18T/36T at m 1.5 is a 40.5 mm centre distance,
 and with L2 = 45 that puts the J3 servo shaft 4.5 mm from the WRIST axis,
@@ -198,7 +217,7 @@ class SpurPair:
 # --- J3, the elbow. The only geared joint in this arm. --------------------
 # Face 8.0 matches gripper_pinion's, so both printed gears in this project
 # are the same thickness and one test print settles both.
-J3_PAIR = SpurPair(name='J3', module=1.25, z_pinion=18, z_gear=36, face=8.0)
+J3_PAIR = SpurPair(name='J3', module=1.00, z_pinion=18, z_gear=36, face=10.0)
 
 # MG90S stall, lib/servo.py, in N.m: 2.0 kg.cm x 9.80665 / 100.
 J3_INPUT_STALL_NM = 2.0 * 9.80665 / 100.0
@@ -267,7 +286,7 @@ class HornPinion:
 
 
 def horn_pinion(servo, pair, arm_r=6.0, arm_w=5.7, press=0.15,
-                recess=0.2, slot_extra=0.1):
+                case_gap=0.4, hub_margin=0.5, slot_extra=0.1):
     """Solve the pinion's seat face for a servo and a gear pair.
 
     arm_w is the RAW measured arm width; `press` is added here, once. The
@@ -278,17 +297,29 @@ def horn_pinion(servo, pair, arm_r=6.0, arm_w=5.7, press=0.15,
     (caliper 2026-08-28: the model said the micro hub was 8.0 and it is 6.8,
     which had made every press pocket in this project 1.35 loose).
 
-    The seat face is placed as LOW on the servo as the horn allows: the horn
-    hub's top must finish `recess` below the pinion's far face, because that
-    face looks at the fork plate across a running gap and a proud hub would
-    rub it.
+    The seat face is placed as LOW on the servo as the CASE allows - one
+    running gap above the case top - because seat_z is what the host has to
+    stand the servo off by, and every millimetre of it is arm width. The face
+    then has to be thick enough to swallow the horn hub with `hub_margin`
+    behind it, since the pinion's far face looks at the fork plate across a
+    running gap and a proud hub would rub it.
     """
     case_top = servo.tab_below_top + servo.tab_thk
     boss_top = case_top + servo.boss_h
     blade_top = boss_top + servo.horn_blade_thk
     hub_top = boss_top + servo.horn_hub_h
 
-    seat_z = hub_top - pair.face + recess
+    # SEAT AS LOW ON THE SERVO AS THE CASE ALLOWS. This used to be
+    # hub_top - face + recess, which pinned the pinion's FAR face a fixed
+    # hair above the horn hub - an arbitrary constraint that made seat_z grow
+    # with the face width. At face 10.0 it put the seat face 0.80 mm INSIDE
+    # the case and the case_gap check below caught it.
+    #
+    # The real constraints are: clear the case top by a running gap, and be
+    # thick enough to swallow the hub. Seating on the first of those makes
+    # seat_z - and so the whole standoff the host has to grow - as small as
+    # it can be, which is the point of the through bore in the first place.
+    seat_z = case_top + case_gap
     m = HornPinion(
         servo_name=servo.name,
         seat_z=seat_z,
@@ -307,10 +338,11 @@ def horn_pinion(servo, pair, arm_r=6.0, arm_w=5.7, press=0.15,
         bad.append('the pinion seat face would sit %.2f mm off the %s case '
                    'top - it needs a running gap, not a rub'
                    % (m.case_gap, servo.name))
-    if m.press_to > pair.face - 1e-9:
-        bad.append('the horn hub tops out %.2f mm into a %.2f face - it would '
-                   'stand proud of the pinion and foul the plate'
-                   % (m.press_to, pair.face))
+    if m.press_to > pair.face - hub_margin:
+        bad.append('the horn hub tops out %.2f mm into a %.2f face and wants '
+                   '%.2f of margin behind it - it would stand proud of the '
+                   'pinion and foul the plate'
+                   % (m.press_to, pair.face, hub_margin))
     if m.slot_depth > pair.face:
         bad.append('the horn arm slot is %.2f deep in a %.2f face'
                    % (m.slot_depth, pair.face))

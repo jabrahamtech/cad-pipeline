@@ -823,15 +823,34 @@ def run(_context: str):
         else:
             rad_expr, rad = STYLE + 'radius', sval('radius')
         col = adsk.core.ObjectCollection.create()
-        skipped = 0
+        skipped, buried = 0, 0
         for y_c in (lo, hi):
             for z_c in (-val('lobe_z'), val('lobe_z')):
+                # A CORNER INSIDE A PIVOT BOSS IS NOT A CORNER. Where the
+                # block runs into the boss the two merge and there is nothing
+                # coherent to blend - Fusion says ASM_INCONS_FACE at EVERY
+                # radius, which is the tell that this is not a ceiling to
+                # probe for. It bit when the J3 pair shrank to module 1.00:
+                # the smaller centre distance pulled the servo 6.75 mm
+                # toward the elbow, cap_reach came back with it, and the +Y
+                # corner landed 13.02 from the J4 axis against a 13.78 boss.
+                _in_boss = False
+                for _yb in (0.0, -L2):
+                    # INSIDE the boss, not merely near it. The first version
+                    # of this test used boss_r + rad and took J4 from four
+                    # filleted corners to two - it had rounded all four for
+                    # months.
+                    if math.hypot(y_c - _yb, z_c) < val('boss_r'):
+                        _in_boss = True
+                if _in_boss:
+                    buried += edge_along_x_at(y_c, z_c).count
+                    continue
                 skipped += (edge_along_x_at(y_c, z_c).count
                             - edge_along_x_at(y_c, z_c, rad).count)
                 for e in edge_along_x_at(y_c, z_c, rad):
                     col.add(e)
-        fillet_note.append('%s r%.1f on %d edges (%d too short)'
-                           % (jnt, rad * 10, col.count, skipped))
+        fillet_note.append('%s r%.1f on %d edges (%d too short, %d inside a boss)'
+                           % (jnt, rad * 10, col.count, skipped, buried))
         if col.count and LOBE_FILLET:
             f_inp = fil.createInput()
             f_inp.addConstantRadiusEdgeSet(col, V(rad_expr), True)
