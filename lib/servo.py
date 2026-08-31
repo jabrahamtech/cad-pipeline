@@ -329,6 +329,59 @@ INVENTORY = {"MG995": 1, "MG90S": 2, "SG90": 3}
 SERVO_SCREW_PILOT_MM = 1.8
 
 
+# --- THE CASE POCKET CLEARANCE. ROOT CAUSE, FOUND 2026-08-31 -------------
+# Jonathan, three times now, most recently today: "none of them fit in the
+# holes you have set for them". This is why, and it is one number.
+#
+# Every servo pocket in models/ is cut at `loc` = 0.2 mm TOTAL diametral
+# clearance - 0.10 mm PER SIDE - around case_l/case_w. Those case dimensions
+# are DATASHEET grade for cheap servos, and the docstring at the top of this
+# file already says datasheet body dimensions of cheap servos are weak. It
+# then claims "a case 0.4 mm fatter than the drawing costs nothing". At 0.10
+# per side a case 0.4 fatter is a 0.30 INTERFERENCE. The prose and the number
+# have contradicted each other since the file was written, and the number is
+# what got cut.
+#
+# Three errors stack in the same direction, all of them making the hole
+# smaller than the servo:
+#   1. datasheet case dimension, unmeasured, plausibly 0.3-0.5 under
+#   2. printed pockets come out UNDERSIZE - the same effect design_rules
+#      records as HOLE_DIA_COMP_MM for round holes, uncompensated here
+#   3. elephant's foot on the first layers of the pocket walls
+# 0.10 per side absorbs none of them.
+#
+# WHAT IT COSTS TO FIX: nothing. Re-read the datum block at the top of this
+# file - the servo is located by its TAB HOLES and clamped on its TAB FACES.
+# The case pocket exists so the body clears, and for no other reason. A
+# pocket 0.5 mm per side loose positions the servo exactly as well as one
+# 0.1 mm loose, because neither of them is what positions it.
+#
+# THE ONE PART THAT DISAGREED has to change with this: turntable_stator.py
+# line ~675 says "the aperture is cut to case + loc so it carries the
+# sideways load". That part is deliberately gripping the case, against the
+# datum this file declares. It is also the J1 servo Jonathan cannot seat.
+# Loading a servo's plastic case sideways is not a thing to do on purpose;
+# the load path is the tabs.
+SERVO_CASE_CLEARANCE_MM = 1.0    # total, diametral - 0.5 mm per side
+
+
+def case_pocket(spec: ServoSpec, clearance: float = None) -> tuple:
+    """(length, width) of the pocket a case DROPS INTO, mm.
+
+    Not a fit. The tabs locate the servo; this hole only has to let the body
+    through, so it is sized for the WORST case the datasheet could be hiding
+    plus what the printer takes off a pocket wall.
+    """
+    c = SERVO_CASE_CLEARANCE_MM if clearance is None else clearance
+    return (spec.case_l + c, spec.case_w + c)
+
+
+def case_pocket_h(spec: ServoSpec, clearance: float = None) -> float:
+    """Depth a pocket needs to swallow the case below the tab plane."""
+    c = SERVO_CASE_CLEARANCE_MM if clearance is None else clearance
+    return spec.case_h - spec.tab_below_top - spec.tab_thk + c / 2.0
+
+
 # The lead datum, guarded. lead_x is the SHORT END FACE at the shaft end,
 # which is exactly -shaft_from_end; lead_y is centred on that face. Five
 # parts once read lead_x as a point on a long side wall and notched the

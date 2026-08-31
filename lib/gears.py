@@ -68,8 +68,23 @@ PETG_TENSILE_MPA = 35.0
 # Lewis form factor, 20 deg full-depth, HANDBOOK table. Only the counts this
 # project actually uses are listed - an unknown count raises rather than
 # interpolating silently.
-LEWIS_Y = {12: 0.245, 14: 0.261, 16: 0.277, 17: 0.303, 18: 0.309,
-           20: 0.322, 24: 0.337, 32: 0.364, 34: 0.371, 36: 0.377}
+# EXTENDED AND PARTLY CORRECTED 2026-08-31. Two entries were shifted one row
+# off the standard 20 deg full-depth table: 14 carried 0.261 (which is z=13's
+# value) and 16 carried 0.277 (z=14's). Both errors were CONSERVATIVE - a low
+# Y reads as high root stress - and a grep says no part in this project has
+# ever built a 14T or 16T pair, so nothing that passed a gate passed it on
+# these. They are corrected rather than left, because a table that is wrong
+# where you have not looked is a trap for whoever looks next.
+# 32 and 36 are interpolations between standard rows and check out (30/34 ->
+# 0.365 vs the 0.364 on file; 34/38 -> 0.377 exactly). Kept.
+LEWIS_Y = {12: 0.245, 13: 0.261, 14: 0.277, 15: 0.290, 16: 0.296,
+           17: 0.303, 18: 0.309, 19: 0.314, 20: 0.322, 21: 0.328,
+           22: 0.331, 24: 0.337, 25: 0.341, 26: 0.346, 27: 0.350,
+           28: 0.353, 30: 0.359, 32: 0.364, 34: 0.371, 36: 0.377,
+           38: 0.384, 40: 0.389, 42: 0.394, 43: 0.397, 44: 0.399,
+           45: 0.400, 48: 0.405, 50: 0.409, 54: 0.414, 56: 0.417,
+           60: 0.422, 64: 0.426, 66: 0.428, 70: 0.432, 72: 0.433,
+           75: 0.435, 80: 0.438, 90: 0.443, 100: 0.447}
 
 
 @dataclass(frozen=True)
