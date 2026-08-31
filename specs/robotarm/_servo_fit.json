@@ -1,0 +1,98 @@
+{
+  "control_shift_mm": 4.0,
+  "jam_floor_mm3": 0.5,
+  "stations": [
+    {
+      "case_at": null,
+      "case_mm3": 0.0,
+      "control_mm3": 236.25,
+      "horn_at": null,
+      "horn_mm3": 0.0,
+      "host": "turntable_stator",
+      "servo": "SG90",
+      "tag": "J1 yaw"
+    },
+    {
+      "case_at": [
+        28.3,
+        28.3,
+        -8.6,
+        9.4,
+        -35.95,
+        15.05
+      ],
+      "case_mm3": 243.0,
+      "control_mm3": 2133.0,
+      "horn_at": [
+        16.1,
+        16.1,
+        -2.85,
+        3.15,
+        -15.0,
+        -10.5
+      ],
+      "horn_mm3": 67.5,
+      "host": "shoulder_bracket",
+      "servo": "MG995",
+      "tag": "J2 shoulder"
+    },
+    {
+      "case_at": null,
+      "case_mm3": 0.0,
+      "control_mm3": 104.62,
+      "horn_at": null,
+      "horn_mm3": 0.0,
+      "host": "j3_servo_cap",
+      "servo": "MG90S",
+      "tag": "J3 elbow"
+    },
+    {
+      "case_at": [
+        23.4,
+        24.9,
+        -19.95,
+        10.05,
+        -4.7,
+        5.8
+      ],
+      "case_mm3": 195.75,
+      "control_mm3": 351.0,
+      "horn_at": null,
+      "horn_mm3": 0.0,
+      "host": "forearm",
+      "servo": "MG90S",
+      "tag": "J4 wrist"
+    },
+    {
+      "case_at": null,
+      "case_mm3": 0.0,
+      "control_mm3": 678.38,
+      "horn_at": null,
+      "horn_mm3": 0.0,
+      "host": "wrist_roll",
+      "servo": "SG90",
+      "tag": "J5 roll"
+    },
+    {
+      "case_at": null,
+      "case_mm3": 0.0,
+      "control_mm3": 202.5,
+      "horn_at": null,
+      "horn_mm3": 0.0,
+      "host": "gripper_shell",
+      "servo": "SG90",
+      "tag": "gripper"
+    },
+    {
+      "case_at": null,
+      "case_mm3": 0.0,
+      "control_mm3": 202.5,
+      "horn_at": null,
+      "horn_mm3": 0.0,
+      "host": "pruner_shell",
+      "servo": "SG90",
+      "tag": "effector"
+    }
+  ],
+  "step_mm": 1.5
+}

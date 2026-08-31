@@ -73,6 +73,7 @@ MATERIAL_NAME = 'PET Plastic'
 # file and sixteen others, so a re-theme meant editing seventeen files
 # and hoping you found them all.
 from lib.palette import hints_for  # noqa: E402
+from lib.servo import SERVO_CASE_CLEARANCE_MM  # noqa: E402
 from lib.servo import CATALOG as _SERVOS  # noqa: E402
 
 _SG_HORN = _SERVOS['SG90']
@@ -215,6 +216,12 @@ def run(_context: str):
     # ---- fits and local geometry --------------------------------------------
     param('wall', '1.6 mm', 'minimum wall - design_rules MIN_WALL_MM')
     param('loc', '0.2 mm', 'locational fit - design_rules')
+    param('srv_clear', '%.2f mm' % SERVO_CASE_CLEARANCE_MM,
+          'SERVO CASE WINDOW CLEARANCE - lib/servo.py, NOT `loc`.\n'
+          '           The window was cut at loc 0.2 TOTAL (0.10 per side) around a\n'
+          '           DATASHEET case dimension. GATE servo_fit measured the servo\n'
+          '           solid against this host and found real interference; the fix\n'
+          '           costs nothing because the TABS locate the servo, not the case.')
     param('free', '0.4 mm', 'free fit - design_rules')
     param('plate_t', '4.0 mm', 'base plate thickness')
     param('lead_key_d', '%.2f mm' % (CATALOG['SG90'].lead_bundle_dia + 0.2),
@@ -659,9 +666,10 @@ def run(_context: str):
     t2 = design.timeline.count
     _soff = val('shaft_off')
     xy_rect('case_aperture',
-            -(val('case_w') + val('loc')) / 2, (val('case_w') + val('loc')) / 2,
-            _soff - (val('case_l') + val('loc')) / 2,
-            _soff + (val('case_l') + val('loc')) / 2,
+            -(val('case_w') + val('srv_clear')) / 2,
+            (val('case_w') + val('srv_clear')) / 2,
+            _soff - (val('case_l') + val('srv_clear')) / 2,
+            _soff + (val('case_l') + val('srv_clear')) / 2,
             mm(-1.0), mm(deck_z + 1.0), CUT)
     # LEAD KEYWAY: ONE notch, centred, in the aperture's shaft-end END wall,
     # running OUT through the servo pad to daylight. The bundle leaves the

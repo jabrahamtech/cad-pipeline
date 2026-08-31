@@ -397,6 +397,33 @@ for _s in CATALOG.values():
 del _s
 
 
+def horn_arms(spec: ServoSpec):
+    """[(angle_deg, reach_mm), ...] for the horn that ships with this servo.
+
+    THE MICRO CROSS IS NOT SYMMETRIC and that is the whole reason this is a
+    function rather than four equal arms. MEASURED 2026-08-28: 34.4 tip to
+    tip the long way, 17.0 the short way - so the long arms reach r 17.2 and
+    the short ones only r 8.5. A part that assumes four r-17 arms will cut
+    two slots that nothing ever enters, and a part that assumes four r-8.5
+    arms will be struck by the long pair.
+
+    The MG995 takes Futaba-compatible horns, which ARE symmetric.
+    """
+    if spec.name in ('SG90', 'MG90S'):
+        return [(0.0, MICRO_HORN_CROSS_LONG / 2.0),
+                (180.0, MICRO_HORN_CROSS_LONG / 2.0),
+                (90.0, MICRO_HORN_CROSS_SHORT / 2.0),
+                (270.0, MICRO_HORN_CROSS_SHORT / 2.0)]
+    return [(a, spec.horn_arm_len) for a in (0.0, 90.0, 180.0, 270.0)]
+
+
+def horn_arm_w(spec: ServoSpec, r_mm: float) -> float:
+    """Arm width at radius r, for whichever horn family this servo takes."""
+    if spec.name in ('SG90', 'MG90S'):
+        return micro_arm_w(r_mm)
+    return MG995_HORN_ARM_W_AT_8
+
+
 def lead_keyway_w(spec: ServoSpec, clearance: float = 0.2) -> float:
     """Width of the END-WALL keyway, across the case width, centred on
     lead_y. ONE notch - see the lead datum block above."""

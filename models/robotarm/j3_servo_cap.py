@@ -66,6 +66,7 @@ from lib.design_rules import FASTENER_MM as _FASTENERS  # noqa: E402
 from lib.gears import J3_PAIR  # noqa: E402
 from lib.palette import hints_for  # noqa: E402
 from lib.servo import CATALOG  # noqa: E402
+from lib.servo import SERVO_CASE_CLEARANCE_MM  # noqa: E402
 
 COMPONENT = 'robotarm_j3_servo_cap'
 BODY_NAME = 'j3_servo_cap'
@@ -121,7 +122,13 @@ def run(_context: str):
     screw_z = fa('cap_screw_z')
     lobe_z = fa('lobe_z')
     lobe_pad = fa('lobe_pad')
-    loc = fa('loc')
+    # THE CASE WINDOW DOES NOT USE `loc`. It used to read the forearm's
+    # locational fit, 0.2 mm TOTAL around a DATASHEET case - 0.10 per side on
+    # a dimension nobody has measured. J3 came out clear in GATE servo_fit at
+    # that figure, but clear by 0.10 mm is luck, not design, and the same
+    # 0.10 is what jams J2 and J4. The tabs locate the servo; the window only
+    # has to let the body through.
+    loc = SERVO_CASE_CLEARANCE_MM
     wall = fa('wall')
     centre = fa('j3_centre')
     l2 = fa('l2')

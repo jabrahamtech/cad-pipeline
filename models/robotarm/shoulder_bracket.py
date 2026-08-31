@@ -106,6 +106,7 @@ MATERIAL_NAME = 'PET Plastic'
 # file and sixteen others, so a re-theme meant editing seventeen files
 # and hoping you found them all.
 from lib.palette import hints_for  # noqa: E402
+from lib.servo import SERVO_CASE_CLEARANCE_MM  # noqa: E402
 from lib.servo import CATALOG as _SERVOS  # noqa: E402
 
 _SG_HORN = _SERVOS['SG90']
@@ -225,6 +226,12 @@ def run(_context: str):
     # ---- fits ---------------------------------------------------------------
     param('wall', '1.6 mm', 'minimum wall - design_rules MIN_WALL_MM')
     param('loc', '0.2 mm', 'locational fit - design_rules')
+    param('srv_clear', '%.2f mm' % SERVO_CASE_CLEARANCE_MM,
+          'SERVO CASE WINDOW CLEARANCE - lib/servo.py, NOT `loc`.\n'
+          '           The window was cut at loc 0.2 TOTAL (0.10 per side) around a\n'
+          '           DATASHEET case dimension. GATE servo_fit measured the servo\n'
+          '           solid against this host and found real interference; the fix\n'
+          '           costs nothing because the TABS locate the servo, not the case.')
     param('rot', '0.35 mm', 'rotating fit - design_rules, both journals here')
     param('free', '0.4 mm', 'free fit - design_rules')
 
@@ -610,8 +617,9 @@ def run(_context: str):
     # ---- phase 3: servo mount ---------------------------------------------------
     t2 = design.timeline.count
     yz_rect('case_window',
-            -(val('case_w') + val('loc')) / 2, (val('case_w') + val('loc')) / 2,
-            case_lo - val('loc') / 2, case_hi + val('loc') / 2,
+            -(val('case_w') + val('srv_clear')) / 2,
+            (val('case_w') + val('srv_clear')) / 2,
+            case_lo - val('srv_clear') / 2, case_hi + val('srv_clear') / 2,
             PREFIX + 'plate_out', PREFIX + 'lobe_t', CUT)
     for i, z_s in enumerate(screw_z):
         for j, y_s in enumerate((-val('tab_pitch_y') / 2, val('tab_pitch_y') / 2)):
