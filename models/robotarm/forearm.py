@@ -29,7 +29,7 @@ bolted to the end of the standoff web with two M3. That is not tidiness: with
 the pad integral the elbow could not be assembled at all - GATE j3_installs
 found the 36T gear 1.25 mm too big to pass its own insertion path, the pinion
 short of its run-up onto the horn by 6.8 mm, and the retention M3 with 1.20 mm
-of driver clearance where a bit needs 25. All three were the pad being in the
+of hex-key clearance where a bit needs 25. All three were the pad being in the
 way, and all three go when it lifts off. See _HANDOFF.md section 10.
 
 What stays here is the standoff WEB, so section 9's load path is unchanged.
@@ -54,15 +54,37 @@ LANDING HERE. wrist_hub.py now bores onto the MG90S SPLINE instead of a
 horn, and lib/servo_hub seats every spline hub ONE RUNNING GAP off the case
 top - wh_seat_z 5.50 -> 5.90. The horn-era stack sat that hub's face FLAT
 on the case top with zero gap while it rotated against it, which is a brake
-rather than a joint. So the J4 tab bearing face stands 0.40 further out
+rather than a joint. So the J4 tab PLANE stands 0.40 further out
 (fa_j4_lobe_t) and the case top lands 0.40 outboard of fa_plate_out, which
 puts the hub's seating face back exactly on fa_plate_out where every
 downstream wrist dimension already expects it. Cost: 0.40 mm of arm width,
 once. J3 is deliberately untouched - see the note at fa_j4_standoff.
 
+THE J4 LOBE IS CUT IN TWO STEPS, NOT ONE, AND THE FLANGE IS WHY. An MG90S
+is not a box. Reading up from its case top there are tab_below_top 3.00 mm
+of bare case and then tab_thk 2.50 mm of mounting FLANGE, and that flange
+is tab_span 32.10 long against a 22.80 case - 4.65 wider at each end than
+the case, 4.15 wider than even the case window. A single window sized for
+the case lands the flange on solid lobe. That is measured, not argued:
+GATE servo_fit builds the MG90S solid from servo_body.py and found 195.75
+mm3 of it inside this part, in the band x 23.40..24.90 and nowhere else,
+which is the flange band exactly. So the case window is cut for the case
+alone and a FLANGE RECESS takes the last tab_thk out to the tab plane.
+specs/robotarm/_flange.md has the derivation, the two rejected
+alternatives and every cost.
+
 The SHARED wr_* block is defined identically in wrist_hub.py and
 wrist_roll.py. MG90S dimensions are DATASHEET (lib/servo.py) - the tab
 plane is the datum, the case pocket is only clearance.
+
+A NOTE ON ONE WORD, so that it is not innocently put back. This docstring
+avoids the word tests/test_fusion_scripts.py scans docstrings for - the
+one naming a script that places an imported mesh or a measured transform.
+That word is a SELF-DECLARATION: a file carrying it is read as holding
+measured data, and the magic-number and entity-naming lints are then
+SKIPPED for the whole file, silently and with a green run to show for it.
+This is an ordinary part script and wants both lints. It carried the word
+once, describing tool clearance for a screw, and went unlinted for months.
 """
 
 import math
@@ -106,6 +128,18 @@ FACET = True
 LOBE_FILLET = True
 PHASES = [PH_FORM, PH_CLEAR, PH_PIVOT, PH_ELBOW, PH_DRIVE, PH_CABLE, PH_FINISH]
 MATERIAL_NAME = 'PET Plastic'
+# FLOAT SLACK, AND IT IS NOT A DIMENSION. Every number inside run() is a
+# dimension and belongs in a user parameter where the Fusion UI can reach
+# it; these two are the tolerance on a float COMPARISON, not on the part,
+# so they live up here where they read as what they are.
+EPS = 1e-9                 # against internal (cm) values
+EPS_MM = 1e-6              # against values already scaled to mm for a message
+# The floor on what is left of the fork plate outboard of the 608ZZ pocket.
+# ASSUMED, and it is BELOW design_rules MIN_FEATURE_MM 0.8 - it is one
+# nozzle width, and it is what a 7.50 plate can spare against a 7.00 mm
+# bearing. It is deliberately not a user parameter: it drives no geometry,
+# it only tells the assert below what "too thin" means.
+MIN_SHOULDER_MM = 0.4
 # _style.md rule 5: two-tone by PART. A link is light; the joints are dark.
 # COLOUR LIVES IN lib/palette.py, not here. It used to be typed in this
 # file and sixteen others, so a re-theme meant editing seventeen files
@@ -248,11 +282,32 @@ def run(_context: str):
     param('tab_thk', '2.5 mm', 'MG90S tab thickness - ASSUMED micro-family value, the\n           TowerPro table does not give it. Part of the lobe_t datum stack')
     param('tab_below_top', '3.0 mm', 'case top to the tab TOP, along X - DERIVED from\n           TowerPro F 18.5: case_h - F - tab_thk. Was 1.0, which floated the\n           tabs 2.0 too high and sank the case 1.5 too shallow')
     param('tab_pitch', '27.5 mm', 'MG90S tab hole pitch - DERIVED, holes centred in the\n           tab overhang of TowerPro B/E ((22.8+32.1)/2). The 29.0 it replaces\n           came from a drawing TowerPro\'s own table contradicts. CALIPER\n           before printing anything that screws to these tabs')
+    param('tab_span', '%.2f mm' % CATALOG['MG90S'].tab_span,
+          'MG90S mounting FLANGE, tip to tip - DATASHEET, TowerPro E. READ from\n'
+          '           lib/servo.py rather than typed like its neighbours above: it\n'
+          '           arrived with the flange recess and there is no reason to give\n'
+          '           it a second home to drift from. It is the dimension this lobe\n'
+          '           was blind to - 32.10 of flange against a 22.80 case, so 4.65 of\n'
+          '           tab hangs past the case at EACH end and 4.15 past even the case\n'
+          '           window. lib/servo.py rates the whole MG90S table weak and says\n'
+          '           CALIPER before printing to it; that goes double here, because a\n'
+          '           recess cut to this number is charged mm for mm to fa_lobe_pad.')
     param('lobe_t', PREFIX + 'tab_below_top + ' + PREFIX + 'tab_thk',
-          'derived SERVO STACK, tab bearing face to case top. It is a servo\n'
-          '           dimension and nothing else: the J3 cap is exactly this thick\n'
-          '           (fa_cap_t) and fa_j3_standoff subtracts it. The J4 LOBE is now\n'
-          '           fa_j4_lobe_t, which is this plus a running gap - see there.')
+          'derived SERVO STACK, TAB PLANE to case top - and read the next\n'
+          '           four lines before using it as a bearing face, because it is not\n'
+          '           one. The 5.50 is TWO different things: fa_tab_below_top 3.00 of\n'
+          '           bare case, then fa_tab_thk 2.50 of FLANGE that runs 4.65\n'
+          '           past the case at EACH end. NOTHING BEARS ON THE LOBE\'S OUTER\n'
+          '           FACE: at that plane the tab UNDERSIDE is level with the face and\n'
+          '           the tab BODY is already 2.50 inside it, in what used to be solid\n'
+          '           lobe. GATE servo_fit MEASURED that collision - 195.75 mm3 of\n'
+          '           MG90S inside this part at x 23.40..24.90, the flange band and\n'
+          '           nothing else. The fix is the flange recess cut in phase 4: the\n'
+          '           tab TOP beds on its floor and the screw heads land on the\n'
+          '           underside, flush with the outer face. specs/robotarm/_flange.md.\n'
+          '           Otherwise a servo dimension and nothing else: the J3 cap is\n'
+          '           exactly this thick (fa_cap_t) and fa_j3_standoff subtracts it.\n'
+          '           The J4 LOBE is fa_j4_lobe_t, this plus a running gap - see there.')
     # ---- THE J4 RUNNING GAP, AND WHY THE LOBE GOT 0.40 THICKER -------------
     # wrist_hub.py no longer bores onto a horn; it bores onto the MG90S
     # spline, and lib/servo_hub seats every spline hub ONE RUNNING GAP above
@@ -263,7 +318,7 @@ def run(_context: str):
     # face flat on the case top with ZERO gap - while the hub ROTATES
     # against that case. Nothing was clearance; the joint was a brake.
     #
-    # WHAT MOVES, AND WHAT DELIBERATELY DOES NOT. The tab bearing face goes
+    # WHAT MOVES, AND WHAT DELIBERATELY DOES NOT. The tab PLANE goes
     # 0.40 further OUT, so the case top lands 0.40 outboard of fa_plate_out
     # and the hub's seating face lands back ON fa_plate_out where it has
     # always been. That is the point of standing the servo off rather than
@@ -284,16 +339,45 @@ def run(_context: str):
           '           The hub ROTATES against that case, so the horn-era 0.00 was\n'
           '           rubbing by construction.')
     param('j4_lobe_t', PREFIX + 'lobe_t + ' + PREFIX + 'j4_standoff',
-          'derived J4 lobe thickness, plate outer face to the TAB BEARING\n'
-          '           face. = wh_seat_z 5.90. The servo case travels the whole of it\n'
-          '           during assembly, so the window is cut through all of it and not\n'
-          '           just the lobe_t part - a 0.40 skin over the case top would make\n'
-          '           the servo uninstallable and the shaft unreachable.')
+          'derived J4 lobe thickness, plate outer face to the TAB PLANE -\n'
+          '           the servo datum, not a bearing face; what bears is the flange\n'
+          '           recess floor fa_tab_thk inside it. = wh_seat_z 5.90. The servo\n'
+          '           case travels the whole of it\n'
+          '           during assembly, so the two cuts of phase 4 - case window\n'
+          '           then flange recess - span all of it between them and not just\n'
+          '           the lobe_t part: a 0.40 skin over the case top would make the\n'
+          '           servo uninstallable and the shaft unreachable.')
     param('lobe_over', '1.0 mm',
           'the lobe starts INSIDE the plate. Two volumes that meet exactly on a plane\n'
           '           are non-manifold and the fillet fails later - see PLAYBOOK.')
     param('lobe_z', PREFIX + 'case_w / 2 + ' + PREFIX + 'wall + 1.0 mm', 'derived lobe half height')
-    param('lobe_pad', '3.5 mm', 'material past the outermost tab screw')
+    param('win_z', PREFIX + 'case_w + ' + PREFIX + 'srv_clear',
+          'derived height of BOTH the case window and the flange recess, and\n'
+          '           they are ONE number on purpose. The case passes through both\n'
+          '           bands on its way in, so the recess cannot be the tighter of the\n'
+          '           two without becoming the fit the window was widened to stop\n'
+          '           being - and two rectangles 0.25 apart in Z would leave a ledge\n'
+          '           overhanging the pocket for no gain.')
+    param('recess_l', PREFIX + 'tab_span + ' + PREFIX + 'srv_clear / 2',
+          'derived FLANGE RECESS length. HALF the case window clearance, and\n'
+          '           the asymmetry is the point. The window is cut at fa_srv_clear\n'
+          '           because the case is the untrusted dimension and a fat case costs\n'
+          '           nothing there. Along Y it is not free: every 0.1 here comes\n'
+          '           straight out of the recess END WALL, which fa_wall then charges\n'
+          '           back to fa_lobe_pad and so to the length of the arm. 0.25 a side\n'
+          '           clears a flange that is flat, stamped and located by its own two\n'
+          '           screws in any case.')
+    param('lobe_pad', PREFIX + 'recess_l / 2 - ' + PREFIX + 'tab_pitch / 2 + '
+          + PREFIX + 'wall',
+          'material past the outermost tab screw. NO LONGER THE ROUND 3.50 it\n'
+          '           was: the flange recess reaches fa_recess_l/2 = 16.30 from the\n'
+          '           case mid and the outer screw sits at fa_tab_pitch/2 = 13.75, so\n'
+          '           a 3.50 pad left 0.95 of end wall and the recess BROKE OUT of\n'
+          '           both ends of the lobe. This is that floor written down: half the\n'
+          '           recess, back to the screw, plus one fa_wall. 4.15, DERIVED, and\n'
+          '           it costs 0.65 mm of lobe at each end in Y. J3 reads it too\n'
+          '           (j3_servo_cap sizes its pad from fa_lobe_pad), which is right -\n'
+          '           the cap carries the same flange and needs the same room.')
     param('lobe_radius_j3', '4.5 mm',
           'LOCAL, not sty_radius - and for the same reason fa_facet is local.\n'
           '           The J3 lobe stopped being a pad on the plate when the reduction\n'
@@ -304,6 +388,21 @@ def run(_context: str):
           '           6.0 fails ASM_INCONS_FACE, 5.5 and 5.0 fail ASM_BL_CAP_COMPLEX,\n'
           '           4.5 computes. A CEILING, not a preference. Do not raise it\n'
           '           without re-probing.')
+    param('lobe_radius_j4', '%.5f mm'
+          % (min(sval('radius'), val('lobe_z') - val('win_z') / 2) * 10),
+          'LOCAL, not sty_radius - and like fa_lobe_radius_j3 it is a CEILING,\n'
+          '           not a preference. The flange recess set it. A corner fillet\n'
+          '           reaches its own radius in from BOTH faces of the corner it\n'
+          '           rounds, and the recess corner sits only fa_wall inside the end\n'
+          '           face and fa_lobe_z - fa_win_z/2 inside the top: at sty_radius\n'
+          '           6.0 the rounded face passed 0.28 mm from the pocket, which is\n'
+          '           not a wall, it is a slot the slicer would drop. The largest\n'
+          '           radius that leaves the corner as thick as the flat end wall is\n'
+          '           exactly fa_lobe_z - fa_win_z/2, so that is what this is, capped\n'
+          '           at sty_radius for the day the recess shrinks. Asserted below.\n'
+          '           A SMALLER radius also means the length filter in phase 6 now\n'
+          '           accepts the two ELBOW-end corners it used to reject as too\n'
+          '           short - J4 fillets 4 edges now, not 2.')
     # ---- LEAD KEYWAY -------------------------------------------------------
     # The servo cannot be installed without this. The whole case travels
     # through this window during assembly (the tabs land on the FAR face), so
@@ -317,7 +416,7 @@ def run(_context: str):
     # bench: "thats not on the right side its on the short side". ONE notch,
     # centred, in the END wall.
     _LEAD = CATALOG['MG90S'].lead_bundle_dia
-    param('lead_key_d', '%.2f mm' % (_LEAD + 0.2),
+    param('lead_key_d', '%.2f mm' % (_LEAD + val('loc') * 10),
           'keyway WIDTH across the case width, centred on the bundle - one\n'
           '           bundle diameter plus a locational fit')
     param('lead_key_l', '%slobe_pad + (%stab_pitch - %scase_l) / 2 + 1.0 mm'
@@ -327,8 +426,15 @@ def run(_context: str):
           '           lobe is a blind pocket and traps the cable exactly as the solid\n'
           '           wall did. Never hardcode this - it moves with lobe_pad.')
     param('pilot_d', '1.8 mm', 'servo screw pilot - design_rules, self-tapping into PETG')
-    param('pilot_depth', '3.5 mm',
-          'engagement. Must not break into the flange counterbore behind it - asserted.')
+    param('pilot_depth', '3.0 mm',
+          'engagement, and 3.50 is no longer available. The pilots are drilled\n'
+          '           from the FLANGE RECESS FLOOR now, not from the lobe\'s outer\n'
+          '           face, so what they have to work in is fa_j4_lobe_t - fa_tab_thk\n'
+          '           = 3.40 of lobe before fa_plate_out and the J4 flange counterbore\n'
+          '           behind it - and the outer pilot sits 8.35 from the J4 axis,\n'
+          '           well inside that counterbore\'s r 12.175. 3.00 leaves 0.40 of\n'
+          '           floor. Cost: 0.50 mm of self-tap engagement on a screw that has\n'
+          '           3.00. Asserted below, against the number that actually binds.')
     # --- THE GEARED ELBOW ---------------------------------------------------
     # Every number here is READ, not chosen. The handoff priced this drive at
     # "~7 mm of forearm width" and it was never a free parameter - see
@@ -352,7 +458,7 @@ def run(_context: str):
           '           cuts the standoff clean through and the lobe hangs off the J4\n'
           '           end on a web. Priced in _HANDOFF.md section 9: 71x on\n'
           '           interlayer shear, 1.6 %%%% of backlash in lost motion.'
-          % (_P.r_tip(_P.z_pinion) + 0.4, CATALOG['MG90S'].case_w / 2 + 1.6 + 1.0))
+          % (_P.r_tip(_P.z_pinion) + val('free') * 10, val('lobe_z') * 10))
     param('j3_standoff',
           PREFIX + 'free + %.5f mm + %.5f mm - ' % (_P.face, _M.seat_z) + PREFIX + 'lobe_t',
           'derived, and the whole cost of this drive: how far the J3 servo pad\n'
@@ -395,8 +501,11 @@ def run(_context: str):
           '           this standoff has to reach - sized on the shank first and the\n'
           '           counterbore came out 0.72 mm from the edge.')
     param('cap_pilot_depth', '8.0 mm',
-          'engagement into the standoff web, which is %.2f deep. Leaves 1.6.'
-          % 9.6)
+          'engagement into the standoff web, which is fa_j3_standoff - %.2f\n'
+          '           deep today. What the pilot leaves of that floor is asserted\n'
+          '           against fa_wall below, so it cannot go stale unnoticed: this\n'
+          '           comment read "9.6 deep" long after the web stopped being 9.6.'
+          % (val('j3_standoff') * 10))
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
 
     # ---- idempotent rebuild --------------------------------------------------
@@ -484,7 +593,7 @@ def run(_context: str):
         h^2 = (r_fil + r_end)^2 - (l/2)^2."""
         num = r_end ** 2 - (l / 2.0) ** 2 - waist ** 2
         den = 2.0 * (waist - r_end)
-        assert abs(den) > 1e-9, 'waist equals the boss radius; the link has no waist'
+        assert abs(den) > EPS, 'waist equals the boss radius; the link has no waist'
         return num / den
 
     def link_profile(name, y_a, y_b, r_end, r_fil, x0_expr, dx_expr, op):
@@ -540,7 +649,7 @@ def run(_context: str):
                     and abs(b.minPoint.z - b.maxPoint.z) < val('tol')
                     and abs(b.minPoint.y - y_c) < val('tol')
                     and abs(b.minPoint.z - z_c) < val('tol')
-                    and e.length >= min_len - 1e-9):
+                    and e.length >= min_len - EPS):
                 col.add(e)
         return col
 
@@ -556,12 +665,10 @@ def run(_context: str):
     Y_PIN = -L2 + val('j3_centre')
     LOBES = [(+1, 0.0, -1, 'j4'), (-1, Y_PIN, +1, 'j3')]
 
-    def SO(jnt):
-        """The standoff expression for one lobe. J4 sits on its plate."""
-        return (' + ' + PREFIX + 'j3_standoff') if jnt == 'j3' else ''
-
-    def so_val(jnt):
-        return val('j3_standoff') if jnt == 'j3' else 0.0
+    # SO()/so_val() USED TO LIVE HERE and are gone with the cuts that read
+    # them: they offset a station by fa_j3_standoff for the J3 lobe, and the
+    # only phase that ever asked was the servo window, which left this file
+    # with J3's pad. J4 sits on its own plate and needs no offset.
 
     def block_hi(jnt, hi):
         """How far along +Y the servo block reaches.
@@ -596,8 +703,49 @@ def run(_context: str):
         'the J4 sweep (%.1f) and the J3 sweep (%.1f) leave only %.1f mm of web on the '
         'centreline at L2 = %.1f' % (wval('sweep_r') * 10, val('elbow_clear') * 10,
                                      web_axis * 10, L2 * 10))
-    assert val('pilot_depth') <= val('j4_lobe_t') + val('lobe_over'), (
-        'the servo pilot holes break through the lobe into the flange counterbore')
+    # THE PILOTS, AGAINST THE DEPTH THEY ACTUALLY HAVE. This used to read
+    # `pilot_depth <= j4_lobe_t + lobe_over` - 3.50 against 6.90 - which is
+    # the whole lobe INCLUDING the 1.00 it spends buried inside the plate,
+    # so it could never fire for any pilot that would fit in the part at
+    # all. What binds is the material between the recess floor and
+    # fa_plate_out, and behind fa_plate_out is the J4 flange counterbore.
+    _pilot_have = (val('j4_lobe_t') - val('tab_thk')) * 10
+    assert val('pilot_depth') * 10 <= _pilot_have + EPS_MM, (
+        'the servo pilots start at the flange recess floor and have %.2f mm '
+        'of lobe before fa_plate_out, but fa_pilot_depth is %.2f - they break '
+        'through into the J4 flange counterbore (r %.2f, and the outer pilot '
+        'is well inside it)'
+        % (_pilot_have, val('pilot_depth') * 10, val('cbore_d') * 10 / 2))
+
+    # THE FLANGE RECESS, CHECKED BEFORE IT IS CUT. Three walls, and the
+    # third one is the one that is easy to miss: the lobe's own corner
+    # fillet reaches in from both faces at once, so the diagonal is thinner
+    # than either flat. fa_lobe_radius_j4 is derived to make it exactly
+    # fa_wall; this is that derivation stated from the other end, so the
+    # two cannot quietly disagree.
+    _end_wall = (val('lobe_pad') + val('tab_pitch') / 2 - val('recess_l') / 2) * 10
+    assert _end_wall >= val('wall') * 10 - EPS_MM, (
+        'the flange recess reaches %.2f from the case mid and the lobe ends '
+        'at %.2f - %.2f mm of end wall against a %.2f minimum. It breaks out '
+        'of both ends of the lobe: grow fa_lobe_pad, it is derived from '
+        'exactly this'
+        % (val('recess_l') * 10 / 2,
+           (val('lobe_pad') + val('tab_pitch') / 2) * 10,
+           _end_wall, val('wall') * 10))
+    _side_wall = (val('lobe_z') - val('win_z') / 2) * 10
+    assert _side_wall >= val('wall') * 10 - EPS_MM, (
+        'the case window and flange recess are %.2f tall in a lobe %.2f tall '
+        '- %.2f mm of side wall against a %.2f minimum'
+        % (val('win_z') * 10, val('lobe_z') * 2 * 10, _side_wall, val('wall') * 10))
+    _rad = val('lobe_radius_j4')
+    _corner = (_rad - math.hypot(
+        max(val('recess_l') / 2 - (val('lobe_pad') + val('tab_pitch') / 2 - _rad), 0.0),
+        max(val('win_z') / 2 - (val('lobe_z') - _rad), 0.0))) * 10
+    assert _corner >= val('wall') * 10 - EPS_MM, (
+        'the r %.2f corner fillet on the J4 lobe passes %.2f mm from the '
+        'flange recess against a %.2f minimum - the two flats are fine and '
+        'the DIAGONAL is not, which is what fa_lobe_radius_j4 exists to stop'
+        % (_rad * 10, _corner, val('wall') * 10))
     assert wval('reach') > val('gap'), 'the hub hex does not reach across the running gap'
     # The cable leaves the END face, so it steals LENGTH, not width. The
     # superseded form of this assert charged it against case_w and passed
@@ -663,19 +811,19 @@ def run(_context: str):
           '           end, in free air outboard of the plate where nothing sweeps.\n'
           '           That is the honest cost of bolting through the same face the\n'
           '           servo clamps.')
-    assert val('cap_screw_y') + _head_r + val('wall') <= val('cap_reach') + 1e-9, (
+    assert val('cap_screw_y') + _head_r + val('wall') <= val('cap_reach') + EPS, (
         'the cap screw head at y %.2f reaches past the block edge at %.2f'
         % (val('cap_screw_y') * 10, val('cap_reach') * 10))
-    assert val('cap_screw_y') - _head_r - val('wall') >= _win_y1 - 1e-9, (
+    assert val('cap_screw_y') - _head_r - val('wall') >= _win_y1 - EPS, (
         'the cap screw head at y %.2f breaks into the servo window ending at '
         'y %.2f' % (val('cap_screw_y') * 10, _win_y1 * 10))
-    assert val('cap_screw_z') + _head_r + val('wall') <= val('lobe_z') + 1e-9, (
+    assert val('cap_screw_z') + _head_r + val('wall') <= val('lobe_z') + EPS, (
         'the cap screw HEAD at z %.2f leaves under a wall to the edge at %.2f - '
         'the counterbore is what binds here, not the hole'
         % (val('cap_screw_z') * 10, val('lobe_z') * 10))
     for _ys in _scr:
         _d = math.hypot(val('cap_screw_y') - _ys, val('cap_screw_z'))
-        assert _d >= _sep - 1e-9, (
+        assert _d >= _sep - EPS, (
             'the cap screw and the servo tab pilot at y %.2f are %.2f apart '
             'and a flush head plus a wall needs %.2f'
             % (_ys * 10, _d * 10, _sep * 10))
@@ -685,17 +833,17 @@ def run(_context: str):
            val('wall') * 10))
 
     # ---- the geared elbow, checked before any of it is cut ------------------
-    assert val('j3_standoff') >= val('j3_band') - 1e-9, (
+    assert val('j3_standoff') >= val('j3_band') - EPS, (
         'the J3 lobe stands off %.2f but the gear turns through %.2f of that '
         'band - the servo pad would sit in the gear'
         % (val('j3_standoff') * 10, val('j3_band') * 10))
     _pocket_wall = (val('boss_r') - val('brg_pocket_d') / 2) * 10
-    assert _pocket_wall >= val('wall') * 10 - 1e-6, (
+    assert _pocket_wall >= val('wall') * 10 - EPS_MM, (
         'only %.2f mm of boss wall around the %.2f 608ZZ pocket - the boss has '
         'to grow' % (_pocket_wall, val('brg_pocket_d') * 10))
-    assert val('brg_shoulder') * 10 >= 0.4 - 1e-6, (
-        'the 608ZZ pocket leaves only %.2f mm of retaining shoulder'
-        % (val('brg_shoulder') * 10))
+    assert val('brg_shoulder') * 10 >= MIN_SHOULDER_MM - EPS_MM, (
+        'the 608ZZ pocket leaves only %.2f mm of retaining shoulder against a '
+        '%.2f floor' % (val('brg_shoulder') * 10, MIN_SHOULDER_MM))
     assert val('brg_bore') * 10 > B608ZZ.inner_race_od, (
         'the retaining shoulder bores %.2f and the 608 inner race reaches '
         '%.2f - this plate does not turn, so it would rub the INNER race and '
@@ -749,7 +897,11 @@ def run(_context: str):
         if sx > 0:
             x0 = PREFIX + 'plate_out - ' + PREFIX + 'lobe_over'
             # fa_j4_lobe_t, not fa_lobe_t: the block has to reach the tab
-            # bearing face, which the running gap moved 0.40 further out.
+            # PLANE, which the running gap moved 0.40 further out. Phase 4
+            # then takes the outer fa_tab_thk of it back out again as the
+            # flange recess - the block is cut in one piece and opened in
+            # two, because a lobe drawn in two pieces is a lobe with a seam
+            # in it where the fillet has to run.
             dx = PREFIX + 'j4_lobe_t + ' + PREFIX + 'lobe_over'
         else:
             x0 = '-(' + PREFIX + 'plate_out + ' + PREFIX + 'j3_standoff)'
@@ -834,38 +986,77 @@ def run(_context: str):
 
     # ---- phase 4: servo lobes ----------------------------------------------------
     t3 = design.timeline.count
+    # J4 ONLY. J3's window, keyway and pilots left this file with its pad
+    # and live on j3_servo_cap now; what is left of J3 here is the standoff
+    # web, which phase 3b already carved. The loop still runs over LOBES so
+    # that the stations keep coming from the one data table above rather
+    # than from a second copy of the same arithmetic.
     for sx, y_p, run, jnt in LOBES:
         if jnt == 'j3':
             continue          # the window, keyway and pilots are on the cap
+        assert sx > 0, 'the only lobe this phase still cuts is J4, on +X'
         c0, c1, screws, _, _ = lobe_geometry(y_p, run)
-        if sx > 0:
-            # THE WINDOW STARTS AT THE PLATE FACE AND RUNS THE WHOLE LOBE.
-            # The servo is pushed through it from inside until its tabs land
-            # on the far face, so the running gap cannot be left as solid
-            # material at the inboard end - that 0.40 skin would sit over the
-            # case top, and neither the servo nor the hub could get past it.
-            win0 = PREFIX + 'plate_out' + SO(jnt)
-            wind = PREFIX + 'j4_lobe_t'
-            pil0 = (PREFIX + 'plate_out' + SO(jnt) + ' + ' + PREFIX + 'j4_lobe_t - '
-                    + PREFIX + 'pilot_depth')
-        else:
-            win0 = '-(' + PREFIX + 'plate_out' + SO(jnt) + ' + ' + PREFIX + 'lobe_t)'
-            wind = PREFIX + 'lobe_t'
-            pil0 = '-(' + PREFIX + 'plate_out' + SO(jnt) + ' + ' + PREFIX + 'lobe_t)'
+        # TWO CUTS, NOT ONE, AND AN MG90S IS WHY.
+        #
+        # An MG90S is not a box. fa_tab_below_top down from its case top the
+        # case grows a fa_tab_thk FLANGE, fa_tab_span long - 4.15 mm past the
+        # case WINDOW at each end, 4.65 past the case itself. Cut one window
+        # sized for the case and that flange lands on solid lobe, which is
+        # the last fa_tab_thk of the travel it has to pass through and the
+        # only material the tab screws have. GATE servo_fit MEASURED
+        # it: 195.75 mm3 of MG90S inside this part, in the band
+        # x 23.40..24.90, which is the flange band and nothing else. The two
+        # rejected alternatives - standing the whole lobe off outboard of the
+        # tab plane (+5.50 mm of arm width at the wrist), and simply widening
+        # the one window to the flange (nothing left for the tabs to bear on
+        # and no material for the pilots) - are priced in
+        # specs/robotarm/_flange.md.
+        #
+        # THE WINDOW STILL STARTS AT THE PLATE FACE, for the reason it always
+        # did: the servo travels the whole depth on the way in, so the
+        # fa_j4_standoff running gap cannot be left as a skin over the case
+        # top. It just stops fa_tab_thk short of the outer face now, and the
+        # recess takes it from there.
+        #
+        # WHAT BEARS ON WHAT, AFTERWARDS. The tab TOP beds on the recess
+        # floor; the screw heads land on the tab underside, flush with the
+        # lobe's outer face. The tab PLANE does not move - it is still
+        # fa_plate_out + fa_j4_lobe_t, and it is still the servo's datum and
+        # _check_leads MOUNTS' shaft station. What changed is that it was
+        # never a bearing face and no longer pretends to be one.
+        win0 = PREFIX + 'plate_out'
+        wind = PREFIX + 'j4_lobe_t - ' + PREFIX + 'tab_thk'
+        rec0 = (PREFIX + 'plate_out + ' + PREFIX + 'j4_lobe_t - '
+                + PREFIX + 'tab_thk')
+        # AND THE PILOTS START AT THE RECESS FLOOR, not at the outer face:
+        # that is where the screw now finds material, and drilling from the
+        # old station would put the hole fa_tab_thk deeper into the part.
+        pil0 = rec0 + ' - ' + PREFIX + 'pilot_depth'
         yz_rect('window_' + jnt,
                 c0 - val('srv_clear') / 2, c1 + val('srv_clear') / 2,
-                -(val('case_w') + val('srv_clear')) / 2,
-                (val('case_w') + val('srv_clear')) / 2,
+                -val('win_z') / 2, val('win_z') / 2,
                 win0, wind, CUT)
+        yz_rect('flange_recess_' + jnt,
+                (c0 + c1) / 2 - val('recess_l') / 2,
+                (c0 + c1) / 2 + val('recess_l') / 2,
+                -val('win_z') / 2, val('win_z') / 2,
+                rec0, PREFIX + 'tab_thk', CUT)
         # LEAD KEYWAY: ONE notch, centred across the width, cut into the END
         # wall at the shaft end and running OUTWARD to daylight. Being centred
         # it is symmetric under the J3/J4 mirror, so one notch serves both
         # lobes and the servo may arrive either way up - which is what the
         # two-wall version was reaching for and got wrong.
+        #
+        # IT IS CUT THROUGH THE WHOLE LOBE, both bands. The bundle leaves the
+        # case's short END face and the case fills the recess band as well as
+        # the window band, so a keyway that stopped at the recess floor would
+        # walk the cable straight into 1.60 mm of recess end wall - the blind
+        # pocket this notch exists to prevent, one station further out.
         near_y = y_p - run * val('shaft_end')
         k_d, k_l = val('lead_key_d'), val('lead_key_l')
         ka, kb = sorted((near_y, near_y - run * k_l))
-        yz_rect('lead_key_' + jnt, ka, kb, -k_d / 2, k_d / 2, win0, wind, CUT)
+        yz_rect('lead_key_' + jnt, ka, kb, -k_d / 2, k_d / 2,
+                PREFIX + 'plate_out', PREFIX + 'j4_lobe_t', CUT)
         for i, ys in enumerate(screws):
             yz_circle('pilot_%s_%d' % (jnt, i), ys, 0.0, val('pilot_d'),
                       pil0, PREFIX + 'pilot_depth', CUT)
@@ -892,7 +1083,14 @@ def run(_context: str):
         if jnt == 'j3':
             rad_expr, rad = PREFIX + 'lobe_radius_j3', val('lobe_radius_j3')
         else:
-            rad_expr, rad = STYLE + 'radius', sval('radius')
+            # J4 IS NOT sty_radius EITHER ANY MORE, AND THE FLANGE RECESS
+            # TOOK IT. A 6.0 round-over reaches 6.0 in from both faces of the
+            # corner it rounds, and the recess corner sits one fa_wall inside
+            # the end face and 2.10 inside the top: 6.0 passed 0.28 mm from
+            # the pocket. fa_lobe_radius_j4 is the largest radius that leaves
+            # that diagonal as thick as the flat end wall, and the sanity
+            # block asserts it.
+            rad_expr, rad = PREFIX + 'lobe_radius_j4', val('lobe_radius_j4')
         col = adsk.core.ObjectCollection.create()
         skipped, buried = 0, 0
         for y_c in (lo, hi):
@@ -1027,13 +1225,14 @@ def run(_context: str):
                   screws[0] * 10, screws[1] * 10, lo * 10, hi * 10))
     print('box beam: 2 walls %.1f thick + rails %.1f top and bottom, duct %.1f x %.1f'
           % (val('waist_t') * 10, val('rail_z') * 10,
-             val('plate_in') * 20, val('duct_z') * 20))
+             val('plate_in') * 2 * 10, val('duct_z') * 2 * 10))
     print('POLYGONAL: %.2f mm facet (LOCAL, probed ceiling on BOTH faces) on %d '
           'plate-outline edges (1 boss circle + silhouette, split on -X by the '
           'J3 standoff)' % (val('facet') * 10, n_face))
     print('lobe corners: %s' % ' | '.join(fillet_note))
     _y0 = Y_PIN + val('j3_pin_clear')
-    _hi = max(lobe_geometry(Y_PIN, +1)[4], lobe_geometry(Y_PIN, +1)[3])
+    _, _, _, _lo_j3, _hi_j3 = lobe_geometry(Y_PIN, +1)
+    _hi = max(_hi_j3, _lo_j3)
     print('')
     print('GEARED ELBOW: J3 servo moved %.2f mm toward the wrist (y %.2f) and '
           '%.2f mm out' % (val('j3_centre') * 10, Y_PIN * 10,
@@ -1070,9 +1269,37 @@ def run(_context: str):
           % (val('j4_lobe_t') * 10, val('lobe_t') * 10,
              val('j4_standoff') * 10, val('lobe_t') * 10,
              val('j4_standoff') * 10, val('j4_standoff') * 10))
-    print('   J3 UNCHANGED: fa_cap_t %.2f and fa_j3_standoff %.2f both still '
-          'read fa_lobe_t, so j3_servo_cap and the pinion plane did not move'
-          % (val('cap_t') * 10, val('j3_standoff') * 10))
+    print('   THE FLANGE NEVER FITTED THE ONE-STEP WINDOW: tab plate %.2f '
+          'long against a %.2f window, overhanging %.2f at EACH end onto solid '
+          'lobe - GATE servo_fit MEASURED 195.75 mm3 of MG90S in that band'
+          % (val('tab_span') * 10, (val('case_l') + val('srv_clear')) * 10,
+             (val('tab_span') - val('case_l') - val('srv_clear')) * 10 / 2))
+    print('   SO THE LOBE IS CUT TWICE: case window %.2f x %.2f deep %.2f, '
+          'then a flange recess %.2f x %.2f deep %.2f to the tab plane at %.2f'
+          % ((val('case_l') + val('srv_clear')) * 10, val('win_z') * 10,
+             (val('j4_lobe_t') - val('tab_thk')) * 10, val('recess_l') * 10,
+             val('win_z') * 10, val('tab_thk') * 10,
+             (val('plate_out') + val('j4_lobe_t')) * 10))
+    print('   walls left: end %.2f, side %.2f, fillet corner %.2f, all against '
+          'MIN_WALL %.2f - fa_lobe_pad %.2f and fa_lobe_radius_j4 %.2f are '
+          'DERIVED from those three floors, not chosen'
+          % (_end_wall, _side_wall, _corner, val('wall') * 10,
+             val('lobe_pad') * 10, val('lobe_radius_j4') * 10))
+    print('   pilots %.1f x %.2f deep FROM THE RECESS FLOOR, leaving %.2f to '
+          'fa_plate_out and the J4 flange counterbore behind it'
+          % (val('pilot_d') * 10, val('pilot_depth') * 10,
+             _pilot_have - val('pilot_depth') * 10))
+    print('   J3 STACK UNCHANGED: fa_cap_t %.2f and fa_j3_standoff %.2f both '
+          'still read fa_lobe_t, so the cap thickness and the pinion plane did '
+          'not move' % (val('cap_t') * 10, val('j3_standoff') * 10))
+    print('   BUT J3 IS NOT DONE. No recess is cut in the J3 lobe here and '
+          'none is wanted: that lobe carries no servo any more, only the '
+          'standoff web. The J3 SERVO sits on j3_servo_cap, which cuts its '
+          'window through the full fa_cap_t at a tighter clearance still, so '
+          'it has this same flange landing on solid pad - and it is not this '
+          'file. What it gets from here is the pad: it reads fa_lobe_pad, now '
+          '%.2f, which is exactly the room a %.2f recess needs.'
+          % (val('lobe_pad') * 10, val('recess_l') * 10))
     print('')
     print('WEB ON THE CENTRELINE: %.1f mm between the two swings '
           '(J4 takes %.1f, J3 takes %.1f)' % (

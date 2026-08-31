@@ -90,6 +90,46 @@ both patterns. A self-tapper in a slot grips two flanks instead of a full
 circle - call it half the pull-out of a round pilot, which against 9.4 kg cm
 of stall through four screws is still not close.
 
+THE FLANGE GETS ITS OWN RECESS, AND THAT IS THE 2026-08-31 REPAIR. GATE
+servo_fit - models/robotarm/_check_servo_fit.py, results in
+specs/robotarm/_servo_fit.json - builds the MG995 SOLID from lib/servo.py,
+puts it where _check_leads.MOUNTS says it goes and asks pointContainment.
+That is the one check in this project that is not a restatement: every assert
+in this file compares the pocket with the table the pocket was cut from, so
+none of them could ever have found this. It MEASURED 243.0 mm3 of servo inside
+this bracket, at host x 28.30, y -8.60..9.40, z -35.95..15.05. Nobody guessed
+it and nobody could have argued it away.
+
+WHAT IT IS. The MG995's mounting FLANGE is tab_span 54.0 long against a
+case_l 40.9 case - 6.55 mm of tab plate overhanging the case at EACH end -
+and it is exactly case_w wide, so the overhang is along the case only. This
+pad cut ONE window, sized for the CASE. Read the stack outward: the pad spans
+plate_out 19.90 (the case top) to the tab plane at 29.60, and lobe_t is
+tab_below_top + tab_thk, so the last tab_thk of it - host x 27.10..29.60 - is
+precisely where the flange has to be. The measured band is one sample plane
+inside it, the measured y span is case_w and the measured z span is tab_span.
+The signature is the flange and nothing else.
+
+SO THE PAD IS CUT IN TWO STEPS. A case window, case_l x case_w, through the
+whole pad; then a flange recess, only tab_thk deep from the pad's outer face,
+tab_span x case_w. specs/robotarm/_flange.md worked the identical fault out
+at J4 first and priced both fixes - this is its Fix A, at J2.
+
+AND THE DATUM INVERTS, WHICH IS THE HONEST COST. lib/servo.py says "THE DATUM
+IS THE TAB PLANE, NOT THE CASE - the underside of the tabs, the face a bracket
+clamps." This bracket cannot clamp that face and never could: the tab
+underside is the face at host x 29.60 and the tab BODY runs INBOARD from it,
+into the pad. What the pad clamps now is the tab TOP, on the recess floor at
+x 27.10, with the screw head landing on the tab underside flush with the pad's
+outer face. The tab is squeezed between head and floor, which is a sound
+joint - but it is the other face, and lib/servo.py's sentence needs a second
+case. That file is not edited from here.
+
+_check_leads.MOUNTS IS RIGHT AND IS NOT TOUCHED. shaft=(29.6, 0, 0) with
+za=('x', -1) is what puts the tab plane on this pad's outer face, and it
+agrees with plate_out + lobe_t to the last decimal. The servo does not move;
+only the material in front of its flange does.
+
 Print orientation: -X face down, built along +X. Both journal bores come out
 vertical and round; they are the only precision fits in the FORK. The disc
 then stands on edge, which is wrong for a race face and for the Ø68 journal -
@@ -134,6 +174,8 @@ MATERIAL_NAME = 'PET Plastic'
 from lib.palette import hints_for  # noqa: E402
 from lib.servo import SERVO_CASE_CLEARANCE_MM  # noqa: E402
 from lib.servo import CATALOG as _SERVOS  # noqa: E402
+from lib.servo import MG995_TAB_HOLE_PITCH_Y as _MG995_PITCH_Y  # noqa: E402
+from lib.servo import MG995_TAB_SLOT_X_MM as _MG995_SLOT_X  # noqa: E402
 from lib.servo import spline_z as _spline_z  # noqa: E402
 from lib.design_rules import FASTENER_MM as _FASTENER  # noqa: E402
 from lib.design_rules import JOINT_FIT_MM as _FIT  # noqa: E402
@@ -147,6 +189,7 @@ import lib.gears  # noqa: F401,E402
 from lib.servo_hub import spline_hub  # noqa: E402
 
 _SG90 = _SERVOS['SG90']
+_MG995 = _SERVOS['MG995']
 
 # --- THE J1 DRIVE CONTRACT: THE HORN IS OUT OF THE LOAD PATH --------------
 # Jonathan, 2026-08-31: "we should not [mount] at the horns but rather add
@@ -495,7 +538,19 @@ def run(_context: str):
     param('case_l', '40.9 mm', 'MG995 case length - runs DOWN along Z, see the\n           docstring. 40.0 -> 40.9 on TowerPro B, 2026-08-27 flange audit')
     param('case_w', '20.2 mm', 'MG995 case width - lies along Y. MEASURED\n           2026-08-28 (was the datasheet 20.0). The gauge bed cut at\n           20.0 + 0.2 loc was line-to-line on the real case - not a fit.')
     param('shaft_end', '10.0 mm', 'shaft axis to the near end of the case, along Z')
-    param('tab_thk', '2.5 mm', 'MG995 tab thickness - the pad is this proud, it is the datum')
+    param('tab_thk', '2.5 mm',
+          'MG995 tab thickness, and now also the FLANGE RECESS DEPTH. This read\n'
+          '           "the pad is this proud, it is the datum" until 2026-08-31, and\n'
+          '           that sentence WAS the fault GATE servo_fit measured: the tab\n'
+          '           plane is the face at plate_out + lobe_t and the tab BODY runs\n'
+          '           inboard of it, so this much material has to be taken AWAY from\n'
+          '           the pad face, not left standing proud of it.')
+    param('tab_span', '%.2f mm' % _MG995.tab_span,
+          'MG995 flange tip to tip, running DOWN along Z with the case. DATASHEET,\n'
+          '           read out of lib/servo.py rather than typed here - it is what the\n'
+          '           flange recess is cut from. It is tab_span - case_l = 13.1 mm\n'
+          '           longer than the case, and every one of those 13.1 mm was landing\n'
+          '           on solid pad until the recess below existed.')
     param('tab_below_top', '7.2 mm', 'case top to the tab TOP, along X - DERIVED from\n           TowerPro F 26.8: case_h - F - tab_thk. Was 7.5')
     param('tab_pitch', '47.8 mm',
           'tab hole pitch along the case, drawing B. Drawing A implies 49.5 - hence\n'
@@ -504,17 +559,63 @@ def run(_context: str):
     param('slot_len', '5.6 mm', 'MG995_TAB_SLOT_X_MM - covers every candidate pitch\n           (derived 47.5, drawing B 47.8, clones 49.5)')
     param('slot_w', '2.5 mm', 'M3 self-tapper into PETG')
     param('slot_depth', '5.0 mm',
-          'blind. Must stay inside the pad or the screws break through into the\n'
-          '           straddle - asserted below.')
+          'blind, and MEASURED FROM THE RECESS FLOOR since 2026-08-31, not from\n'
+          '           the pad face - the tabs now sit tab_thk down in the recess, so a\n'
+          '           pilot started at the face would be a stepped hole with a roof on\n'
+          '           it. The self-tap engagement is unchanged at the full 5.0 and so\n'
+          '           is the screw length (tab_thk through the tab + this), because the\n'
+          '           pilot moved inboard by exactly as much as the bearing face did.\n'
+          '           What it must not do is break out of the pad floor into the fork\n'
+          '           plate and the straddle: the material under the flange IS\n'
+          '           tab_below_top, so the ceiling is tab_below_top - wall = 5.60.\n'
+          '           Asserted below, against the floor and not against lobe_t.')
     param('horn_standoff', '0.0 mm',
           'RETIRED 2026-08-28, kept as a named zero so the history is legible.\n           It was 2.0 to stand the MG995 case off plate_out, because a horn\n           hub modelled at O13.8 could not pass behind the 16.0 af hex. The\n           bench says the hub is O8.7 - the obstruction never existed, and\n           the shoulder gets its 2 mm of width back. If a future horn really\n           is fat, raise this rather than thinning the hex.')
     param('lobe_t', PREFIX + 'tab_below_top + ' + PREFIX + 'tab_thk + '
           + PREFIX + 'horn_standoff',
           'derived: tab stack + horn_standoff, so the case top stands exactly\n'
-          '           horn_standoff off plate_out and the tabs bear on the pad face')
+          '           horn_standoff off plate_out and the pad ends ON the tab plane.\n'
+          '           It used to finish "and the tabs bear on the pad face". They do\n'
+          '           not and they cannot: the tab plane is this face, and the tab\n'
+          '           BODY runs tab_thk INBOARD of it, through pad material. That is\n'
+          '           the 243.0 mm3 GATE servo_fit measured. The last tab_thk of\n'
+          '           lobe_t is now taken back out as sb_flange_l x sb_flange_w, and\n'
+          '           what bears on the recess floor is the tab TOP.')
     param('lobe_over', '1.0 mm', 'how far the pad sinks into the leg so the two merge')
-    param('lobe_y', PREFIX + 'case_w / 2 + ' + PREFIX + 'wall', 'derived pad half width')
-    param('lobe_pad', '3.0 mm', 'material past the end of the outermost tab slot')
+    param('flange_l', PREFIX + 'tab_span + ' + PREFIX + 'srv_clear',
+          'derived flange recess length along Z: the tab plate plus the same\n'
+          '           window clearance the case gets. NOT A FIT and not a locator -\n'
+          '           the tab SLOTS locate this servo (lib/servo.py: the datum is the\n'
+          '           tab plane, and the holes in it), so this pocket only has to let\n'
+          '           the flange down onto its floor.')
+    param('flange_w', PREFIX + 'case_w + ' + PREFIX + 'srv_clear',
+          'derived flange recess width across Y. The MG995 flange is exactly\n'
+          '           case_w wide - it overhangs the case along the case only - so\n'
+          '           this comes out equal to the case window width by the SHAPE OF\n'
+          '           THIS SERVO, not by construction. A servo whose flange were\n'
+          '           wider than its case would move this and not the window, which\n'
+          '           is why it is its own parameter and not a reuse.')
+    param('lobe_y', PREFIX + 'flange_w / 2 + ' + PREFIX + 'wall',
+          'derived pad half width. Was case_w / 2 + wall, which left 1.10 mm of\n'
+          '           flank beside a window cut at case_w + srv_clear - under MIN_WALL\n'
+          '           1.60, and under it since before srv_clear went from the 0.20\n'
+          '           locational fit to lib/servo.py\'s 1.00. Derived from the WINDOW\n'
+          '           now, so the flank is MIN_WALL by construction whatever the\n'
+          '           clearance does next. Costs 0.50 mm per side; the pad still\n'
+          '           reaches only r 32.02 against the r 34.0 journal boss it stands\n'
+          '           on - asserted, as it already was.')
+    param('lobe_pad', '4.0 mm',
+          'material past the end of the outermost tab slot. Was 3.0, and its\n'
+          '           FLOOR IS DERIVED rather than chosen: the flange recess ends\n'
+          '           flange_l / 2 = 27.50 from the case mid, and sty_radius rounds\n'
+          '           the pad\'s top corner away, so the wall left at the RECESS\n'
+          '           CORNER is what that fillet leaves and not lobe_hi - recess_hi.\n'
+          '           2.72 is where the recess stops breaking daylight through the\n'
+          '           fillet; 3.34 keeps sty_ef of skin on it. 4.0 is the round number\n'
+          '           above that, and the margin is deliberate because tab_pitch is\n'
+          '           DISPUTED (47.5 / 47.8 / 49.5) and lobe_hi is measured off it -\n'
+          '           the corner stays clear across the whole disputed range. Both the\n'
+          '           end walls and the corner skin are asserted below.')
 
     # ---- the upper arm, for the down-pitch scan ONLY -------------------------
     param('arm_l1', '125.0 mm',
@@ -689,11 +790,93 @@ def run(_context: str):
     leg_r = math.hypot(val('plate_out'), col_y)
     pad_r = math.hypot(val('plate_out') + lobe_t, val('lobe_y'))
 
+    # THE FLANGE RECESS, in the same frame as everything else. The tab plate is
+    # centred on the case (tab_overhang is equal at both ends), so the recess is
+    # centred on case_mid exactly as the window is - it is only LONGER, and only
+    # tab_thk deep instead of the whole lobe_t.
+    recess_lo = case_mid - val('flange_l') / 2.0
+    recess_hi = case_mid + val('flange_l') / 2.0
+    recess_x0 = val('plate_out') + lobe_t - val('tab_thk')   # the recess FLOOR
+    pilot_floor = recess_x0 - val('slot_depth')              # deepest the pilots go
+    slot_lo = min(screw_z) - val('slot_len') / 2.0
+    slot_hi = max(screw_z) + val('slot_len') / 2.0
+    slot_y = val('tab_pitch_y') / 2.0 + val('slot_w') / 2.0
+    # THE END WALL AT THE RECESS CORNER IS NOT lobe_hi - recess_hi. sty_radius
+    # rounds the pad's top corner off along X, so near |y| = flange_w / 2 the
+    # material above the recess is whatever the fillet leaves. Measured as the
+    # skin between the recess's own corner and that fillet cylinder, whose axis
+    # runs along X at (lobe_y - r, lobe_hi - r). The low end has no fillet.
+    fil_r = ups.itemByName(STYLE + 'radius').value
+    corner_skin = fil_r - math.hypot(val('flange_w') / 2 - (val('lobe_y') - fil_r),
+                                     recess_hi - (lobe_hi - fil_r))
+
     # ---- sanity, before any geometry ----------------------------------------
+    # THE MG995 TABLE IS TYPED HERE AND OWNED IN lib/servo.py, and this file
+    # already knows what that costs - see the ua_l1 block above, "a comment
+    # saying MUST TRACK is not a mechanism". GATE servo_fit found 243 mm3 of
+    # flange in this pad because a servo dimension the pad needed (tab_span)
+    # was not in this table at all; the least this file can do is prove the
+    # ones that ARE in it still say what lib/servo.py says.
+    for _pn, _lib_mm in (('case_l', _MG995.case_l), ('case_w', _MG995.case_w),
+                         ('shaft_end', _MG995.shaft_from_end),
+                         ('tab_thk', _MG995.tab_thk),
+                         ('tab_below_top', _MG995.tab_below_top),
+                         ('tab_span', _MG995.tab_span),
+                         ('tab_pitch', _MG995.tab_hole_pitch),
+                         ('tab_pitch_y', _MG995_PITCH_Y),
+                         ('slot_len', _MG995_SLOT_X)):
+        assert abs(val(_pn) * 10 - _lib_mm) < TOL, (
+            'sb_%s is %.3f mm and lib/servo.py MG995 says %.3f - this pad is '
+            'cut from a servo that is not in the catalogue any more'
+            % (_pn, val(_pn) * 10, _lib_mm))
     assert wval('reach') > val('gap'), 'the hub hex does not reach across the running gap'
-    assert val('slot_depth') <= lobe_t + 1e-9, (
-        'the %.1f mm tab pilots break through a %.1f mm pad into the straddle'
-        % (val('slot_depth') * 10, lobe_t * 10))
+    # THE TAB PILOTS START AT THE RECESS FLOOR, so what they must not break
+    # through is the material UNDER the flange - which is tab_below_top, and
+    # that is not a coincidence: tab_below_top is by definition the case top to
+    # the tab top, and the recess floor IS the tab top. The old form of this
+    # assert measured against lobe_t, which included the tab_thk the recess has
+    # since taken away, so it would have passed a pilot 2.50 mm too deep.
+    assert pilot_floor >= val('plate_out') + val('wall') - TOL, (
+        'the %.1f mm tab pilots start at the recess floor x %.2f and bottom at '
+        '%.2f, leaving %.2f mm of pad floor above plate_out %.2f against a '
+        '%.2f wall - they break through into the fork plate and the straddle. '
+        'sb_slot_depth must be under %.2f (= tab_below_top - wall).'
+        % (val('slot_depth') * 10, recess_x0 * 10, pilot_floor * 10,
+           (pilot_floor - val('plate_out')) * 10, val('plate_out') * 10,
+           val('wall') * 10, (val('tab_below_top') - val('wall')) * 10))
+    # --- the recess must not open the pad's ends, at either end or the corner ---
+    assert recess_lo - lobe_lo >= val('wall') - TOL, (
+        'the flange recess ends z %.2f and the pad ends z %.2f - %.2f mm of end '
+        'wall against MIN_WALL %.2f. Raise sb_lobe_pad.'
+        % (recess_lo * 10, lobe_lo * 10, (recess_lo - lobe_lo) * 10, val('wall') * 10))
+    assert lobe_hi - recess_hi >= val('wall') - TOL, (
+        'the flange recess ends z %.2f and the pad ends z %.2f - %.2f mm of end '
+        'wall against MIN_WALL %.2f. Raise sb_lobe_pad.'
+        % (recess_hi * 10, lobe_hi * 10, (lobe_hi - recess_hi) * 10, val('wall') * 10))
+    assert corner_skin >= ups.itemByName(STYLE + 'ef').value - TOL, (
+        'the r %.1f pad fillet leaves only %.2f mm of skin over the flange '
+        'recess corner - the recess breaks daylight through the rounded corner '
+        'even though the flat end wall reads %.2f. Raise sb_lobe_pad.'
+        % (fil_r * 10, corner_skin * 10, (lobe_hi - recess_hi) * 10))
+    # --- and it must not invalidate the SLOTS, which exist because the pitch
+    # --- is disputed. Every candidate pitch (47.5 derived, 47.8 drawing B,
+    # --- 49.5 clones) puts its screw inside a slot cut at sb_tab_pitch, and
+    # --- every one of those slots has to open ENTIRELY onto the recess floor.
+    # --- A slot mouth half on the floor and half on the pad face is a buried
+    # --- void with a tab_thk roof, which is worse than the clash it replaced.
+    assert slot_lo >= recess_lo + TOL and slot_hi <= recess_hi - TOL, (
+        'the tab slots span z %.2f..%.2f and the flange recess only %.2f..%.2f '
+        '- a slot mouth would start partly on the pad face and partly on the '
+        'recess floor. sb_tab_pitch has moved without sb_tab_span moving with '
+        'it.' % (slot_lo * 10, slot_hi * 10, recess_lo * 10, recess_hi * 10))
+    assert slot_y <= val('flange_w') / 2 - TOL, (
+        'the tab slots reach |y| %.2f and the flange recess is only %.2f half '
+        'wide' % (slot_y * 10, val('flange_w') / 2 * 10))
+    # --- the flank beside the window and the recess, which is the same flank ---
+    assert val('lobe_y') - val('flange_w') / 2 >= val('wall') - TOL, (
+        'only %.2f mm of pad flank beside a %.2f wide window against MIN_WALL '
+        '%.2f' % ((val('lobe_y') - val('flange_w') / 2) * 10,
+                  val('flange_w') * 10, val('wall') * 10))
     assert val('lobe_y') <= col_y + 1e-9, (
         'the servo pad (%.1f half) is wider than the leg it hangs on (%.1f half)'
         % (val('lobe_y') * 10, col_y * 10))
@@ -860,6 +1043,35 @@ def run(_context: str):
             (val('case_w') + val('srv_clear')) / 2,
             case_lo - val('srv_clear') / 2, case_hi + val('srv_clear') / 2,
             PREFIX + 'plate_out', PREFIX + 'lobe_t', CUT)
+    # THE FLANGE RECESS. The window above is sized for the CASE and goes
+    # through the whole pad; this one is sized for the FLANGE and is only
+    # tab_thk deep, cut back from the tab plane. Between them they are
+    # the two halves of lobe_t: tab_below_top of case, then tab_thk of tab
+    # plate that is 13.1 mm longer than the case and was landing on solid pad.
+    # GATE servo_fit MEASURED that - 243.0 mm3 at x 28.30, inside the flange
+    # band 27.10..29.60, y matching case_w and z matching tab_span. It is not
+    # an inference from this file's own numbers; nothing built from those could
+    # have found it, which is the entire argument for that gate existing.
+    _vol_before_flange = comp.bRepBodies.item(0).volume
+    yz_rect('flange_recess',
+            -val('flange_w') / 2, val('flange_w') / 2,
+            recess_lo, recess_hi,
+            PREFIX + 'plate_out + ' + PREFIX + 'lobe_t - ' + PREFIX + 'tab_thk',
+            PREFIX + 'tab_thk', CUT)
+    # PLAYBOOK: when a CUT changes nothing, the cut is in the wrong place. The
+    # window has already taken the middle of this footprint through the whole
+    # pad, so what is left to remove is the two ears - (flange_l - case_l -
+    # srv_clear) x flange_w x tab_thk, about 694 mm3. Half of that is the
+    # tripwire; it is a scale check, not a dimension.
+    _flange_drop = (_vol_before_flange - comp.bRepBodies.item(0).volume) * 1000
+    _flange_floor = ((val('flange_l') - val('case_l') - val('srv_clear'))
+                     * val('flange_w') * val('tab_thk')) * 1000 / 2
+    assert _flange_drop > _flange_floor, (
+        'the flange recess removed %.1f mm3 against a %.1f floor - wrong place '
+        'or wrong scale. It should be taking the two %.2f mm ears the tab plate '
+        'overhangs the case window by.'
+        % (_flange_drop, _flange_floor,
+           (val('flange_l') - val('case_l') - val('srv_clear')) / 2 * 10))
     for i, z_s in enumerate(screw_z):
         for j, y_s in enumerate((-val('tab_pitch_y') / 2, val('tab_pitch_y') / 2)):
             xy = sketch(comp.yZConstructionPlane, 'sk_tab_slot_%d%d' % (i, j))
@@ -872,8 +1084,12 @@ def run(_context: str):
                                   mpt(xy, 0, y_s - r_s, lo_z))
             lines.addByTwoPoints(mpt(xy, 0, y_s + r_s, hi_z), mpt(xy, 0, y_s + r_s, lo_z))
             lines.addByTwoPoints(mpt(xy, 0, y_s - r_s, hi_z), mpt(xy, 0, y_s - r_s, lo_z))
+            # FROM THE RECESS FLOOR, not from the pad face. The tab sits
+            # tab_thk down in the recess now, so a pilot started at the face
+            # would be a stepped hole with a roof over its bottom half.
             extrude(profiles(xy, expected=1), CUT,
-                    PREFIX + 'plate_out + ' + PREFIX + 'lobe_t - ' + PREFIX + 'slot_depth',
+                    PREFIX + 'plate_out + ' + PREFIX + 'lobe_t - '
+                    + PREFIX + 'tab_thk - ' + PREFIX + 'slot_depth',
                     PREFIX + 'slot_depth', 'tab_slot_%d%d' % (i, j))
     group(t2, PH_DRIVE)
 
@@ -1021,6 +1237,30 @@ def run(_context: str):
               case_lo * 10, case_hi * 10, screw_z[0] * 10, screw_z[1] * 10,
               val('slot_len') * 10, val('slot_w') * 10,
               lobe_lo * 10, lobe_hi * 10, lobe_t * 10))
+    print('  FLANGE RECESS %.1f x %.1f x %.2f deep from the pad face (z %.2f..%.2f, '
+          'x %.2f..%.2f): the tab plate is %.1f mm longer than the case and all of '
+          'it used to land on solid pad - GATE servo_fit MEASURED 243.0 mm3 there'
+          % (val('flange_l') * 10, val('flange_w') * 10, val('tab_thk') * 10,
+             recess_lo * 10, recess_hi * 10, recess_x0 * 10,
+             (val('plate_out') + lobe_t) * 10,
+             (val('tab_span') - val('case_l')) * 10))
+    print('    end walls %.2f / %.2f, skin over the corner under the r%.1f pad '
+          'fillet %.2f, flank beside the window %.2f (MIN_WALL %.2f)'
+          % ((recess_lo - lobe_lo) * 10, (lobe_hi - recess_hi) * 10,
+             fil_r * 10, corner_skin * 10,
+             (val('lobe_y') - val('flange_w') / 2) * 10, val('wall') * 10))
+    print('    tab pilots start at the RECESS FLOOR x %.2f, bottom at %.2f, %.2f '
+          'above plate_out - engagement is still the full %.1f and the screw is '
+          'still %.1f long' % (recess_x0 * 10, pilot_floor * 10,
+                               (pilot_floor - val('plate_out')) * 10,
+                               val('slot_depth') * 10,
+                               (val('tab_thk') + val('slot_depth')) * 10))
+    print('    slots z %.2f..%.2f sit %.2f / %.2f inside the recess ends, so every '
+          'disputed pitch (47.5 / 47.8 / 49.5) lands on its floor'
+          % (slot_lo * 10, slot_hi * 10, (slot_lo - recess_lo) * 10,
+             (recess_hi - slot_hi) * 10))
+    print('    the pad clamps the tab TOP on that floor, not the tab underside - '
+          'see the docstring, lib/servo.py\'s datum sentence needs a second case')
     print('J2 DOWN-PITCH LIMIT: %.1f deg before the arm reaches the turntable '
           '(arm %.0f long, %.1f half height, ring r %.1f)' % (
               down_deg, val('arm_l1') * 10, val('arm_half') * 10,
