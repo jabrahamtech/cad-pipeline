@@ -13,15 +13,8 @@
       "tag": "J1 yaw"
     },
     {
-      "case_at": [
-        28.3,
-        28.3,
-        -8.6,
-        9.4,
-        -35.95,
-        15.05
-      ],
-      "case_mm3": 243.0,
+      "case_at": null,
+      "case_mm3": 0.0,
       "control_mm3": 2133.0,
       "horn_at": [
         16.1,
@@ -39,7 +32,7 @@
     {
       "case_at": null,
       "case_mm3": 0.0,
-      "control_mm3": 104.62,
+      "control_mm3": 111.38,
       "horn_at": null,
       "horn_mm3": 0.0,
       "host": "j3_servo_cap",
@@ -47,15 +40,8 @@
       "tag": "J3 elbow"
     },
     {
-      "case_at": [
-        23.4,
-        24.9,
-        -19.95,
-        10.05,
-        -4.7,
-        5.8
-      ],
-      "case_mm3": 195.75,
+      "case_at": null,
+      "case_mm3": 0.0,
       "control_mm3": 351.0,
       "horn_at": null,
       "horn_mm3": 0.0,

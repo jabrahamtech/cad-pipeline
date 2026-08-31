@@ -158,6 +158,51 @@ start - the real parts cut a 0.5 chamfer there for the same reason.
 Engagement is therefore the whole spline, which is what every real hub in
 the arm gets: SG90 2.50, MG90S 4.00, MG995 3.60 mm.
 
+WHY EVERY FEATURE OVERLAPS THE ONE BEFORE IT BY gb_weld
+--------------------------------------------------------
+THE FIRST BUILD CAME BACK WITH 122 BODIES instead of one, and the count is
+worth writing down because it is exactly diagnostic:
+
+     3   the three spine bars and the rail
+    21   station bosses
+    21   station levers
+    14   station necks - the 7 in the first column welded, the other 14 did not
+    63   label glyphs, three per label, none of them touching anything
+   ---
+   122
+
+Two causes, and they are the same mistake in different clothes.
+
+FIRST, participantBodies. Every JOIN was handed `[coupon]` - the ONE body
+captured right after the first spine bar. A Fusion JOIN merges the new lump
+only with the bodies it is GIVEN, and only where it actually intersects one
+of them; anything else quietly becomes a new body. But this coupon is a
+CHAIN - spine, neck, lever, boss - so a boss built first touched nothing
+that existed yet, and a neck in the third column touched spine_2, which was
+never a participant. _gauge_slim.py gets away with `[plate]` everywhere
+because every one of its stations grows straight off the plate. This one
+does not, and copying that pattern without copying its topology is the whole
+bug. Every JOIN now takes ALL current bodies, and every station is built in
+CONTACT ORDER - neck onto the spine, lever onto the neck, boss onto the
+lever - so nothing is ever created in mid-air hoping a later feature reaches
+back for it. The cuts moved to the end for the same reason: a bore cut
+against a body that does not yet own that material removes nothing.
+
+SECOND, A SHARED FACE IS NOT AN INTERSECTION. The neck ended exactly at the
+spine's edge, and the raised text started exactly on the lever's top face.
+Both are zero-volume contact, and a boolean given zero volume to work with
+leaves two bodies. It is worse than cosmetic for the labels: text that only
+touches the face it sits on is text a slicer can lay down as 21 floating
+islands, so the emboss would not have printed either. Every joined feature
+is now driven gb_weld INTO whatever it joins. Nothing visible changes - the
+neck's free span is still gb_neck_l, because the weld is buried inside the
+spine and the lever, and the label still stands exactly MIN_EMBOSS_MM proud
+because it now STARTS below the face instead of on it.
+
+The body count is checked at EVERY phase boundary now rather than once at
+the end, and a failure reports the orphan count and where the first of them
+are. A bare count says something did not join; it does not say what, or when.
+
 Record the result in calibration/ as a dated note, then change ONE line -
 lib/servo.py SPLINE_BROACH_INTERFERENCE_MM - and every broached hub in the
 arm moves with it. The sheet says exactly which line and what it reaches.
@@ -202,7 +247,8 @@ PREFIX = 'gb_'
 PH_SPINE = 'spine'
 PH_STATIONS = 'stations'
 PH_LABELS = 'labels'
-PHASES = [PH_SPINE, PH_STATIONS, PH_LABELS]
+PH_BORES = 'bores'
+PHASES = [PH_SPINE, PH_STATIONS, PH_LABELS, PH_BORES]
 MATERIAL_NAME = 'PET Plastic'
 
 # Fusion's 'PET Plastic' is 1.541 g/cm3 and PETG FILAMENT is ~1.27, so every
@@ -334,6 +380,14 @@ def run(_context: str):
           '           independent rather than merely adjacent.')
     param('col_gap', '4.0 mm', 'air between one servo\'s column and the next')
     param('over', '1.0 mm', 'cut overrun, so a through bore is unambiguously through')
+    param('weld', '0.8 mm',
+          'HOW FAR EVERY JOINED FEATURE IS DRIVEN INTO THE ONE IT JOINS TO.\n'
+          '           A shared face is not an intersection: the first build butted the\n'
+          '           necks against the spine edge and started the raised text exactly\n'
+          '           on the lever face, and Fusion returned 122 separate bodies. It is\n'
+          '           buried material, so it changes no visible dimension - the neck\n'
+          '           free span is still gb_neck_l and the label still stands\n'
+          '           MIN_EMBOSS_MM proud, because it starts BELOW the face.')
 
     wall = val('wall')
     relief_h = val('relief_h')
@@ -348,6 +402,7 @@ def run(_context: str):
     sta_gap = val('sta_gap')
     col_gap = val('col_gap')
     over = val('over')
+    weld = val('weld')
 
     # ---- solve the columns. NOTHING below is typed. -----------------------
     label_len = LABEL_CHARS * TEXT_ADVANCE * text_h
@@ -435,6 +490,13 @@ def run(_context: str):
         'the %.2f neck is not weaker than the %.2f hoop - snapping a station '
         'off would crack the thing being measured' % (neck_w, wall))
     assert relief_h > 0.0 and relief_r > 0.0, 'the bore relief has no size'
+    assert weld > 0.0, (
+        'a zero weld is what produced 122 bodies - a boolean needs volume to '
+        'work with, not a shared face')
+    assert weld < neck_l, (
+        'a %.2f weld eats the whole %.2f neck - there would be no free span '
+        'left to snap' % (weld, neck_l))
+    assert weld < spine_w, 'the weld drives the neck clean through the spine'
 
     for c in cols:
         s = c['servo']
@@ -544,21 +606,52 @@ def run(_context: str):
             g = design.timeline.timelineGroups.add(start, design.timeline.count - 1)
             g.name = name
 
+    def one_body(where):
+        """The coupon is ONE piece, checked at every phase boundary.
+
+        THE FIRST BUILD RETURNED 122 BODIES and a single check at the end
+        could only say that something had not joined - not what, and not
+        when. Called after each phase, this names the phase; and when it
+        does fire it reports the orphan COUNT and where the first few of
+        them sit, because an orphan's bounding box says immediately whether
+        it is a boss, a lever or a label glyph.
+        """
+        n = comp.bRepBodies.count
+        det = []
+        for bi in range(min(n, 6)):
+            b = comp.bRepBodies.item(bi)
+            bx = b.boundingBox
+            det.append('%s %.1f mm3 X %.1f..%.1f Y %.1f..%.1f Z %.1f..%.1f'
+                       % (b.name, b.volume * 1000,
+                          bx.minPoint.x * 10, bx.maxPoint.x * 10,
+                          bx.minPoint.y * 10, bx.maxPoint.y * 10,
+                          bx.minPoint.z * 10, bx.maxPoint.z * 10))
+        assert n == 1, (
+            'after %s: expected 1 body, got %d - %d orphan(s) that did not '
+            'touch what they were meant to touch. First %d: %s'
+            % (where, n, n - 1, len(det), ' | '.join(det)))
+
     # ---- phase 1: the comb -------------------------------------------------
     # One spine per servo column, joined at the foot by a rail, so the whole
     # coupon comes off the bed as ONE piece and no station can be mislaid
     # before it has been read.
     t0 = design.timeline.count
+    # NO participantBodies ANYWHERE FROM HERE ON. extrude_profs() falls back
+    # to every body in the component, which is what a JOIN on a chained shape
+    # has to see: the three spine bars do not touch each other, and it is the
+    # RAIL that unites them. Naming a single body as the participant is what
+    # left spine_1 and spine_2 orphaned in the first build.
     rect('spine_0', cols[0]['spine_x0'], cols[0]['spine_x1'], rail_y0, y_top,
          0.0, spine_t, NEW)
-    coupon = comp.bRepBodies.item(0)
-    coupon.name = 'gauge_broach_coupon'
     for ci in range(1, len(cols)):
         rect('spine_%d' % ci, cols[ci]['spine_x0'], cols[ci]['spine_x1'],
-             rail_y0, y_top, 0.0, spine_t, JOIN, [coupon])
+             rail_y0, y_top, 0.0, spine_t, JOIN)
+    # the rail overlaps all three bars over rail_y0..rail_y1 - a real volume,
+    # not a shared edge - so this is the feature that makes the comb one piece
     rect('rail', cols[0]['spine_x0'], cols[-1]['spine_x1'], rail_y0, rail_y1,
-         0.0, spine_t, JOIN, [coupon])
+         0.0, spine_t, JOIN)
     group(t0, PH_SPINE)
+    one_body('phase 1, the comb')
 
     # ---- phase 2: the stations ---------------------------------------------
     t1 = design.timeline.count
@@ -568,27 +661,23 @@ def run(_context: str):
             nm = '%s%02d' % (c['tag'], int(round(i * 100)))
             y = row_y[k]
             bd = c['bosses'][k]
-            bore = c['bores'][k]
-            # the hoop under test
-            circle('boss_' + nm, c['cx'], y, bd, 0.0, h, JOIN, [coupon])
+            # BUILT IN CONTACT ORDER: neck onto the spine, lever onto the
+            # neck, boss onto the lever. The first version built the boss
+            # first, in mid-air, and Fusion had nothing to join it to.
+            #
+            # the breakaway neck, thin in Z as well as narrow in plan. It
+            # runs a weld PAST the spine edge at one end and a weld INTO the
+            # lever's footprint at the other, so both booleans get volume.
+            rect('neck_' + nm, c['tip_x'] - weld, c['spine_x0'] + weld,
+                 y - neck_w / 2.0, y + neck_w / 2.0, 0.0, spine_t, JOIN)
             # the lever: torque handle, label carrier and the thing the user
-            # actually holds. It runs from the bore axis outward, so it is
-            # welded into the hoop rather than hung off its edge.
+            # actually holds. It reaches back to the bore AXIS, so the boss
+            # is welded into it over a full radius rather than tangent to it.
             rect('lever_' + nm, c['cx'], c['tip_x'],
-                 y - c['lever_w'] / 2.0, y + c['lever_w'] / 2.0, 0.0, h,
-                 JOIN, [coupon])
-            # the breakaway neck, thin in Z as well as narrow in plan
-            rect('neck_' + nm, c['tip_x'], c['spine_x0'],
-                 y - neck_w / 2.0, y + neck_w / 2.0, 0.0, spine_t,
-                 JOIN, [coupon])
-            # THE BORE. Through, vertical, and the only dimension on this
-            # coupon that is being asked a question.
-            circle('bore_' + nm, c['cx'], y, bore, -over, h + 2.0 * over,
-                   CUT, [coupon])
-            # ... and the elephant's-foot relief at its mouth, which is also
-            # the lead-in the spline enters on.
-            circle('relief_' + nm, c['cx'], y, bore + 2.0 * relief_r,
-                   -over, relief_h + over, CUT, [coupon])
+                 y - c['lever_w'] / 2.0, y + c['lever_w'] / 2.0, 0.0, h, JOIN)
+            # the hoop under test
+            circle('boss_' + nm, c['cx'], y, bd, 0.0, h, JOIN)
+        one_body('phase 2, column %s' % c['tag'])
     group(t1, PH_STATIONS)
 
     # ---- phase 3: the labels -----------------------------------------------
@@ -623,20 +712,49 @@ def run(_context: str):
                 adsk.core.VerticalAlignments.MiddleVerticalAlignment, 0)
             st = sk.sketchTexts.add(t_in)
             inp = ext.createInput(st, JOIN)
-            inp.startExtent = adsk.fusion.OffsetStartDefinition.create(V(mm(h)))
-            inp.setDistanceExtent(False, V(mm(emboss_h)))
-            inp.participantBodies = [coupon]
+            # STARTS BELOW THE FACE, NOT ON IT. Text extruded from z = h
+            # upward only touches the lever - three glyphs, three shared
+            # faces, three new bodies each, and a slicer would have printed
+            # them as floating islands. Starting a weld down means the
+            # boolean has volume; the relief above the face is still exactly
+            # emboss_h, which is MIN_EMBOSS_MM.
+            inp.startExtent = adsk.fusion.OffsetStartDefinition.create(
+                V(mm(h - weld)))
+            inp.setDistanceExtent(False, V(mm(emboss_h + weld)))
+            inp.participantBodies = [
+                comp.bRepBodies.item(bi) for bi in range(comp.bRepBodies.count)]
             ext.add(inp).name = 'lab_' + nm
             n_lab += 1
+        one_body('phase 3, labels for column %s' % c['tag'])
     group(t2, PH_LABELS)
 
+    # ---- phase 4: the bores -------------------------------------------------
+    # CUT LAST, and that is not tidiness. A cut is applied to the bodies it is
+    # given, where they have material; running the bores while the boss was
+    # still an orphan meant they removed nothing at all from the body that was
+    # named. By here the coupon is one solid and every bore lands in it.
+    t3 = design.timeline.count
+    for c in cols:
+        h = c['sta_h']
+        for k, i in enumerate(INTERFERENCE):
+            nm = '%s%02d' % (c['tag'], int(round(i * 100)))
+            y = row_y[k]
+            bore = c['bores'][k]
+            # THE BORE. Through, vertical, and the only dimension on this
+            # coupon that is being asked a question.
+            circle('bore_' + nm, c['cx'], y, bore, -over, h + 2.0 * over, CUT)
+            # ... and the elephant's-foot relief at its mouth, which is also
+            # the lead-in the spline enters on.
+            circle('relief_' + nm, c['cx'], y, bore + 2.0 * relief_r,
+                   -over, relief_h + over, CUT)
+    group(t3, PH_BORES)
+    one_body('phase 4, the bores')
+
     # ---- identity ----------------------------------------------------------
-    # ONE body. If a neck missed its spine or a boss missed its lever the
-    # coupon would come apart here rather than on the bed.
-    assert comp.bRepBodies.count == 1, (
-        'expected 1 body - the comb, its stations and their labels all joined '
-        '- got %d, so something did not touch what it was meant to touch'
-        % comp.bRepBodies.count)
+    # ONE body. THIS ASSERT IS THE ONE THAT CAUGHT THE 122-BODY BUILD, so it
+    # stays exactly where it is; one_body() only makes it say more, and the
+    # per-phase calls above make it say it sooner.
+    one_body('the whole build - the comb, its stations, labels and bores')
     body = comp.bRepBodies.item(0)
     body.name = 'gauge_broach_coupon'
     for i in range(app.materialLibraries.count):
@@ -713,8 +831,12 @@ def run(_context: str):
     print('  Supports OFF. Nothing here overhangs; "auto" would only add')
     print('  material inside the bores, which are the measurement.')
     print('')
-    print('breakaway: %.2f x %.2f mm neck per station, %.2f mm of air between '
-          'bosses' % (neck_w, spine_t, sta_gap))
+    print('breakaway: %.2f x %.2f mm neck per station over a %.2f mm free '
+          'span, %.2f mm of air between bosses'
+          % (neck_w, spine_t, neck_l, sta_gap))
+    print('  every joint welded %.2f mm INTO what it joins - a shared face is '
+          'not an intersection, and the first build proved it at 122 bodies'
+          % weld)
     print('labels: %d raised %.1f mm text, %.2f proud (MIN_EMBOSS_MM %.2f)'
           % (n_lab, text_h, emboss_h, MIN_EMBOSS_MM))
     print('bbox mm: X %.1f..%.1f  Y %.1f..%.1f  Z %.1f..%.1f'

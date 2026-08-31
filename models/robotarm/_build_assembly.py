@@ -22,6 +22,7 @@ models/robotarm/<part>.py. What is lost is the link, not the truth.
 Rebuild it whenever a part script changes. Nothing here is hand-modelled.
 """
 
+import io
 import os
 import sys
 
@@ -76,7 +77,14 @@ def _exec(name, repo):
     for m in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.')]:
         del sys.modules[m]
     ns = {'__name__': name, '__file__': path}
-    exec(compile(open(path).read(), path, 'exec'), ns)
+    # ENCODING IS EXPLICIT AND THAT IS NOT PEDANTRY. Fusion's embedded Python
+    # resolved open() to the ASCII codec and died on the first Oe in a
+    # docstring: "UnicodeDecodeError: 'ascii' codec can't decode byte 0xc3".
+    # 23 files in this repo carry Oe, em dashes or +/- signs, most of them for
+    # years, so this fails on whichever file it reaches first and looks like a
+    # fault in that file rather than in the reader.
+    _src = io.open(path, encoding='utf-8').read()
+    exec(compile(_src, path, 'exec'), ns)
     ns['run']('')
 
 

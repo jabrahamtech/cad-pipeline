@@ -38,6 +38,7 @@ was. A check that cannot see a hit is worse than no check.
 """
 
 import json
+import io
 import os
 import sys
 
@@ -85,7 +86,14 @@ def _exec(name, repo):
     for m in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.')]:
         del sys.modules[m]
     ns = {'__name__': name, '__file__': path}
-    exec(compile(open(path).read(), path, 'exec'), ns)
+    # ENCODING IS EXPLICIT AND THAT IS NOT PEDANTRY. Fusion's embedded Python
+    # resolved open() to the ASCII codec and died on the first Oe in a
+    # docstring: "UnicodeDecodeError: 'ascii' codec can't decode byte 0xc3".
+    # 23 files in this repo carry Oe, em dashes or +/- signs, most of them for
+    # years, so this fails on whichever file it reaches first and looks like a
+    # fault in that file rather than in the reader.
+    _src = io.open(path, encoding='utf-8').read()
+    exec(compile(_src, path, 'exec'), ns)
     ns['run']('')
 
 
@@ -96,7 +104,8 @@ def _exec_servo(servo, repo):
     path = os.path.join(repo, 'models', 'robotarm', 'servo_body.py')
     for m in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.')]:
         del sys.modules[m]
-    src = open(path).read().replace("SERVO = 'MG90S'", "SERVO = '%s'" % servo)
+    src = io.open(path, encoding='utf-8').read().replace(
+        "SERVO = 'MG90S'", "SERVO = '%s'" % servo)
     ns = {'__name__': 'servo_body', '__file__': path}
     exec(compile(src, path, 'exec'), ns)
     ns['run']('')
@@ -282,16 +291,23 @@ def run(_context: str):
         % (', '.join(r[0] for r in blind), CONTROL_SHIFT_MM))
     print('positive control fired at all %d stations - the check can see' % len(rows))
 
-    jams = [r for r in rows if r[3] > JAM_MM3 or r[4] > JAM_MM3]
+    # THE HORN IS NO LONGER A JAM, AND THIS IS NOT A SILENCED FAILURE.
+    # servo_body.py always builds the horn as a second body, because it is
+    # part of the servo as delivered. But since 0a422e2 nothing in this arm
+    # FITS one: every driven part bores onto the spline instead. So horn
+    # overlap stopped meaning "this will not assemble" and started meaning
+    # "the horn could not have been used here" - which is a confirmation of
+    # the decision, not a defect. J2 reports 67.5 mm3 of it and has since
+    # before the horn came out.
+    #
+    # It is still MEASURED and still PRINTED below. If a joint is ever put
+    # back on a horn, this is the number that says whether it could be.
+    jams = [r for r in rows if r[3] > JAM_MM3]
     if jams:
         print('')
         print('%d STATION(S) DO NOT ACCEPT THEIR SERVO:' % len(jams))
         for tag, host, servo, cv, hv, _k, cw, hw in jams:
-            what = []
-            if cv > JAM_MM3:
-                what.append('case %.1f mm3' % cv)
-            if hv > JAM_MM3:
-                what.append('horn %.1f mm3' % hv)
+            what = ['case %.1f mm3' % cv]
             print('   %-12s %-18s %s' % (tag, host, ', '.join(what)))
             for label, sp in (('case', cw), ('horn', hw)):
                 if sp:
@@ -299,6 +315,15 @@ def run(_context: str):
                           '  z %.1f..%.1f' % ((label,) + tuple(sp)))
     else:
         print('all %d stations clear at this sample pitch' % len(rows))
+    print('')
+    horns = [r for r in rows if r[4] > JAM_MM3]
+    if horns:
+        print('')
+        print('horn overlap, INFORMATIONAL - no joint fits a horn any more:')
+        for tag, host, _s, _c, hv, _k, _cw, hw in horns:
+            print('   %-12s %-18s %.1f mm3%s'
+                  % (tag, host, hv,
+                     ('  at host x %.1f..%.1f' % (hw[0], hw[1])) if hw else ''))
     print('')
     print('READ THIS BEFORE BELIEVING A CLEAR RESULT: the solid is only as')
     print('right as lib/servo.py, whose own docstring rates cheap-servo')
