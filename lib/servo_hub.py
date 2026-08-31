@@ -372,6 +372,99 @@ def adapter(servo, slot_out_r=11.5, thk=None, out_bolt_r=None, out_bolt_count=3,
     return a
 
 
+@dataclass(frozen=True)
+class SplineHub:
+    """A printed gear driven straight off the servo spline. No horn.
+
+    Distances in mm, in lib/servo.py's servo frame.
+    """
+
+    servo_name: str
+    seat_z: float          # servo-z of the hub's underside
+    boss_clear_d: float    # lower bore - clears the output collar
+    boss_clear_to: float   # ... up to here (the boss top)
+    broach_d: float        # upper bore - the spline cuts into this
+    broach_from: float     # from the boss top
+    broach_to: float       # to the top of the spline
+    min_height: float      # least hub height that reaches the spline at all
+    engaged: float         # how much spline the bore actually grips
+    washer_d: float        # the retaining screw needs one - see below
+    screw_d: float
+
+    @property
+    def min_gear_root_r(self) -> float:
+        """Floor under a gear cut into this hub. Set by the BOSS bore, which
+        is the widest thing in the stack - not by a bolt circle, because
+        there is no longer a bolt circle."""
+        return self.boss_clear_d / 2.0 + MIN_WALL_MM
+
+
+def spline_hub(servo, face, case_gap=0.4, engage_min=2.0, washer_extra=1.6):
+    """Solve a gear-on-spline hub for a servo and a face width.
+
+    SEATED AS LOW AS THE CASE ALLOWS, one running gap above the case top -
+    the same rule horn_pinion() used, and for the same reason: seat_z is what
+    the host has to stand the servo off by, and every millimetre of it is arm
+    width. Deleting the horn is worth a lot here. The bolted-horn adapter put
+    the MG90S gear plane at 18.50; this puts it at 5.90, which is exactly
+    where the pressed-on-horn pinion already sat. The horn comes out of the
+    machine for free.
+
+    THE BORE IS TWO DIAMETERS. The spline sits above the output boss, so the
+    lower part of the bore has to CLEAR the boss (Ø6.0 on an MG90S) and only
+    the upper part grips the Ø5.0 spline. That is also why a thin gear cannot
+    drive a servo directly no matter how good the bore is: it has to be tall
+    enough to reach past the boss before it grips anything. min_height is
+    that arithmetic, and `face` is checked against it.
+
+    THE RETAINING SCREW NEEDS A WASHER AND THIS IS NOT OPTIONAL. The servo's
+    own screw is Ø2.5 (micro) with a head around Ø5.0, and the broach bore is
+    Ø4.75. The head would sit almost entirely over the hole with nothing to
+    clamp. `washer_d` is the smallest washer that actually lands on the hub's
+    top face. Without it the gear is held on by the broach alone and will
+    walk up the spline.
+    """
+    from lib.servo import spline_bore_d, spline_z
+
+    case_top = servo.tab_below_top + servo.tab_thk
+    seat_z = case_top + case_gap
+    boss_top, spline_top = spline_z(servo)
+    boss_clear_d = servo.boss_dia + JOINT_FIT_MM['free']
+    broach_d = spline_bore_d(servo)
+
+    top = seat_z + face
+    engaged = max(0.0, min(top, spline_top) - boss_top)
+    h = SplineHub(
+        servo_name=servo.name,
+        seat_z=seat_z,
+        boss_clear_d=boss_clear_d,
+        boss_clear_to=boss_top - seat_z,
+        broach_d=broach_d,
+        broach_from=boss_top - seat_z,
+        broach_to=spline_top - seat_z,
+        min_height=(boss_top - seat_z) + engage_min,
+        engaged=engaged,
+        washer_d=broach_d + washer_extra,
+        screw_d=servo.horn_screw_dia,
+    )
+
+    bad = []
+    if face < h.min_height:
+        bad.append('a %.2f face seats at %.2f and never reaches the spline at '
+                   '%.2f - it needs at least %.2f'
+                   % (face, seat_z, boss_top, h.min_height))
+    if h.engaged < engage_min:
+        bad.append('only %.2f mm of spline engagement, want %.2f'
+                   % (h.engaged, engage_min))
+    if h.broach_d >= h.boss_clear_d:
+        bad.append('the broach bore Oe%.2f is not smaller than the boss '
+                   'clearance Oe%.2f - the boss would not pass'
+                   % (h.broach_d, h.boss_clear_d))
+    assert not bad, ('%s spline hub is not buildable: ' % servo.name
+                     + '; '.join(bad))
+    return h
+
+
 def solve_stage(name, servo, target_ratio, max_centre_mm, torque_nm,
                 face=None, min_root_r=None, modules=(1.0, 1.25, 1.5),
                 z_max=90):

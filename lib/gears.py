@@ -393,8 +393,38 @@ def horn_pinion(servo, pair, arm_r=6.0, arm_w=None, press=0.15,
 
 
 from lib.servo import CATALOG as _SERVOS  # noqa: E402
+from lib.servo_hub import spline_hub  # noqa: E402
 
 J3_MOUNT = horn_pinion(_SERVOS['MG90S'], J3_PAIR)
+
+# --- THE HORN IS OUT OF THE LOAD PATH. -----------------------------------
+# Jonathan, 2026-08-31: "we should not [mount] at the horns but rather add
+# gears that we make". The pinion now bores onto the servo's own SPLINE and
+# the horn is not used at all - see lib/servo_hub.spline_hub() for why the
+# spline teeth are not printed (they are a third of MIN_FEATURE_MM) and why a
+# broached round bore is what replaces them.
+#
+# IT COSTS NOTHING AND IT WAS THE CHEAPEST OF THE THREE OPTIONS PRICED:
+#   pressed on the horn   gear plane  5.90   varies by batch, does not fit
+#   bolted horn adapter   gear plane 18.50   +12.60 mm of forearm width
+#   ON THE SPLINE         gear plane  5.90   +0.00, and no horn at all
+# J3_PAIR is UNCHANGED by this - m1.00 18T/36T, centre 27.20, gear Oe38.0 -
+# because the boss bore Oe6.40 puts the root floor at 4.80 and an 18T pinion
+# roots at 7.75. The compact gears survive; only the horn goes.
+#
+# J3_MOUNT is kept above ONLY because forearm.py still reads its seat_z, and
+# the two agree to the millimetre (both 5.90) - which is the whole reason the
+# forearm needs no change. It should be deleted once j3_pinion and
+# _check_elbow read J3_HUB directly.
+J3_HUB = spline_hub(_SERVOS['MG90S'], J3_PAIR.face)
+assert abs(J3_HUB.seat_z - J3_MOUNT.seat_z) < 1e-9, (
+    'the spline hub seats at %.2f and the horn press at %.2f - forearm.py '
+    'stands the servo off by one of them and would now be wrong'
+    % (J3_HUB.seat_z, J3_MOUNT.seat_z))
+assert J3_PAIR.r_root(J3_PAIR.z_pinion) >= J3_HUB.min_gear_root_r, (
+    'an %dT pinion roots at %.2f, inside the %.2f floor the boss bore sets'
+    % (J3_PAIR.z_pinion, J3_PAIR.r_root(J3_PAIR.z_pinion),
+       J3_HUB.min_gear_root_r))
 
 # What the drive costs the part that carries the servo. forearm.py adds its
 # own plate chain to this; _check_elbow.py asserts the two agree.

@@ -397,6 +397,54 @@ for _s in CATALOG.values():
 del _s
 
 
+# --- DRIVING THE SPLINE DIRECTLY, AND WHY THE TEETH ARE NOT PRINTED -----
+# Jonathan, 2026-08-31: "we should not [mount] at the horns but rather add
+# gears that we make". Right, and it removes the worst part in the machine
+# from the load path: the horn is stamped plastic, varies by batch (deshipu,
+# Roger Cheng), and GATE servo_fit has now MEASURED it fouling the shoulder
+# bracket by 67.5 mm3. Nothing downstream should depend on its outline.
+#
+# THE SPLINE CANNOT BE PRINTED, and that is a rule, not an opinion. A micro
+# spline is 20 teeth on a 4.9 mm circle: 0.77 mm of pitch and roughly 0.24 mm
+# of tooth. design_rules.MIN_FEATURE_MM is 0.8, CALIBRATED on this printer.
+# The teeth are a third of the smallest feature the machine can make. A
+# "splined" printed bore would come out as a slightly lumpy circle, which is
+# a round bore that lies about itself.
+#
+# SO IT IS A ROUND BORE, CUT UNDERSIZE, AND THE STEEL SPLINE BROACHES IT.
+# The servo's own output shaft cuts its form into the plastic on first
+# assembly. One diameter has to be right instead of twenty teeth, and the
+# one diameter is exactly the kind of thing gauge_fits already calibrates.
+# The servo's own retaining screw then clamps the hub down axially, which is
+# what that screw is for.
+#
+# THE INTERFERENCE IS A GUESS UNTIL A GAUGE SETTLES IT. design_rules calls
+# 0.15 diametral a PRESS on a plain bore; broaching needs the bore SMALLER
+# than the shaft, not larger, and how much smaller depends on how much PETG
+# will displace before it splits a thin hub. 0.25 is the starting figure and
+# it is ASSUMED - print the sweep before committing a gear to it.
+SPLINE_BROACH_INTERFERENCE_MM = 0.25   # ASSUMED - bore = spline_dia - this
+SPLINE_TEETH = {"SG90": 20, "MG90S": 20, "MG995": 25}
+
+
+def spline_bore_d(spec: ServoSpec, interference: float = None) -> float:
+    """Bore diameter for a printed hub the servo spline broaches into."""
+    i = SPLINE_BROACH_INTERFERENCE_MM if interference is None else interference
+    return spec.spline_dia - i
+
+
+def spline_z(spec: ServoSpec) -> tuple:
+    """(bottom, top) of the spline in the servo frame - what the bore grips.
+
+    The spline sits ABOVE the output boss, so a hub seated near the case has
+    to clear the boss first and only meets the spline higher up. That is what
+    sets the minimum hub height, and it is why a thin gear cannot drive a
+    servo directly however good the bore is.
+    """
+    boss_top = spec.tab_below_top + spec.tab_thk + spec.boss_h
+    return (boss_top, boss_top + spec.spline_h)
+
+
 def horn_arms(spec: ServoSpec):
     """[(angle_deg, reach_mm), ...] for the horn that ships with this servo.
 
