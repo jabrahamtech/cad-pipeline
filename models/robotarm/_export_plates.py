@@ -142,7 +142,9 @@ BRIM_PAD = {'base_lid': 5.0}
 # means one per-object override stands between you and a wrecked axle, so
 # they go on different plates and the packer enforces it rather than a note
 # in a document hoping to be read.
-NEVER_TOGETHER = [('forearm', 'turntable_stator')]
+# forearm is gone (see ORIENT); nothing left in this project asks for
+# support, so the pairing it existed to prevent cannot arise.
+NEVER_TOGETHER = []
 
 # PARTS PRINTED AS A MIRRORED PAIR - one design, two copies, the second one
 # a MIRROR IMAGE of the first. Not a turn-over: gripper_shell and
@@ -188,7 +190,8 @@ PLATE_OF = {
     # otherwise dead space - plate 1 has no room for them and this costs
     # nothing
     'pruner_blade': 2, 'pruner_rack': 2,
-    'base_lid': 2, 'upper_arm': 2, 'forearm': 2,
+    'base_lid': 2, 'upper_arm': 2,
+    'forearm_px': 2, 'forearm_nx': 2, 'forearm_rail': 2,
     'wrist_roll': 'wrist', 'wrist_hub': 'wrist', 'wrist_rotator': 'wrist',
 }
 # WHICH PLATES TO BUILD. None is every key in PLATE_OF. Otherwise a key or a
@@ -224,7 +227,18 @@ PETG, SOLID = 1.27, 0.65
 ORIENT = [
     ('base_lid',         1, None,        'flat 3 mm plate, BRIM'),
     ('upper_arm',        1, ('y', -90),  'built along X, 125 mm across the bed'),
-    ('forearm',          1, ('y', -90),  '-X face down. SUPPORTS under +X wall and lobes'),
+    # forearm IS NO LONGER A PRINTED PART. It was split into forearm_px,
+    # forearm_nx and two forearm_rail, because the bench called it impossible
+    # to print and it was: 2802 mm2 of flat 90 deg ceiling, 918 of it a slab
+    # floating 43 mm up on two rails. The split takes that to 760 mm2, and
+    # the rails come out at ZERO. Each plate now prints INNER FACE DOWN, so
+    # every former roof opens upward and all four bores stay vertical.
+    # This row said "SUPPORTS under +X wall and lobes" - the only row in the
+    # file that ever asked for support. Routing it now would export a body
+    # nothing builds.
+    ('forearm_px',       1, ('y', -90),  'inner face down, no support'),
+    ('forearm_nx',       1, ('y',  90),  'inner face down, no support'),
+    ('forearm_rail',     1, None,        'prism along X, no support'),
     # WAS ('x', 90) - 'back face down, built +Y' - and that was the MONOLITH's
     # orientation, left behind when the part became a clamshell. ('y', 90)
     # puts local +X down, and the outer side face is the +X face at

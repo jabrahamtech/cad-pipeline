@@ -48,6 +48,22 @@ import io
 import os
 import sys
 
+# NEVER REASSIGN sys.stdout IN A FUSION SCRIPT. 2026-09-03, and it cost a
+# working session. A loader did `sys.stdout = StringIO()` to quieten 23 parts'
+# chatter, the build raised partway through, and the restore line never ran. The
+# add-in binds its own capture object to sys.stdout ONCE at load and calls
+# `resetContent()` on it after every script, so from that moment every call -
+# including ones that never touch stdout - died with
+# 
+#     '_io.StringIO' object has no attribute 'resetContent'
+# 
+# There is no way to repair it from inside a script; the capture object is not
+# reachable from sys.modules. The only fix is to Stop and Run the add-in in
+# Utilities > ADD-INS > Scripts and Add-Ins, which reloads its interpreter.
+# 
+# If a script is too chatty, quieten the SCRIPT. Do not redirect the stream.
+#
+
 import adsk.core
 import adsk.fusion
 

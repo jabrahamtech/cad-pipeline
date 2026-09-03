@@ -42,12 +42,63 @@ the link behind a 1:1 gear pair was priced and rejected: the case would
 have had to start 28.6 mm behind the pitch axis and end 12.6 mm PAST the
 elbow.
 
-Print orientation: -X face down, built along +X, so all four journal bores
-are vertical and round - they are the only precision fits in the part. This
-does need support under the +X wall and the two lobes; nothing about a
-fork of two servo mounts is support-free in any orientation, and a sagging
-20 mm journal is the worse trade. Split the part on the XZ plane if the
-scarring matters.
+THIS FILE IS THE ASSEMBLED REFERENCE AND IS NOT THE PRINTED PART ANY MORE.
+The forearm prints as THREE pieces - forearm_px, forearm_nx and two copies of
+forearm_rail - and lib/forearm_split.py is the contract all four scripts
+share. This body is still built, and has to be: every fa_* parameter is
+declared here, and wrist_hub.py, j3_servo_cap.py, _check_leads.py and
+_check_servo_fit.py all read them out of the document BY NAME, with GATE
+servo_fit measuring a solid MG90S against this solid. Build it; do not print
+it. _export_plates.py still carries a row for `forearm` and knows nothing
+about the three pieces - that row has to be replaced, and this file cannot
+do it.
+
+WHY IT IS SPLIT. In one piece, built along +X, it wants 2391 mm2 of support -
+and 918 mm2 of that is a SINGLE FACE: the +X plate's inner face at
+fa_plate_in, a 72 x 28 slab floating 43 mm up over the straddle on nothing
+but the two rails. Nothing inside this file can reach it. The volume beneath
+it is the wr_sweep_r 25.4 disc about J4 and the fa_elbow_clear 13.4 disc
+about J3; that is running clearance and it has to stay empty. So support goes
+in there, and it comes back out through a 24.8 mm slot 43 mm deep, and the
+face it scars on the way is fa_plate_in - which IS fa_gap, 0.40, the J4
+running gap.
+
+AND NOT ON x = 0, WHICH IS THE OBVIOUS PLANE AND THE WRONG ONE. Splitting
+down the middle, the way wrist_roll was split, leaves half the straddle in
+each half - so each half still floats its own plate. Measured: 1194 mm2 for
+the +X half at its best orientation, 1083 for the -X half. It halves the DROP
+and fixes nothing.
+
+What works instead comes out of one observation: a side plate is a horizontal
+SLAB when it is built along X, and a slab prints perfectly if it is the FIRST
+LAYER and impossibly if it is not. So each plate is split off at its OWN
+INNER FACE and printed inner-face-down - 1030 and 1084 mm2 of first layer -
+and everything outboard of it, boss and seat and servo block, is narrower
+than the plate and lands on it. Every pocket that used to be a roof now opens
+at the top of the build.
+
+THE THIRD PIECE IS FORCED BY THAT, not chosen: nothing that reaches ACROSS
+the straddle can belong to a plate that begins at its own inner face, because
+"across the straddle" means "below the bed". So the box-beam rails become
+their own piece - a prism along X, which is the one thing in this part that
+prints with nothing over 50 deg in any orientation. Both rails are the same
+solid: the straddle and both sweep cylinders are symmetric in Z, so the
+bottom rail is the top one turned 180 deg about Y. A rotation, not a
+reflection, so there is no handedness to get wrong.
+
+WHAT THE SPLIT COSTS AND BUYS. It costs one seam, 8 x M3 x 12, and +1.07 g of
+rail. It takes the support from 2391 mm2 to 760 - and, which matters more,
+NONE of what is left is inside the straddle and none of it touches a running
+face. specs/robotarm/_forearm_print.md carries the per-piece tables, the seam
+arithmetic and the three roofs that still bridge.
+
+THE TWO-STEP J4 POCKET IS NOT THE PROBLEM AND NEVER WAS - recorded here so it
+is not "simplified" back by someone who reads "stepped blind sideways pocket"
+and assumes the worst. Built along +X the case window and the flange recess
+both open UPWARD, and the recess is the WIDER of the two, so the step between
+them is an upward-facing tab bed rather than a roof. Measured ceiling at the
+recess floor and at the pilot tops: 0.00 mm2 each. The flange recess that
+fixed GATE servo_fit costs this part nothing to print.
 
 THE J4 LOBE IS 0.40 THICKER THAN IT WAS, AND THAT IS THE HORN MIGRATION
 LANDING HERE. wrist_hub.py now bores onto the MG90S SPLINE instead of a
@@ -72,6 +123,31 @@ which is the flange band exactly. So the case window is cut for the case
 alone and a FLANGE RECESS takes the last tab_thk out to the tab plane.
 specs/robotarm/_flange.md has the derivation, the two rejected
 alternatives and every cost.
+
+BOTH SERVO BLOCKS WERE STANDING ON 3.00 mm OF AIR, AND fa_lobe_seat IS THAT
+FIXED. Each block is sized to land on a fa_plate_t plate and fa_lobe_over
+sinks it 1.00 mm into one - but the plate is only fa_plate_t INSIDE the two
+boss circles. Everywhere else it is fa_waist_t, which stops at
+fa_plate_in + fa_waist_t = 15.90, and the blocks start at 18.90. So for the
+whole of each block that overhangs its boss there was a 3.00 mm gap, and the
+block bridged it in mid-air. Measured on the +X side: the J4 lobe hangs
+9.53 mm past its boss circle at the elbow end and 184.5 mm2 of its underside
+had nothing at all beneath it - directly under the servo the bench complaint
+names. The J3 standoff block hangs the same 3.00 mm clear of the web.
+
+fa_lobe_seat fills exactly that gap and nothing else: the plate at FULL
+thickness under each servo block, from the outer face inward, overlapping
+both the web and the block so no two volumes meet on a bare plane. It is cut
+back to fa_seat_z = fa_lobe_z - fa_wall in Z and to fa_seat_y_max in +Y, and
+that inset is not styling - it keeps the seat strictly inside both the lobe
+silhouette and the link outline, so it cannot touch a lobe corner edge the
+phase-6 fillet has to run along, and cannot stand proud of the part. Cost
+1197 mm3, 1.5 g. Measured return: the J4 lobe underside 188.9 -> 38.0 mm2
+and the waist ceiling 526.2 -> 266.7, total support 2802 -> 2391 mm2.
+
+It is a stiffness fix as much as a print fix. The J4 servo reacts its stall
+torque as a couple into this lobe, and until now that couple was carried by
+a 1.00 mm lip of fa_lobe_over into a plate that was not there.
 
 The SHARED wr_* block is defined identically in wrist_hub.py and
 wrist_roll.py. MG90S dimensions are DATASHEET (lib/servo.py) - the tab
@@ -103,6 +179,8 @@ import adsk.fusion
 from lib.bearings import B608ZZ  # noqa: E402 - the idler runs in one
 from lib.design_rules import FASTENER_MM as _FASTENERS  # noqa: E402
 from lib.design_rules import JOINT_FIT_MM as _FIT  # noqa: E402 - the J4 running gap
+from lib.forearm_split import Seam, Seat, ServoBlock  # noqa: E402
+from lib.forearm_split import Silhouette, Straddle  # noqa: E402
 from lib.gears import J3_MOUNT, J3_PAIR  # noqa: E402 - the elbow reduction
 from lib.servo import CATALOG  # noqa: E402 - MEASURED lead bundle
 
@@ -117,6 +195,7 @@ PH_PIVOT = 'pivot journals'
 PH_DRIVE = 'servo lobes'
 PH_ELBOW = 'elbow drive clearance'
 PH_CABLE = 'cable route'
+PH_SEAM = 'plate/rail seam'
 PH_FINISH = 'finish'
 
 # Probe hook: _probe_forearm_facet.py sets this False to build the plain body
@@ -126,7 +205,8 @@ FACET = True
 # away by the gear and pinion clearance cylinders now, so which corners still
 # exist is a question to probe, not to assume.
 LOBE_FILLET = True
-PHASES = [PH_FORM, PH_CLEAR, PH_PIVOT, PH_ELBOW, PH_DRIVE, PH_CABLE, PH_FINISH]
+PHASES = [PH_FORM, PH_CLEAR, PH_PIVOT, PH_ELBOW, PH_DRIVE, PH_CABLE,
+          PH_SEAM, PH_FINISH]
 MATERIAL_NAME = 'PET Plastic'
 # FLOAT SLACK, AND IT IS NOT A DIMENSION. Every number inside run() is a
 # dimension and belongs in a user parameter where the Fusion UI can reach
@@ -140,6 +220,13 @@ EPS_MM = 1e-6              # against values already scaled to mm for a message
 # bearing. It is deliberately not a user parameter: it drives no geometry,
 # it only tells the assert below what "too thin" means.
 MIN_SHOULDER_MM = 0.4
+# How many stations along a servo seat are checked against the link
+# silhouette. A COUNT, not a dimension - it belongs up here with EPS rather
+# than in a user parameter, because nothing in the Fusion UI should be able
+# to make the check coarser. The seat's -Y end runs along the concave waist
+# arc, whose half height is smallest in the MIDDLE of the span, so checking
+# only the two ends would pass a seat that breaks out between them.
+SEAT_PROBE_N = 100
 # _style.md rule 5: two-tone by PART. A link is light; the joints are dark.
 # COLOUR LIVES IN lib/palette.py, not here. It used to be typed in this
 # file and sixteen others, so a re-theme meant editing seventeen files
@@ -269,11 +356,12 @@ def run(_context: str):
           '           + 0.4 = 11.4, but ua_drum_r drives it and that is now 13.0,\n'
           '           so 13.4. The centreline web pays for it: 45 - 25.4 - 13.4 = 6.2. If that block grows, this grows, and the web between\n'
           '           the two joints is what gets eaten.')
-    param('rail_z', '3.0 mm',
-          'top and bottom rail left when the duct is cut out of the web. The two\n'
-          '           side walls plus these two rails make the link a box beam; the slab\n'
-          '           that was there instead was 13 g of nothing.')
-    param('duct_z', PREFIX + 'waist_z - ' + PREFIX + 'rail_z', 'derived duct half height')
+    # fa_rail_z AND fa_duct_z ARE NO LONGER TYPED HERE. They stopped being
+    # free the moment the rails became a separate printed piece bolted to
+    # both plates: the rail now has to be tall enough to hold the seam
+    # fastener, and the duct is whatever is left of the link once that
+    # fastener has taken its room. Both are solved in the SEAM block below,
+    # after the fixing sizes they depend on exist. lib/forearm_split.Seam.
 
     # --- MG90S, DATASHEET (lib/servo.py) -------------------------------------
     param('case_l', '22.8 mm', 'MG90S case length - lies along Y. 24.0 -> 22.8 on\n           TowerPro B, 2026-08-27 flange audit (lib/servo.py)')
@@ -351,6 +439,77 @@ def run(_context: str):
           'the lobe starts INSIDE the plate. Two volumes that meet exactly on a plane\n'
           '           are non-manifold and the fillet fails later - see PLAYBOOK.')
     param('lobe_z', PREFIX + 'case_w / 2 + ' + PREFIX + 'wall + 1.0 mm', 'derived lobe half height')
+    # ---- THE SEAT UNDER EACH SERVO BLOCK ---------------------------------
+    # THE PLATE IS ONLY fa_plate_t WHERE THE BOSSES ARE. Everywhere else it
+    # is fa_waist_t, and fa_waist_t is the single biggest lever on the mass
+    # of this part, so it is not going up. But both servo blocks are drawn to
+    # land on a full-thickness plate: they start one fa_lobe_over inside
+    # fa_plate_out, and the waist stops at fa_plate_in + fa_waist_t. Between
+    # those two faces there is 3.00 mm of nothing, and every part of a block
+    # that reaches past its own boss circle was bridging it in mid air - on
+    # +X, 184.5 mm2 of the J4 lobe's underside, 49.6 mm up the print, under
+    # the servo the bench complaint names.
+    #
+    # DERIVED, NOT TYPED, and that is the point: 3.00 is the gap between the
+    # two faces that make it, so writing it as those faces means it tracks
+    # fa_plate_t and fa_waist_t instead of going stale the next time either
+    # moves. The extra fa_lobe_over is the same trick the blocks already use.
+    param('lobe_seat', PREFIX + 'plate_t - ' + PREFIX + 'waist_t + '
+          + PREFIX + 'lobe_over',
+          'derived seat depth, measured IN from the plate outer face: the\n'
+          '           full plate, less the waist that is already there, plus one\n'
+          '           fa_lobe_over so the seat OVERLAPS the web at one end and the\n'
+          '           servo block at the other rather than meeting either on a bare\n'
+          '           plane - which is non-manifold and fails the fillet later, the\n'
+          '           reason fa_lobe_over exists at all. 5.00, of which 3.00 is the\n'
+          '           air the blocks were standing on.')
+    param('seat_z', PREFIX + 'lobe_z - ' + PREFIX + 'wall',
+          'derived seat half height, one fa_wall inside fa_lobe_z, and the\n'
+          '           inset is not styling. At fa_lobe_z the seat would be coplanar\n'
+          '           with the lobe\'s own top and bottom faces, which would EXTEND\n'
+          '           the four corner edges phase 6 fillets - off the lobe, down the\n'
+          '           seat, and out onto the web\'s CURVED silhouette face, where a\n'
+          '           round-over has nowhere to run out. That is the exact failure\n'
+          '           fa_facet was cut to 1.00 for and fa_lobe_radius_j3 to 4.5. One\n'
+          '           wall in, the seat touches no edge the fillet needs and every\n'
+          '           probed radius above stays valid. The ledge it leaves is fa_wall\n'
+          '           wide, which bridges without support.')
+    # THE SEAT IS SOLVED IN lib/forearm_split, NOT HERE. Both printed side
+    # plates carry one and both have to arrive at the same answer; the two
+    # expressions above are the Fusion-facing form of that solve, and the
+    # asserts below are what stops the two forms drifting apart. It is the
+    # same discipline lib/gears.py imposes on the elbow.
+    _SEAT = Seat(plate_t=val('plate_t') * 10, waist_t=val('waist_t') * 10,
+                 lobe_over=val('lobe_over') * 10, lobe_z=val('lobe_z') * 10,
+                 wall=val('wall') * 10, boss_r=val('boss_r') * 10)
+    _bad = _SEAT.validate()
+    assert not _bad, 'the servo seat does not fit: ' + '; '.join(_bad)
+    assert abs(val('lobe_seat') * 10 - _SEAT.depth) < EPS_MM, (
+        'fa_lobe_seat is %.4f and lib/forearm_split solves %.4f'
+        % (val('lobe_seat') * 10, _SEAT.depth))
+    assert abs(val('seat_z') * 10 - _SEAT.half_z) < EPS_MM, (
+        'fa_seat_z is %.4f and lib/forearm_split solves %.4f'
+        % (val('seat_z') * 10, _SEAT.half_z))
+    # AND IT IS DERIVED FROM fa_lobe_z, NOT fa_seat_z, WHICH IS NOT AN
+    # OVERSIGHT. The y where the boss circle falls to fa_seat_z is the LAST
+    # y the seat fits at - a tangency with zero margin - and this parameter
+    # is written to 5 decimal places, so it rounds. It rounded UP, by
+    # 4.5e-6 mm, which puts the seat's own corner 7.4e-6 mm OUTSIDE the
+    # circle it came from and fails the silhouette probe against an EPS of
+    # 1e-8 mm. Stopping where the boss can still carry a FULL lobe height
+    # leaves exactly fa_wall of margin, by construction, at every y the seat
+    # reaches, and no rounding of any precision can eat it. Cost: 1.15 mm of
+    # seat at the wrist end of J4, which is its small end.
+    param('seat_y_max', '%.5f mm' % _SEAT.y_max,
+          'derived +Y limit for a seat: the y at which the boss circle falls\n'
+          '           to fa_lobe_z. Past it the plate outline drops below the block,\n'
+          '           and a seat drawn to the block\'s full length would stand proud\n'
+          '           of the part\'s own silhouette at the wrist end - giving the\n'
+          '           phase-6 facet a second outline to chase. It leaves fa_wall of\n'
+          '           silhouette above fa_seat_z wherever the seat reaches, which is\n'
+          '           the margin that makes the probe in phase 1 robust to rounding.\n'
+          '           Binds on J4 (block reaches 12.50, seat stops at 10.60); slack\n'
+          '           on J3 (block 9.60, so the block\'s own end governs).')
     param('win_z', PREFIX + 'case_w + ' + PREFIX + 'srv_clear',
           'derived height of BOTH the case window and the flange recess, and\n'
           '           they are ONE number on purpose. The case passes through both\n'
@@ -500,12 +659,103 @@ def run(_context: str):
           '           spans them. So the head, not the shank, is what sets how far\n'
           '           this standoff has to reach - sized on the shank first and the\n'
           '           counterbore came out 0.72 mm from the edge.')
+    param('cap_margin', '0.1 mm',
+          'slack on a derived reach, and it is declared HERE rather than down\n'
+          '           beside fa_cap_reach where it used to live, because the SEAM\n'
+          '           block below reads it and that block runs first. On a rebuild the\n'
+          '           parameter already existed from the previous run and the late\n'
+          '           declaration worked; on a FIRST build in a clean document it did\n'
+          '           not exist yet. That is the whole class of bug an idempotent\n'
+          '           script hides from itself.\n'
+          '           What it buys: without it a derived edge lands EXACTLY on the\n'
+          '           minimum wall and every assert downstream sits on a float\n'
+          '           comparison it can fail either side of. 0.1 costs nothing and\n'
+          '           means the checks are measuring the design, not the arithmetic.\n'
+          '           fa_cap_reach spends it on the block edge; fa_seam_z spends it\n'
+          '           keeping the screw head inside the link outline.')
     param('cap_pilot_depth', '8.0 mm',
           'engagement into the standoff web, which is fa_j3_standoff - %.2f\n'
           '           deep today. What the pilot leaves of that floor is asserted\n'
           '           against fa_wall below, so it cannot go stale unnoticed: this\n'
           '           comment read "9.6 deep" long after the web stopped being 9.6.'
           % (val('j3_standoff') * 10))
+    # ---- THE SEAM: WHERE THE PLATES BOLT TO THE RAILS ----------------------
+    # This part is printed as three pieces now - forearm_px, forearm_nx and
+    # two copies of forearm_rail - and this block is the joint between them.
+    # specs/robotarm/_forearm_print.md carries the measurement that forced
+    # it; the short version is that a side plate is a horizontal slab when it
+    # is built along X, a slab prints perfectly as the FIRST layer and
+    # impossibly otherwise, and nothing that reaches across the straddle can
+    # belong to a plate that starts at its own inner face.
+    #
+    # NOTHING HERE IS CHOSEN. lib/forearm_split.Seam solves the whole joint
+    # from four things that each bind: the screw HEAD has to stay inside the
+    # link outline (it lands on the waist's outer face, in free air where
+    # nothing sweeps); the PILOT has to stay inside the rail with a wall of
+    # floor under it; the rail's LENGTH at that height comes from the two
+    # sweep circles; and the walls between and either side of the two screws
+    # have to be one fa_wall each. Solve those and fa_duct_z falls out - it
+    # is no longer the 9.0 that used to be typed above.
+    _SEAM = Seam(silhouette=Silhouette(l2=val('l2') * 10,
+                                       boss_r=val('boss_r') * 10,
+                                       waist_z=val('waist_z') * 10),
+                 straddle=Straddle(l2=val('l2') * 10,
+                                   sweep_r=wval('sweep_r') * 10,
+                                   elbow_clear=val('elbow_clear') * 10),
+                 waist_z=val('waist_z') * 10, wall=val('wall') * 10,
+                 head_d=val('cap_head_d') * 10,
+                 pilot_d=val('cap_pilot_d') * 10,
+                 margin=val('cap_margin') * 10)
+    _bad = _SEAM.validate()
+    assert not _bad, 'the plate/rail seam does not fit: ' + '; '.join(_bad)
+    param('seam_z', '%.5f mm' % _SEAM.z,
+          'derived seam screw height. As high as a fa_cap_head_d head inside\n'
+          '           the link OUTLINE allows, because the pair carries the couple\n'
+          '           between plate and rail and wants the longest lever it can get.\n'
+          '           Measured against fa_waist_z, which is the outline\'s MINIMUM\n'
+          '           half height, so the head is inside at every y and not only at\n'
+          '           the two stations - asserted below at both anyway.')
+    param('duct_z', '%.5f mm' % _SEAM.duct_z,
+          'derived cable duct half height, and it is DERIVED now: the seam\n'
+          '           screw axis, less half a pilot, less one fa_wall of rail floor.\n'
+          '           6.00 against the 9.00 that used to be typed - the duct gives up\n'
+          '           3.00 mm of half height so the rail can hold the fastener that\n'
+          '           makes the split possible. What is left is a 24.8 x 12.0 channel,\n'
+          '           still several times CABLE_CHANNEL_FACTOR on the fattest bundle\n'
+          '           in the arm.')
+    param('rail_z', PREFIX + 'waist_z - ' + PREFIX + 'duct_z',
+          'derived rail height - what is left of the link above the duct. The\n'
+          '           two side walls plus these two rails still make the link a box\n'
+          '           beam; the rails are simply their own printed piece now, and at\n'
+          '           6.00 rather than 3.00 the beam is stiffer than it was.')
+    param('seam_pilot_d', PREFIX + 'cap_pilot_d',
+          'the SAME M3 self-tapping pilot j3_servo_cap screws into, read from\n'
+          '           the one place design_rules FASTENER_MM reaches this file. A seam\n'
+          '           with its own idea of an M3 is the drift lib/forearm_split exists\n'
+          '           to stop.')
+    param('seam_clear_d', '%.4f mm' % _FASTENERS['M3']['clearance'],
+          'M3 free through-hole in the plate - design_rules FASTENER_MM. The\n'
+          '           screw is a clearance fit in the PLATE and self-taps in the RAIL,\n'
+          '           so the joint pulls the two faces together instead of jacking\n'
+          '           them apart on a thread it shares.')
+    param('seam_engage', PREFIX + 'cap_pilot_depth',
+          'self-tap engagement into the rail end face, the same 8.0 the cap\n'
+          '           takes into the standoff web. The rail is fa_plate_in * 2 long, so\n'
+          '           two screws entering from opposite ends engage 8.00 each and still\n'
+          '           leave 8.80 of untapped bore between them.')
+    param('seam_y_a', '%.5f mm' % _SEAM.pilots[0],
+          'derived inboard seam screw station. The rail is only as long as the\n'
+          '           two sweep circles leave it at fa_seam_z - %.2f mm - and the two\n'
+          '           pilots share that with three equal walls of %.2f.'
+          % (_SEAM.span[1] - _SEAM.span[0], _SEAM.wall_between))
+    param('seam_y_b', '%.5f mm' % _SEAM.pilots[1],
+          'derived outboard seam screw station - see fa_seam_y_a.')
+    assert _SEAM.head_clearance() >= 0.0, (
+        'a seam screw head stands %.3f mm proud of the link outline'
+        % -_SEAM.head_clearance())
+    assert val('seam_engage') + val('wall') <= val('plate_in'), (
+        'a %.1f deep seam pilot entering a rail %.1f long from each end would '
+        'meet in the middle' % (val('seam_engage') * 10, val('plate_in') * 2 * 10))
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
 
     # ---- idempotent rebuild --------------------------------------------------
@@ -588,13 +838,19 @@ def run(_context: str):
         return extrude(profiles(sk, expected=1), op, x0_expr, dx_expr, name)
 
     def arc_radius(l, r_end, waist):
-        """Radius of the concave arc tangent to both bosses that leaves exactly
-        `waist` of half-height at the middle. From h = r_fil + waist and
-        h^2 = (r_fil + r_end)^2 - (l/2)^2."""
-        num = r_end ** 2 - (l / 2.0) ** 2 - waist ** 2
-        den = 2.0 * (waist - r_end)
-        assert abs(den) > EPS, 'waist equals the boss radius; the link has no waist'
-        return num / den
+        """Radius of the concave arc tangent to both bosses, in cm.
+
+        DELEGATED to lib/forearm_split.Silhouette, and the delegation is the
+        point. THREE scripts are now cut from this outline - this assembled
+        reference and both printed side plates - and a silhouette that three
+        files each solve for themselves is the datum-only-one-file-reads
+        failure with the serial numbers filed off. The arithmetic lives in
+        one module that can be run from a terminal; this is the cm/mm shim.
+        """
+        sil = Silhouette(l2=l * 10, boss_r=r_end * 10, waist_z=waist * 10)
+        bad = sil.validate()
+        assert not bad, 'the link outline is not buildable: ' + '; '.join(bad)
+        return sil.arc_r / 10
 
     def link_profile(name, y_a, y_b, r_end, r_fil, x0_expr, dx_expr, op):
         """The classic connecting-rod outline: a circle at each pivot joined by
@@ -683,18 +939,30 @@ def run(_context: str):
         """
         return val('cap_reach') if jnt == 'j3' else hi
 
+    def servo_block(y_p, run):
+        """lib/forearm_split.ServoBlock for one servo, in mm.
+
+        DELEGATED, and this was the third copy of the arithmetic: here for
+        both lobes, again in j3_servo_cap.py for the cap, and forearm_px.py
+        would have been a fourth. That is exactly how this project lost
+        shaft_from_end and the lead datum - see _HANDOFF section 3.
+        """
+        blk = ServoBlock(y_pivot=y_p * 10, run=run,
+                         shaft_end=val('shaft_end') * 10,
+                         case_l=val('case_l') * 10,
+                         tab_pitch=val('tab_pitch') * 10,
+                         lobe_pad=val('lobe_pad') * 10)
+        bad = blk.validate()
+        assert not bad, 'the servo block does not place: ' + '; '.join(bad)
+        return blk
+
     def lobe_geometry(y_p, run):
         """Case span, screw positions and lobe outline for one servo, in cm."""
-        # The shaft sits shaft_end in from the NEAR end, so the near end is
-        # upstream of the pivot and the case runs away from it.
-        near = y_p - run * val('shaft_end')
-        far = near + run * val('case_l')
-        case_y0, case_y1 = min(near, far), max(near, far)
-        mid = (case_y0 + case_y1) / 2
-        screws = (mid - val('tab_pitch') / 2, mid + val('tab_pitch') / 2)
-        pad = val('lobe_pad')
-        return (case_y0, case_y1, screws,
-                min(screws) - pad, max(screws) + pad)
+        blk = servo_block(y_p, run)
+        c0, c1 = blk.case
+        lo, hi = blk.span
+        return (c0 / 10, c1 / 10,
+                tuple(v / 10 for v in blk.screws), lo / 10, hi / 10)
 
     # ---- sanity, before any geometry ----------------------------------------
     assert val('boss_r') * 2 < L2, 'the two pivot bosses overlap - L2 is too short'
@@ -798,11 +1066,6 @@ def run(_context: str):
           '           is easy to miss - it is blind in the same face the cap sinks its\n'
           '           counterbore into, so the two collide underground while looking\n'
           '           2.4 mm apart on the face.')
-    param('cap_margin', '0.1 mm',
-          'slack on the derived reach. Without it the block edge lands EXACTLY\n'
-          '           on the minimum wall and every assert downstream sits on a float\n'
-          '           comparison it can fail either side of. 0.1 costs nothing and\n'
-          '           means the checks are measuring the design, not the arithmetic.')
     param('cap_reach', '%.5f mm'
           % ((max(_y_win, _y_pilot) + _head_r + val('wall') + val('cap_margin')) * 10),
           'derived: one head, one wall and a hair past the screw. The SMALLEST\n'
@@ -907,6 +1170,52 @@ def run(_context: str):
             x0 = '-(' + PREFIX + 'plate_out + ' + PREFIX + 'j3_standoff)'
             dx = PREFIX + 'j3_standoff + ' + PREFIX + 'lobe_over'
         yz_rect('lobe_' + jnt, lo, hi, -val('lobe_z'), val('lobe_z'), x0, dx, JOIN)
+    # ---- the seat under each servo block ------------------------------------
+    # THE 3.00 mm OF AIR, FILLED. It belongs in the FORM phase and not in a
+    # phase of its own: this is the plate, at full thickness, under the thing
+    # bolted to it - not a clearance and not a finish.
+    #
+    # It is CHECKED against the silhouette, not trusted to be inside it.
+    # fa_seat_y_max pins the +Y end on the boss circle, but the -Y end runs
+    # out along the concave waist arc, and that arc's half height is smallest
+    # in the MIDDLE of the span - so the whole span is probed. Checking the
+    # two ends only would pass a seat that breaks out between them.
+    SIL = Silhouette(l2=L2 * 10, boss_r=val('boss_r') * 10,
+                     waist_z=val('waist_z') * 10)
+    assert abs(SIL.waist_z - waist_z * 10) < EPS_MM, (
+        'lib/forearm_split says the outline is %.4f half-tall at the waist and '
+        'link_profile drew %.4f - the two are reading different arcs'
+        % (SIL.waist_z, waist_z * 10))
+
+    def profile_half_z(y_c):
+        """Half height of the link silhouette at y, in cm.
+
+        DELEGATED, like arc_radius above: this is the same object both
+        printed plates probe their own edge features against, so a feature
+        that clears the outline here clears it there.
+        """
+        return SIL.half_z(y_c * 10) / 10
+
+    for sx, y_p, run, jnt in LOBES:
+        _, _, _, s_lo, s_hi = lobe_geometry(y_p, run)
+        s_hi = min(block_hi(jnt, s_hi), val('seat_y_max'))
+        assert s_hi > s_lo, (
+            'the %s seat spans y %.2f .. %.2f - fa_seat_y_max has cut it away '
+            'entirely' % (jnt, s_lo * 10, s_hi * 10))
+        for _i in range(SEAT_PROBE_N + 1):
+            _y = s_lo + (s_hi - s_lo) * _i / SEAT_PROBE_N
+            assert profile_half_z(_y) >= val('seat_z') - EPS, (
+                'the %s seat is %.2f half-tall but the link silhouette is only '
+                '%.2f at y %.2f - the seat breaks out of the part outline'
+                % (jnt, val('seat_z') * 10, profile_half_z(_y) * 10, _y * 10))
+        # IN from the plate OUTER face, which is the one face both neighbours
+        # are referenced to: the block starts one fa_lobe_over inside it and
+        # the web ends fa_lobe_seat - fa_lobe_over inside it, so one extrude
+        # overlaps both. Same shape as plate(), one face further out.
+        s_x0 = (PREFIX + 'plate_out - ' + PREFIX + 'lobe_seat' if sx > 0
+                else '-' + PREFIX + 'plate_out')
+        yz_rect('seat_' + jnt, s_lo, s_hi, -val('seat_z'), val('seat_z'),
+                s_x0, PREFIX + 'lobe_seat', JOIN)
     group(t0, PH_FORM)
 
     # ---- phase 2: joint clearance ---------------------------------------------
@@ -1071,6 +1380,41 @@ def run(_context: str):
             '-' + PREFIX + 'l2', PREFIX + 'l2', CUT)
     group(t4, PH_CABLE)
 
+    # ---- phase 5b: the plate/rail seam -------------------------------------
+    t4b = design.timeline.count
+    # THIS BODY IS THE ASSEMBLED REFERENCE, so the seam appears here as the
+    # holes it drills rather than as a joint. In the printed pieces the same
+    # four stations are: a clearance hole through each plate's waist, and one
+    # through-pilot down the whole length of each rail, self-tapped 8.00 from
+    # EACH end by the two screws that pull the two plates onto it.
+    #
+    # THE PILOT RUNS RIGHT THROUGH THE RAIL AND THAT IS DELIBERATE. Blind
+    # pilots drilled from each end would each roof themselves - a small
+    # ceiling, but the rail's whole claim is that it is a prism along X with
+    # nothing over 50 deg anywhere in it, and a blind hole is the one thing
+    # that would spoil that claim. A through bore keeps it exactly true.
+    #
+    # WHY THE HEADS LAND ON THE WAIST AND NOT ON THE BOSS. At fa_seam_y_a/b
+    # there is no boss - the plate is its fa_waist_t wall and nothing else -
+    # so the head bears on that wall's OUTER face at
+    # fa_plate_in + fa_waist_t and stands in the empty band out to
+    # fa_plate_out, where neither servo block reaches at this height and
+    # nothing sweeps. fa_seam_z is derived to keep it inside the outline.
+    for tag, ys in (('a', val('seam_y_a')), ('b', val('seam_y_b'))):
+        for sz, zt in ((+1, 'p'), (-1, 'm')):
+            z_c = sz * val('seam_z')
+            yz_circle('seam_pilot_%s%s' % (tag, zt), ys, z_c,
+                      val('seam_pilot_d'), '-' + PREFIX + 'plate_in',
+                      '2 * ' + PREFIX + 'plate_in', CUT)
+            yz_circle('seam_clear_%s%s_p' % (tag, zt), ys, z_c,
+                      val('seam_clear_d'), PREFIX + 'plate_in',
+                      PREFIX + 'waist_t', CUT)
+            yz_circle('seam_clear_%s%s_m' % (tag, zt), ys, z_c,
+                      val('seam_clear_d'),
+                      '-(' + PREFIX + 'plate_in + ' + PREFIX + 'waist_t)',
+                      PREFIX + 'waist_t', CUT)
+    group(t4b, PH_SEAM)
+
     # ---- phase 6: finish ------------------------------------------------------------
     t5 = design.timeline.count
     # ONE FILLET PER LOBE, NOT ONE FOR BOTH. They no longer take the same
@@ -1226,6 +1570,19 @@ def run(_context: str):
     print('box beam: 2 walls %.1f thick + rails %.1f top and bottom, duct %.1f x %.1f'
           % (val('waist_t') * 10, val('rail_z') * 10,
              val('plate_in') * 2 * 10, val('duct_z') * 2 * 10))
+    print('SPLIT: this body is the ASSEMBLED REFERENCE and is NOT the printed '
+          'part - see forearm_px / forearm_nx / forearm_rail x2')
+    print('   seam: 8 x M3 at y %.2f / %.2f, z +/-%.2f - %.2f clearance through '
+          'each %.2f waist, %.2f pilot through the rail, %.1f engagement each end'
+          % (val('seam_y_a') * 10, val('seam_y_b') * 10, val('seam_z') * 10,
+             val('seam_clear_d') * 10, val('waist_t') * 10,
+             val('seam_pilot_d') * 10, val('seam_engage') * 10))
+    print('servo seats: fa_lobe_seat %.2f in from each plate outer face, '
+          'z +/-%.2f, +Y capped at %.2f - filling the %.2f mm of air each '
+          'servo block bridged outside its boss circle'
+          % (val('lobe_seat') * 10, val('seat_z') * 10,
+             val('seat_y_max') * 10,
+             (val('plate_t') - val('waist_t') - val('lobe_over')) * 10))
     print('POLYGONAL: %.2f mm facet (LOCAL, probed ceiling on BOTH faces) on %d '
           'plate-outline edges (1 boss circle + silhouette, split on -X by the '
           'J3 standoff)' % (val('facet') * 10, n_face))

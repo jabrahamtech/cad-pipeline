@@ -11,7 +11,11 @@ three of GATE j3_installs' failures were this pad being in the way -
   - the pinion was 6.80 mm short of the run-up it needs to thread onto the
     horn, and could not go in on the servo either (r 12.50 against a 12.40
     window),
-  - the retention M3 had 1.20 mm of driver clearance where a bit wants 25.
+  - the retention M3 had 1.20 mm of hex-key clearance where a bit wants 25.
+    (The word that used to be here is the one tests/test_fusion_scripts.py
+     scans for to spot a DRIVER script, so its presence in this docstring
+     was silently skipping three lints on a real part. Reworded, and the
+     three lints now run.)
 
 Lift the pad off and all three go. See specs/robotarm/_HANDOFF.md section 10.
 
