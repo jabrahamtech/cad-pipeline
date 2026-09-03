@@ -76,9 +76,23 @@ JAM_MM3 = 0.5       # interference below this is meshing noise, not a jam
 #
 # Everything else - the lead position, the case envelope, the escape
 # direction - is computed from these and lib/servo.py.
+# THREE OF THESE SEVEN ROWS WERE STALE ON 2026-09-03 - J1 by 2.40, J4 by
+# 0.40, J5 by 0.40 - each of them a number a part had since re-derived. This
+# table is typed and the parts are computed, which is the failure CLAUDE.md
+# names: a datum only one file reads is a decoration, not a contract. Every
+# gate that reads MOUNTS was placing servos where they are not, and GATE
+# servo_fit's 7/7 CLEAR was measured against those wrong places.
+# _check_motor_clearance.py now carries a placement audit that compares each
+# row against the host's own parameters. The real fix is for these to be
+# DERIVED, not audited - see specs/robotarm/_decouple.md.
 MOUNTS = [
+    # 12.60 -> 10.20, CORRECTED 2026-09-03. turntable_stator builds its deck
+    # as `race_z - tt_hub_h - tt_hub_seat_z` = 10.20 since the J1 horn came
+    # out and the bolted j1_hub went in. This row still carried the horn-era
+    # 12.60, so every gate reading it has been placing the yaw servo 2.40 mm
+    # too high - including GATE servo_fit, which reported J1 clear.
     dict(tag='J1 yaw', host='turntable_stator', servo='SG90',
-         shaft=(0.0, 0.0, 12.60),
+         shaft=(0.0, 0.0, 10.20),
          xa=('y', +1), za=('z', +1),
          insert=(0.0, 0.0, -1.0), travel=30.0),
     dict(tag='J2 shoulder', host='shoulder_bracket', servo='MG995',
@@ -102,12 +116,21 @@ MOUNTS = [
          shaft=(0.0, 0.0, 5.5),
          xa=('x', +1), za=('z', +1),
          insert=(0.0, 0.0, -1.0), travel=30.0),
+    # 25.40 -> 25.80, CORRECTED 2026-09-03. forearm.py's tab plane is
+    # `fa_plate_out + fa_j4_lobe_t` = 19.90 + 5.90; the 0.40 is
+    # fa_j4_standoff, added when wrist_hub moved onto the spline and stopped
+    # rubbing the servo case. A 0.40 sliver falls between GATE servo_fit's
+    # 1.50 mm samples, which is why a stale row read CLEAR.
     dict(tag='J4 wrist', host='forearm', servo='MG90S',
-         shaft=(25.4, 0.0, 0.0),
+         shaft=(25.8, 0.0, 0.0),
          xa=('y', -1), za=('x', -1),
          insert=(-1.0, 0.0, 0.0), travel=30.0),
+    # 5.00 -> 4.60, CORRECTED 2026-09-03. wrist_roll builds wro_tab_lo at
+    # 4.60; the 0.40 is wro_case_gap, added when wrist_rotator moved onto the
+    # spline. Found by the agent that split this part, which was told to
+    # report a stale row rather than edit a file it did not own.
     dict(tag='J5 roll', host='wrist_roll', servo='SG90',
-         shaft=(0.0, 5.00, 0.0),
+         shaft=(0.0, 4.60, 0.0),
          xa=('z', -1), za=('y', +1),
          insert=(0.0, 1.0, 0.0), travel=30.0),
     dict(tag='gripper', host='gripper_shell', servo='SG90',
