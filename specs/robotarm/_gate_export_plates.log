@@ -1,0 +1,36 @@
+=== 2 plate(s), 256 x 256 bed, 6 margin / 4 gap ===
+SELECTION: plates ['armstack'] | parts ALL
+MASS: solid mm3 x 1.27 g/cm3 x 0.65 packing / 1000. Solid volume is MEASURED off the body;
+  the 0.65 is the usual walls-and-infill factor for this project and is ASSUMED.
+
+PLATE armstack_green - 6 pieces, 56.1 g, tallest 24.8 mm, 15% of the bed
+  footprint used: X 6.0..230.2  Y 6.0..63.6  (224.2 x 57.6 mm)
+  
+  supports: NONE - leave them off | brim: forearm_rail
+  plate_armstack_green_v8.3mf  (160842 bytes)
+    upper_arm                  26.0 x 151.0  h 24.0   37.32 g  at (  6.0,   6.0)  built along X, 125 mm across the bed
+    forearm_nx                 27.6 x 72.6   h 18.3    8.23 g  at (  6.0,  36.0)  inner face down, no support
+    forearm_px                 27.6 x 72.6   h 14.6    6.22 g  at ( 82.6,  36.0)  inner face down, no support
+    j3_servo_cap               40.3 x 17.4   h 6.7     1.55 g  at (159.1,  36.0)  flat, seating face down
+    forearm_rail                7.8 x 22.6   h 24.8    1.40 g  at (166.0,  11.0) (+5 brim)  end face down, prism, brim
+    forearm_rail                7.8 x 22.6   h 24.8    1.40 g  at (202.6,  11.0) (+5 brim)  
+
+PLATE armstack_white - 4 pieces, 15.4 g, tallest 21.7 mm, 4% of the bed
+  footprint used: X 6.0..114.2  Y 6.0..44.0  (108.2 x 38.0 mm)
+  
+  supports: NONE - leave them off | brim: none
+  plate_armstack_white_v8.3mf  (179930 bytes)
+    j3_gear                    38.0 x 38.0   h 21.7   10.75 g  at (  6.0,   6.0)  gear face down, built -Z
+    shoulder_hub               20.0 x 20.0   h 10.8    1.93 g  at ( 48.0,   6.0)  collar face down
+    j3_pinion                  20.0 x 19.8   h 10.0    1.84 g  at ( 72.0,   6.0)  tooth face down, bore vertical
+    j3_axle                    18.2 x 15.8   h 11.3    0.90 g  at ( 96.0,   6.0)  hex face down, built +Z
+
+10 pieces, 71.5 g of PETG total
+
+SUPPORTS: NONE on these plates. OFF everywhere else - on turntable_stator that is
+  not a preference, the axle bridge is load-bearing.
+BRIM: base_lid. Budget 5-8 mm of extra footprint for it.
+Orientations are BAKED IN. If you auto-arrange in the slicer, keep
+  rotation locked, and NEVER let it "optimise" a mirrored pair -
+  gripcut_finger and pruner_rack will flip, and a wrist_roll half
+  un-mirrored is a part that does not go on the wrist at all.

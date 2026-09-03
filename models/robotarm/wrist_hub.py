@@ -10,7 +10,7 @@ journal collar runs -Z into the fork plate's bore. The face at
 
 ONE printed design, TWO copies, and the two do DIFFERENT jobs:
 
-  drive side  - the wrist MG90S's OWN OUTPUT SPLINE drives this hub, so the
+  drive side  - the wrist servo's OWN OUTPUT SPLINE drives this hub, so the
                 servo turns the hub, the hex turns the effector, and the
                 servo's output bearing carries it.
   idler side  - the identical part runs free in the opposite fork plate's
@@ -32,7 +32,7 @@ cut for them ("the actual horn tips dont fit in anywhere").
 
 AND THE HORN POCKET IN THIS PART WAS WRONG ANYWAY, WHICH NOBODY HAD
 NOTICED. wh_horn_arm_slot was extruded from the seating face downward,
-0.00..2.10 into the part - but the MG90S's output boss is 6.0 mm tall and
+0.00..2.10 into the part - but the MG90S's output boss was 6.0 mm tall and
 occupies 0.00..6.00 of that same bore. The blade slot was cut 6 mm too
 deep, inside solid boss, so the horn arms had nowhere to go and no horn was
 ever going to enter this hub. wrist_rotator.py and shoulder_hub.py both got
@@ -42,8 +42,8 @@ the servo stack. It is recorded rather than quietly deleted, because the
 class of mistake - a z-offset measured from the wrong datum - is the one
 this whole migration keeps turning up.
 
-THE SPLINE IS NOT PRINTED, and that is a rule rather than a preference. The
-MG90S's spline is 20 teeth on a Oe5.0 circle: 0.79 mm of pitch and roughly
+THE SPLINE IS NOT PRINTED, and that is a rule rather than a preference. A
+micro spline is 20 teeth on a ~Oe5 circle: under 0.8 mm of pitch and roughly
 0.24 mm of tooth, against a design_rules.MIN_FEATURE_MM of 0.8 that is
 CALIBRATED on this printer. The teeth are a third of the smallest feature
 the machine can make, so a "splined" printed bore would come out a slightly
@@ -53,33 +53,43 @@ first assembly - one diameter to get right instead of twenty teeth.
 lib/servo.SPLINE_BROACH_INTERFERENCE_MM is 0.25 and it is ASSUMED: gauge it
 before printing a pair.
 
-TWO DIAMETERS, because the spline sits ABOVE the boss. The MG90S presents
-6.0 mm of Oe6.0 output collar and only then 4.0 mm of Oe5.0 spline, so the
-lower bore CLEARS the collar and only the upper bore grips. That is why a
-thin hub cannot drive a servo at all, and it is the arithmetic this part
-had to pass:
+TWO DIAMETERS, because the spline sits ABOVE the boss. The servo presents
+its output collar first and only then its spline, so the lower bore CLEARS
+the collar and only the upper bore grips. That is why a thin hub cannot
+drive a servo at all, and it is the arithmetic this part has to pass. Both
+columns, because the servo changed on 2026-09-03 and the shape of the
+argument did not:
 
-    seating face   5.90 above the tab datum (case top 5.50 + 0.40 gap)
-    boss top      11.50            -> 5.60 of bore is pure clearance
-    spline top    15.50            -> 4.00 of bore actually grips
-    hub stack     10.80 deep       -> needs 7.60, has 10.80. PASSES.
+                          MG90S            SG90 (today)
+    seating face           5.90            7.10   case top + 0.40 gap
+    boss top              11.50           10.90   -> 5.60 / 3.80 clearance
+    spline top            15.50           13.40   -> 4.00 / 2.50 GRIPS
+    hub stack             10.80           10.80   needs 7.60 / 5.80. PASSES.
 
-THE 10.80 IS NOT THE COLLAR, AND THAT IS THE ONLY REASON THIS PART
-QUALIFIES. wr_journal + wr_flange_t is 7.00, which is 0.60 SHORT of the
-7.60 spline_hub() demands. The bore has to run on THROUGH the hex boss -
-7.00 of collar plus wr_reach 3.80 of hex - to reach the spline with 4.00 mm
-to spare. The old wh_screw_bore already ran the full 10.80 as screw
-access, so this costs no material that was not already gone; but if
-wr_reach is ever shortened, check this again before printing. At
-wr_reach < 0.60 the hub stops being able to drive a servo.
+THE ENGAGEMENT HALVED AND THAT IS THE COST OF THE SWAP. 2.50 mm is the whole
+of an SG90's spline, so the bore grips all of it and a taller hub buys none.
+lib/gears.J3_ENGAGE_FLOOR_MM is what it is checked against - the larger of
+the shear floor the servo's stall needs and the 2.00 forming floor a broach
+needs in PETG. 2.50 clears that by 25 %, and the exposure is not stress but
+provenance: spline_h is DATASHEET for a cheap servo and lib/servo.py rates
+that grade weak. Caliper it.
 
-The hex is left STRONGER, not weaker: it used to carry a Oe5.50 hole over
-its whole length and now carries Oe4.75 for the first 2.60 mm and Oe6.75
-only over the last 1.20 mm, where the socket is not loaded.
+THE HEX RESCUED THIS PART ON THE MG90S AND NO LONGER HAS TO. wr_journal +
+wr_flange_t is 7.00 of collar, which was 0.60 SHORT of the 7.60 the MG90S
+demanded, so the bore had to run on through wr_reach 3.80 of hex to reach
+the spline at all - and at wr_reach < 0.60 the hub stopped being driveable.
+The SG90's boss is shorter, so the minimum falls to 5.80 and the collar
+clears it alone; the broach now ends at 6.30, INSIDE the collar, and the hex
+carries no spline bore at all. The dependency on wr_reach is gone rather
+than merely satisfied, and the assert below still states it either way.
+
+The hex is left STRONGER again: it used to carry a Oe5.50 hole over its
+whole length, then Oe4.75 for 2.60 mm of it, and now carries only the Oe6.65
+washer access over its last 4.50 mm, where the socket is not loaded.
 
 THE HUB NOW RUNS 0.40 OFF THE CASE TOP INSTEAD OF ON IT. The horn-era
 relief (wh_horn_hub_depth 9.10 = boss 6.0 + hub 3.1) put this face flat on
-the MG90S case top with no gap at all - and this hub ROTATES relative to
+the servo case top with no gap at all - and this hub ROTATES relative to
 that case, so it was rubbing on it by construction. lib/servo_hub's default
 0.40 running gap fixes that and costs 0.40 mm of wrist width. forearm.py
 has to stand the J4 servo off by 0.40 more than it does today; that is the
@@ -93,9 +103,9 @@ could not be assembled at all. Any change to wr_pivot_af has to be checked
 against that, and the assertion below does it.
 
 A WASHER IS REQUIRED under the servo's retaining screw on the drive side,
-and it is not optional. The MG90S's screw is Oe2.5 with a head near Oe5 and
-the broach bore is Oe4.75, so the head would land almost entirely over the
-hole with nothing to clamp. Without a washer the hub walks up the spline.
+and it is not optional. The micro servo's screw is Oe2.5 with a head near
+Oe5 and the broach bore is Oe4.65, so the head would land almost entirely
+over the hole with nothing to clamp. Without a washer the hub walks up the spline.
 wh_access_d is sized so the washer PASSES down to its seat and then bears
 on the annulus at the top of the broach bore, 1.20 mm inside the hex nose.
 On the idler side the same bore passes the M3 retaining screw, exactly as
@@ -135,9 +145,9 @@ off a fully anchored circular edge needs no support and gets none. The step
 above it widens, which is free. No support anywhere on this part.
 
 The SHARED wr_* block is defined identically in wrist_roll.py and
-forearm.py; sty_* comes from _style.md. The MG90S stack is DATASHEET
-(lib/servo.py) and the broach interference is ASSUMED - gauge before
-printing a pair.
+forearm.py; sty_* comes from _style.md. The servo stack is DATASHEET
+(lib/servo.py), WHICH servo is lib/joints.JOINT_SERVO, and the broach
+interference is ASSUMED - gauge before printing a pair.
 """
 
 import math
@@ -146,7 +156,6 @@ import adsk.core
 import adsk.fusion
 
 from lib.design_rules import JOINT_FIT_MM, MIN_WALL_MM  # noqa: E402
-from lib.servo import CATALOG as _SERVOS  # noqa: E402
 # IMPORT ORDER IS LOAD-BEARING AND THAT IS A LIBRARY BUG, NOT A STYLE.
 # lib/servo_hub.py imports lib/gears.py at its head and lib/gears.py imports
 # lib/servo_hub.py back at its foot, so whichever of the pair is reached
@@ -157,6 +166,8 @@ from lib.servo import CATALOG as _SERVOS  # noqa: E402
 # has the imports in the other order and is dead on arrival because of it -
 # reported, not fixed here, because lib/ is not this file's to edit.
 import lib.gears  # noqa: E402,F401  - MUST precede lib.servo_hub, see above
+from lib.gears import J3_ENGAGE_FLOOR_MM  # noqa: E402
+from lib.joints import servo_for as _servo_for  # noqa: E402
 from lib.servo_hub import spline_hub  # noqa: E402
 
 COMPONENT = 'robotarm_wrist_hub'
@@ -169,10 +180,14 @@ PH_SPLINE = 'spline hub'
 PH_FINISH = 'finish'
 PHASES = [PH_FORM, PH_SPLINE, PH_FINISH]
 MATERIAL_NAME = 'PET Plastic'
-_MG90S = _SERVOS['MG90S']
-# The J4 servo, CONFIRMED against models/robotarm/_check_leads.py MOUNTS
-# ('J4 wrist', host forearm, servo MG90S) rather than assumed. The same
-# print also serves 'J3 elbow', which is an MG90S too.
+# THE J4 SERVO, from lib/joints.JOINT_SERVO - the arm's single statement of
+# which motor is on which joint. It used to be `_SERVOS['MG90S']` here with a
+# comment saying it had been CONFIRMED against _check_leads.py MOUNTS, which
+# is two typed copies agreeing with each other rather than either of them
+# being the source. Both are read from the mapping now. J3 uses this same
+# print and lib/joints asserts the two joints share a servo, so one hub
+# design still serves both.
+_SERVO = _servo_for('J4')
 
 # Counts and epsilons, not dimensions.
 HEX_SIDES = 2 * 3
@@ -180,7 +195,21 @@ TOL = 1e-9
 # Least spline engagement this hub will accept, in mm. Passed INTO
 # spline_hub so the library's own refusal and the assertion below are
 # arguing from the same number instead of two copies of it.
-ENGAGE_MIN_MM = 2.0
+#
+# DERIVED NOW, NOT TYPED. It was a bare 2.0 with a comment explaining that it
+# was passed in rather than defaulted - which fixed the two-copies problem
+# and left the number itself unargued. lib/gears.J3_ENGAGE_FLOOR_MM is the
+# larger of the shear floor the servo's stall torque needs and the forming
+# floor a broach needs in PETG, and it is derived from the servo rather than
+# chosen. Read from there because J3 and J4 are the same joint and the same
+# servo; if they ever stop being, this wants its own floor and lib/joints'
+# assert will say so first.
+#
+# WHY IT MATTERS HERE AND NOT BEFORE: the SG90 gives this hub 2.50 mm of
+# spline where the MG90S gave 4.00. The old comment beside wh_engaged said
+# "the FULL 4.0 mm ... because the stack runs past all of it" - still true in
+# structure, half the length in fact.
+ENGAGE_MIN_MM = J3_ENGAGE_FLOOR_MM
 # _style.md rule 5: two-tone by PART. A hub is a joint, so it is dark.
 # COLOUR LIVES IN lib/palette.py, not here. It used to be typed in this
 # file and sixteen others, so a re-theme meant editing seventeen files
@@ -245,9 +274,13 @@ def run(_context: str):
           '           bottoms in the socket. That bottoming is what locates the housing\n'
           '           axially; the flange sits 0.5 loose in its counterbore so the two\n'
           '           stops cannot fight each other.\n'
-          '           IT IS ALSO LOAD-BEARING FOR THE SPLINE. The collar alone is 7.00\n'
-          '           and the MG90S needs 7.60 to reach its spline, so 0.60 of this\n'
-          '           reach is what makes the hub driveable at all. Asserted below.')
+          '           IT WAS LOAD-BEARING FOR THE SPLINE ON THE MG90S and is not on\n'
+          '           the SG90. The collar alone is 7.00; the MG90S needed 7.60 to\n'
+          '           reach its spline, so 0.60 of this reach was what made the hub\n'
+          '           driveable at all. The SG90 has a shorter boss and needs 5.80, so\n'
+          '           the collar clears it alone and the broach ends inside it. The\n'
+          '           assert below states the relationship either way, so shortening\n'
+          '           wr_reach is safe today and would not have been.')
     style('ef', '0.4 mm', 'elephant-foot chamfer, functional faces - design_rules')
 
     # --- hub ---------------------------------------------------------------
@@ -264,7 +297,7 @@ def run(_context: str):
     param('free_fit', '%.4f mm' % JOINT_FIT_MM['free'],
           'design_rules JOINT_FIT_MM free - must never bind')
     param('case_gap', '%.4f mm' % JOINT_FIT_MM['free'],
-          'running gap between the seating face and the MG90S case top. This\n'
+          'running gap between the seating face and the servo case top. This\n'
           '           hub ROTATES relative to that case, so the horn-era 0.00 was\n'
           '           rubbing by construction - the relief swallowed boss + hub and\n'
           '           sat the face flat on the case. Costs 0.40 mm of wrist width;\n'
@@ -273,20 +306,27 @@ def run(_context: str):
     # --- SPLINE HUB, solved in lib/servo_hub.py. WRITTEN, NOT CHOSEN. ------
     # THE HORN IS GONE, and so is the blade slot that was cut 6 mm inside the
     # output boss and could never have taken a horn. See the docstring.
-    H = spline_hub(_MG90S, face=val('stack_h') * 10,
+    H = spline_hub(_SERVO, face=val('stack_h') * 10,
                    case_gap=val('case_gap') * 10, engage_min=ENGAGE_MIN_MM)
     param('seat_z', '%.4f mm' % H.seat_z,
-          'servo-z of the SEATING FACE - how far up the MG90S this hub sits,\n'
+          'servo-z of the SEATING FACE - how far up the servo this hub sits,\n'
           '           measured from the underside of its mounting tabs. forearm.py\n'
-          '           reads this to place the J4 lobe, and it moves from 5.50 to 5.90\n'
-          '           because the hub now runs 0.40 clear of the case instead of on it.')
+          '           reads this to place the J4 lobe (it IS fa_j4_lobe_t). It went\n'
+          '           5.50 -> 5.90 when the hub moved off the horn and started\n'
+          '           running 0.40 clear of the case, and 5.90 -> %.2f with the SG90,\n'
+          '           which carries 1.20 mm more case above its tabs. Both moves are\n'
+          '           arm width at the wrist and both are already paid for in\n'
+          '           forearm.py.' % H.seat_z)
     param('boss_bore_d', '%.4f mm' % H.boss_clear_d,
-          'lower bore - CLEARS the Oe6.0 output collar at a free fit. Nothing\n'
-          '           grips the boss; it only has to pass.')
+          'lower bore - CLEARS the Oe%.2f output collar at a free fit. Nothing\n'
+          '           grips the boss; it only has to pass.' % _SERVO.boss_dia)
     param('boss_bore_h', '%.4f mm' % H.boss_clear_to,
-          'how far up the bore stays wide - to the top of the boss. 5.60 of the\n'
-          '           10.80 stack is spent just getting past the MG90S collar, which\n'
-          '           is the single reason a 7.00 hub would not have done.')
+          'how far up the bore stays wide - to the top of the boss. %.2f of\n'
+          '           the %.2f stack is spent just getting past the output collar,\n'
+          '           which is the single reason a 7.00 hub would not have done. The\n'
+          '           SG90 spends LESS here than the MG90S 5.60 - a shorter boss -\n'
+          '           and that is the one way the swap helps this part.'
+          % (H.boss_clear_to, val('stack_h') * 10))
     param('broach_d', '%.4f mm' % H.broach_d,
           'upper bore - THE STEEL SPLINE CUTS THIS. Deliberately UNDERSIZE by\n'
           '           lib/servo.SPLINE_BROACH_INTERFERENCE_MM. The spline is not\n'
@@ -297,8 +337,13 @@ def run(_context: str):
     param('broach_to', '%.4f mm' % H.broach_to,
           'derived: and ends here, 2.60 mm up inside the hex boss')
     param('engaged', '%.4f mm' % H.engaged,
-          'how much spline the bore grips - the FULL 4.0 mm of MG90S spline,\n'
-          '           because the stack runs past all of it')
+          'how much spline the bore grips - the WHOLE of it, because the\n'
+          '           %.2f stack runs past all %.2f mm the %s has. It is not a\n'
+          '           choice and it cannot be bought: engaged = spline_h once the\n'
+          '           hub is taller than boss + spline, so a longer hub adds\n'
+          '           nothing. 4.00 on the MG90S this replaced, %.2f now - the\n'
+          '           single biggest thing the servo swap costs the wrist.'
+          % (val('stack_h') * 10, _SERVO.spline_h, _SERVO.name, H.engaged))
     param('washer_d', '%.4f mm' % H.washer_d,
           'SMALLEST WASHER THAT WORKS, and it is not optional. The retaining\n'
           '           screw is Oe%.1f with a head near Oe5 and the broach bore is\n'
@@ -421,7 +466,7 @@ def run(_context: str):
 
     # ---- phase 2: spline hub ------------------------------------------------
     t1 = design.timeline.count
-    # THREE BORES, and the order is the MG90S's own stack read upward from the
+    # THREE BORES, and the order is the servo's own stack read upward from the
     # case. It used to be a horn hub relief, a blade slot cut six millimetres
     # inside the output boss, and a separate driver bore that already ran the
     # whole length. Now:
@@ -489,9 +534,11 @@ def run(_context: str):
     assert val('engaged') * 10 >= ENGAGE_MIN_MM - TOL, (
         'only %.2f mm of spline engagement, want %.2f'
         % (val('engaged') * 10, ENGAGE_MIN_MM))
-    # THE ONE THAT MATTERS IF wr_reach EVER SHRINKS. The collar alone is 0.60
-    # short of the MG90S spline; the hex boss makes up the difference. Say so
-    # out loud rather than letting a shortened reach quietly de-drive the arm.
+    # THE ONE THAT MATTERED WHEN wr_reach COULD SHRINK. On the MG90S the
+    # collar alone was 0.60 short of the spline and the hex boss made up the
+    # difference; on the SG90 the collar clears it alone. Kept, and kept as an
+    # assert rather than a comment, because it is the check that would catch a
+    # servo whose boss is TALLER than either of these two.
     collar_only = journal + wval('flange_t')
     assert val('stack_h') > collar_only + TOL, (
         'the bore has to run past the collar to reach the spline and stack_h '
@@ -524,7 +571,7 @@ def run(_context: str):
     # under a millimetre of reach off an anchored circle.
     bore_ledge = (val('boss_bore_d') - val('broach_d')) / 2
     bb = body.boundingBox
-    _case_top = _MG90S.tab_thk + _MG90S.tab_below_top
+    _case_top = _SERVO.tab_thk + _SERVO.tab_below_top
     print('body: %r | material: %s | appearance: %s' % (
         body.name, body.material.name, used_appearance))
     print('hex %.2f af (socket %.1f - %.1f loc) reaching %.1f mm' % (
@@ -533,15 +580,17 @@ def run(_context: str):
         hex_corners * 10, wval('hub_d') * 10))
     print('collar OD %.1f x %.1f, retaining flange OD %.1f x %.1f' % (
         wval('hub_d') * 10, journal * 10, wval('flange_d') * 10, wval('flange_t') * 10))
-    print('seats %.2f up the MG90S (%.2f clear of its case top) - forearm.py '
+    print('seats %.2f up the %s (%.2f clear of its case top) - forearm.py '
           'must stand the J4 servo off to match'
-          % (val('seat_z') * 10, val('seat_z') * 10 - _case_top))
+          % (val('seat_z') * 10, _SERVO.name, val('seat_z') * 10 - _case_top))
     print('spline hub: boss bore Oe%.2f to %.2f, then Oe%.2f BROACHED %.2f..%.2f'
           % (val('boss_bore_d') * 10, val('boss_bore_h') * 10,
              val('broach_d') * 10, val('broach_from') * 10, val('broach_to') * 10))
-    print('  %.1f mm of spline engaged | NO HORN | needs a Oe%.1f washer under '
-          'the screw, passed down a Oe%.2f access bore'
-          % (val('engaged') * 10, val('washer_d') * 10, val('access_d') * 10))
+    print('  %.2f mm of spline engaged against a %.2f floor - the WHOLE %.2f '
+          'mm the %s has, so a taller hub buys none. NO HORN | needs a Oe%.1f '
+          'washer under the screw, passed down a Oe%.2f access bore'
+          % (val('engaged') * 10, ENGAGE_MIN_MM, _SERVO.spline_h, _SERVO.name,
+             val('washer_d') * 10, val('access_d') * 10))
     print('  bore-able stack %.2f (collar %.2f + hex reach %.2f) against a %.2f '
           'minimum - the collar ALONE would not reach the spline'
           % (val('stack_h') * 10, collar_only * 10, reach * 10, H.min_height))

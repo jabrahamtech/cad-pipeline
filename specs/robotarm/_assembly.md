@@ -83,13 +83,23 @@ gripper arm and are kept for the record.
 | wrist_hub × 2 (J4) | 5.2 | 6.50 | 34.0 |
 | wrist_roll | 12.2 | 6.73 | 82.2 |
 | wrist_rotator | 5.3 | 8.48 | 45.1 |
-| MG90S J4 servo | 13.4 | 5.90 | 79.1 |
+| SG90 J4 servo | 9.0 | 5.90 | 53.1 |
 | SG90 J5 roll servo | 9.0 | 6.50 | 58.5 |
 | SG90 effector servo | 9.0 | 9.70 | 87.3 |
 | pruner head + blades | 38.3 | ~11.2 | 429.0 |
-| **total** | **113.0** | | **873.7** |
+| **total** | **108.6** | | **848.3** |
 
-0.874 kg·cm against 1.00 — **87 %**. The four printed wrist parts' centres of mass are
+J4 WAS AN MG90S IN THIS TABLE UNTIL 2026-09-03 — 13.4 g and 79.1 g·cm, for a
+113.0 g / 873.7 g·cm total. Jonathan's hardware is SG90s at J3 and J4, which
+is 4.4 g lighter here and 25.4 g·cm less moment, and the DUTY it is measured
+against fell with it: an SG90 stalls at 1.6 kg·cm where the MG90S makes 2.0,
+so J4's duty limit is 0.80 kg·cm, not 1.00. The load went down 3 % and the
+limit went down 20 %.
+
+0.848 kg·cm at the JOINT. The elbow is not direct drive: the 18T/36T pair
+(lib/gears.py J3_PAIR) gives it 1.44 kg·cm at 90 % efficiency, so this is
+**59 %** — and it is 106 % of what the SG90 could hold on its own shaft,
+which is the number to quote if the pair is ever taken out. The four printed wrist parts' centres of mass are
 **measured in assembly context**, not estimated. The head is a placeholder
 at the gripper's mass and is the one soft number. **Every gram in the head
 costs 1.12 % of elbow duty.**

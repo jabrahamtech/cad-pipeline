@@ -124,6 +124,7 @@ import adsk.core
 import adsk.fusion
 
 from lib.design_rules import JOINT_FIT_MM, MIN_WALL_MM  # noqa: E402
+from lib.joints import J5_ROTATOR_HUB_H_MM  # noqa: E402
 from lib.servo import CATALOG as _SERVOS  # noqa: E402
 # IMPORT ORDER IS LOAD-BEARING AND THAT IS A LIBRARY BUG, NOT A STYLE.
 # lib/servo_hub.py imports lib/gears.py at its head and lib/gears.py imports
@@ -234,11 +235,12 @@ def run(_context: str):
           '           needed. Sized to run inside the roll housing\'s rotator bore,\n'
           '           and wide enough to keep design_rules MIN_WALL around the Oe5.40\n'
           '           boss bore - asserted below.')
-    param('hub_h', '4.0 mm',
+    param('hub_h', '%.4f mm' % J5_ROTATOR_HUB_H_MM,
           'hub height behind the disc. IT IS ALSO THE DRIVE. The disc alone is\n'
           '           6.00 and grips only 2.20 mm of spline; with the hub the stack is\n'
           '           10.00 and grips the whole 2.50. Do not delete this as "just a\n'
-          '           boss" - see the docstring arithmetic.')
+          '           boss" - see the docstring arithmetic. lib/joints owns the\n'
+          '           number, because wrist_roll derives its FRONT FACE from it.')
     param('stack_h', PREFIX + 'hub_h + ' + PREFIX + 'disc_t',
           'derived: the WHOLE bore-able height, seating face to front face.\n'
           '           This is what the spline solve is checked against, not disc_t.')

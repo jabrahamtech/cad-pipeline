@@ -37,11 +37,18 @@ the interface would fit nothing, and this project has been bitten by exactly
 that class of drift on shaft_from_end, the lead datum and sb_arm_l1.
 
 THE SCREW HEADS ARE COUNTERBORED FLUSH AND THEY HAVE TO BE. The servo's tab
-plate lands ON this face and spans y -21.70..10.40 by z +/-6.20 - the cap
-screws sit under it. Flush heads leave 2.30 mm of cap below the counterbore:
-bearing area 19.2 mm2 under the head, and ~43 mm2 of shear-out around it at
-the interlayer allowable, against about 7 N per screw. Not generous-looking,
-not close either.
+plate lands ON this face and spans the cap screws, so the heads sit under it.
+Flush heads used to leave 2.30 mm of cap below the counterbore: bearing area
+19.2 mm2 under the head, and ~43 mm2 of shear-out around it at the interlayer
+allowable, against about 7 N per screw. Not generous-looking, not close
+either - and the SG90 swap makes it 3.50 mm, because that servo carries
+1.20 mm more case above its tabs and sc_t is that height. This is the one
+place in the arm where the servo change makes a part STRONGER rather than
+merely different.
+
+WHICH SERVO: lib/joints.JOINT_SERVO, read at the top of run(). It was an
+MG90S until 2026-09-03 and it is an SG90 now, and not one dimension in this
+file is typed to either.
 
 Local frame: origin on the J3 SERVO SHAFT axis (which is the pinion axis, one
 centre distance from the elbow). +X runs along the arm toward the wrist - the
@@ -68,8 +75,8 @@ import adsk.fusion
 
 from lib.design_rules import FASTENER_MM as _FASTENERS  # noqa: E402
 from lib.gears import J3_PAIR  # noqa: E402
+from lib.joints import servo_for as _servo_for  # noqa: E402
 from lib.palette import hints_for  # noqa: E402
-from lib.servo import CATALOG  # noqa: E402
 from lib.servo import SERVO_CASE_CLEARANCE_MM  # noqa: E402
 
 COMPONENT = 'robotarm_j3_servo_cap'
@@ -83,6 +90,12 @@ PH_SERVO = 'servo window'
 PH_FIX = 'fixing'
 PH_FINISH = 'finish'
 PHASES = [PH_PLATE, PH_SERVO, PH_FIX, PH_FINISH]
+# One unit in the last place of the '%.4f mm' this file writes its stations
+# with, in mm. NOT a dimension: it is the precision the interface arrives at,
+# and the separation check below is solved to land exactly on its limit, so
+# rounding is the only thing that decides which side of it the value falls.
+# forearm.py carries the same constant and the same argument at length.
+PARAM_ROUND_MM = 1e-5
 
 
 def run(_context: str):
@@ -92,7 +105,12 @@ def run(_context: str):
     ups = design.userParameters
     V = adsk.core.ValueInput.createByString
     P3 = adsk.core.Point3D.create
-    S = CATALOG['MG90S']
+    # THE SERVO IS NOT NAMED IN THIS FILE. It is whatever
+    # lib/joints.JOINT_SERVO puts on J3 - an SG90 since 2026-09-03, an MG90S
+    # before that. This one line is why every window, keyway and pilot below
+    # follows the swap without being edited, and why `S = CATALOG['MG90S']`
+    # had to go: it was the seventh copy of a fact the arm states once.
+    S = _servo_for('J3')
     M3 = _FASTENERS['M3']
 
     def _set(full, expr, comment, units='mm'):
@@ -158,8 +176,50 @@ def run(_context: str):
     param('case_z', '%.4f mm' % (S.case_w + loc), 'servo window across the width')
     param('screw_a', '%.4f mm' % sc_lo, 'inboard servo tab screw')
     param('screw_b', '%.4f mm' % sc_hi, 'outboard servo tab screw')
+    # ---- THE FLANGE RECESS, AND WHY IT WAS NOT HERE ------------------------
+    # forearm.py has said for several commits that this part needs it: "the
+    # J3 SERVO sits on j3_servo_cap, which cuts its window through the full
+    # fa_cap_t at a tighter clearance still, so it has this same flange
+    # landing on solid pad - and it is not this file. What it gets from here
+    # is the pad: it reads fa_lobe_pad, now 4.10, which is exactly the room a
+    # 32.80 recess needs." It was never cut, and GATE servo_fit read J3 CLEAR
+    # the whole time - because models/robotarm/_check_leads.py MOUNTS had the
+    # J3 servo's z axis backwards and was dropping the case in from the wrong
+    # side, where the flange never met the plate at all. With that row
+    # corrected on 2026-09-03 the gate measured 222.8 mm3 of tab plate inside
+    # this cap, which is the same failure the forearm's J4 lobe was cut twice
+    # to fix and the same one shoulder_bracket found at 243.0 mm3.
+    #
+    # The numbers are forearm.py's, arrived at from the same two servo
+    # dimensions rather than copied: recess_l = tab_span + half the case
+    # clearance, depth = tab_thk, width = the window's own case_z.
+    param('tab_thk', '%.4f mm' % S.tab_thk,
+          'SG90 tab plate thickness - lib/servo.py. THE RECESS DEPTH: the pad\n'
+          '           clamps the tab TOP on the recess floor, so the plate finishes\n'
+          '           flush with what was the cap face.')
+    param('recess_l', '%.4f mm' % (S.tab_span + loc / 2),
+          'flange recess length: tab tip to tab tip plus half the case\n'
+          '           clearance. Same construction as fa_recess_l.')
+    param('recess_x0', '%.4f mm' % (mid - (S.tab_span + loc / 2) / 2.0),
+          'derived: the recess is centred on the CASE, which is what the tab\n'
+          '           pitch is centred on')
+    param('recess_x1', '%.4f mm' % (mid + (S.tab_span + loc / 2) / 2.0), 'derived')
     param('pilot_d', '1.8 mm', 'servo screw pilot - design_rules, self-tapping')
-    param('pilot_depth', '3.5 mm', 'engagement from the tab plane')
+    param('pilot_depth', '%.4f mm' % (t - S.tab_thk - wall),
+          'servo screw engagement, drilled down FROM THE RECESS FLOOR. It used\n'
+          '           to be a typed 3.50 starting at the cap FACE, which is 2.40 above\n'
+          '           the floor and 2.40 of which the recess now removes - so the\n'
+          '           number and its datum both had to move.\n'
+          '           IT IS DERIVED, AND IT IS THE FLOOR THAT DRIVES IT: everything\n'
+          '           under the recess is t - tab_thk = 4.30, and MIN_WALL keeps 1.60\n'
+          '           of it, which leaves 2.70. The forearm\'s identical J4 pilot gets\n'
+          '           3.00 because its lobe is thicker; this cap cannot have that and\n'
+          '           a legal wall at the same time, and the wall wins.\n'
+          '           THE PILOTS CANNOT GO THROUGH INSTEAD. Pilot `a` is 8.65 from\n'
+          '           the shaft axis and the pinion sweeps r 10.40 on the other side\n'
+          '           of this plate, so a screw tip breaking through would be in the\n'
+          '           gear train. 2.70 of M2 self-tap in PETG is ~400 N of pull-out\n'
+          '           per screw against a 9 g servo\'s reaction, and there are two.')
     param('lead_key_d', '%.4f mm' % (S.lead_bundle_dia + 0.2),
           'keyway width, one bundle diameter plus a locational fit. The bundle\n'
           '           leaves the SHORT END FACE - lib/servo.py names the face in its\n'
@@ -171,40 +231,89 @@ def run(_context: str):
     param('fix_x', '%.4f mm' % (screw_y - y_pin), 'fa_cap_screw_y, in this frame')
     param('fix_z', '%.4f mm' % screw_z, 'fa_cap_screw_z')
     param('fix_d', '%.4f mm' % M3['clearance'], 'M3 clearance - design_rules')
-    param('fix_head_d', '6.0 mm', 'M3 socket head, the same pair j3_gear uses')
-    param('fix_head_z', '3.2 mm',
-          'counterbore depth. The heads MUST finish flush: the servo tab plate\n'
-          '           lands on this face and spans the screws. Leaves t - this = the\n'
-          '           material under the head.')
+    param('fix_head_d', '6.0 mm',
+          'counterbore diameter. BUY M3 x 16 BUTTON HEAD (ISO 7380) for these\n'
+          '           two, NOT the socket cap used everywhere else on the arm.')
+    param('fix_head_z', '1.8 mm',
+          'counterbore depth, FROM THE RECESS FLOOR. The heads must finish\n'
+          '           flush with the floor the servo tab plate lands on, and their\n'
+          '           Oe6.0 bores reach 1.73 mm in under that plate - so once the\n'
+          '           flange recess exists they cannot be flush with the cap FACE any\n'
+          '           more. A socket cap is 3.00 tall and would leave 6.70 - 2.40 -\n'
+          '           3.20 = 1.10 mm of cap under it, under MIN_WALL. An ISO 7380\n'
+          '           button head is Oe5.70 x 1.65, sits inside this 1.80 pocket and\n'
+          '           leaves 2.50. Jonathan chose the button head, 2026-09-03.')
     param('corner_r', '%.4f mm' % (ups.itemByName('fa_lobe_radius_j3').value * 10
                                    if ups.itemByName('fa_lobe_radius_j3') else 4.5),
           'fa_lobe_radius_j3 - the same corner the standoff behind it carries')
+    param('wall_min', '%.4f mm' % wall,
+          'fa_wall - design_rules MIN_WALL_MM, read from the forearm so the\n'
+          '           cap and the standoff it bolts to are floored by one number.\n'
+          '           It was already used for three of the checks below and only ever\n'
+          '           existed as a local; a floor that drives an assert is a parameter.')
     param('ef', '0.4 mm', 'elephant-foot chamfer, bed face')
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
 
     # ---- checks, before any geometry --------------------------------------
-    assert val('fix_head_z') < val('t'), (
-        'the %.1f counterbore goes straight through a %.1f cap'
-        % (val('fix_head_z') * 10, val('t') * 10))
-    under = (val('t') - val('fix_head_z')) * 10
-    assert under >= 2.0, (
-        'only %.2f mm of cap under the screw head' % under)
+    # THE PILOT AGAINST THE PLATE IT IS DRILLED IN. It was never checked and
+    # the servo swap is what made that visible: at the MG90S's sc_t 5.50 a
+    # 3.50 pilot left 2.00 mm, and nothing said whether that was a floor or a
+    # coincidence. It is a floor now.
+    # EVERYTHING IS MEASURED FROM THE RECESS FLOOR NOW, not from t. Both
+    # pilots and both counterbores start there, so t on its own stopped being
+    # the material any of them has to live in the moment the recess was cut.
+    _floor = val('t') - val('tab_thk')
+    assert val('pilot_depth') + val('wall_min') <= _floor, (
+        'a %.2f servo pilot drilled from a recess floor %.2f above the bed '
+        'leaves %.2f mm under it, against a %.2f minimum wall'
+        % (val('pilot_depth') * 10, _floor * 10,
+           (_floor - val('pilot_depth')) * 10, val('wall_min') * 10))
+    assert val('tab_thk') + val('wall_min') <= val('t'), (
+        'a %.2f flange recess in a %.2f cap leaves %.2f mm, under MIN_WALL %.2f'
+        % (val('tab_thk') * 10, val('t') * 10, _floor * 10,
+           val('wall_min') * 10))
+    assert val('fix_head_z') < _floor, (
+        'the %.1f counterbore goes straight through the %.1f left under the '
+        'recess' % (val('fix_head_z') * 10, _floor * 10))
+    under = (_floor - val('fix_head_z')) * 10
+    assert under >= val('wall_min') * 10, (
+        'only %.2f mm of cap under the screw head, against MIN_WALL %.2f - '
+        'a socket cap head is what does this; use the button head'
+        % (under, val('wall_min') * 10))
     assert (val('fix_x') + val('fix_head_d') / 2) * 10 <= x_hi - wall + 1e-6, (
         'the counterbore at x %.2f reaches past the cap edge at %.2f'
         % (val('fix_x') * 10, x_hi))
     assert (val('fix_x') - val('fix_head_d') / 2) * 10 >= val('case_x1') * 10 + wall - 1e-6, (
         'the counterbore at x %.2f breaks into the servo window ending at %.2f'
         % (val('fix_x') * 10, val('case_x1') * 10))
+    # It DOES break into the flange recess, and that is the design rather than
+    # a miss: the head has to be under the tab plate and flush with the floor
+    # the plate lands on, so its pocket is part of that floor. What must not
+    # happen is the pocket eating the recess END WALL, which is what holds the
+    # tab plate down at that end.
+    _end_wall = (x_hi - val('recess_x1') * 10)
+    assert _end_wall >= wall - 1e-6, (
+        'the flange recess ends at x %.2f and the cap at %.2f - %.2f mm of end '
+        'wall, against MIN_WALL %.2f'
+        % (val('recess_x1') * 10, x_hi, _end_wall, wall))
     assert (val('fix_z') + val('fix_head_d') / 2) * 10 <= lobe_z - wall + 1e-6, (
         'the counterbore at z %.2f reaches past the cap edge at %.2f'
         % (val('fix_z') * 10, lobe_z))
     # The cap screws and the servo's own tab screws must not foul each other.
+    #
+    # TOLERANCED TO THE WRITE PRECISION, and it had none. sc_fix_x is
+    # forearm.py's fa_cap_screw_y, which is SOLVED to sit exactly `need` from
+    # this pilot - so what separates pass from fail is how a station written
+    # to four decimals happens to round. The MG90S rounded up and this passed
+    # with 2.6e-5 mm to spare; that is luck, not clearance. Anything short by
+    # more than PARAM_ROUND_MM is a real collision and still fires.
     for sx_name in ('screw_a', 'screw_b'):
         d = math.hypot((val(sx_name) - val('fix_x')) * 10, val('fix_z') * 10)
         need = (val('fix_head_d') / 2 + val('pilot_d') / 2) * 10 + wall
-        assert d >= need, (
-            'the cap screw and the servo pilot at x %.2f are %.2f apart and '
-            'need %.2f' % (val(sx_name) * 10, d, need))
+        assert d >= need - PARAM_ROUND_MM, (
+            'the cap screw and the servo pilot at x %.2f are %.4f apart and '
+            'need %.4f - short by %.6f mm against a %.0e mm write precision'
+            % (val(sx_name) * 10, d, need, need - d, PARAM_ROUND_MM))
 
     # ---- idempotent rebuild: RENAME FIRST, THEN DELETE --------------------
     STALE = COMPONENT + '_stale_'
@@ -297,15 +406,26 @@ def run(_context: str):
     t1 = design.timeline.count
     rect('window', val('case_x0'), val('case_x1'),
          -val('case_z') / 2, val('case_z') / 2, '0 mm', PREFIX + 't', CUT)
+    # THE LOBE IS CUT TWICE, exactly as forearm.py's J4 lobe is: the case
+    # window takes the body through, then this takes the TAB PLATE down to
+    # the plane it clamps on. Without it the 32.30 flange lands 4.30 at each
+    # end on solid cap and the servo stands proud of its own pilots - GATE
+    # servo_fit measured 222.8 mm3 of it.
+    rect('flange_recess', val('recess_x0'), val('recess_x1'),
+         -val('case_z') / 2, val('case_z') / 2,
+         PREFIX + 't - ' + PREFIX + 'tab_thk', PREFIX + 'tab_thk', CUT)
     # ONE keyway, centred across the width, in the END wall at the shaft end,
     # running OUT to daylight. Centred it is symmetric under a flip, so the
     # servo may arrive either way up.
     rect('lead_key', val('case_x0') - val('lead_key_l'), val('case_x0'),
          -val('lead_key_d') / 2, val('lead_key_d') / 2,
          '0 mm', PREFIX + 't', CUT)
+    # Pilots start at the RECESS FLOOR, which is where the tab underside now
+    # sits. Started at the cap face they would be 2.40 shorter than they read.
     for nm, xs in (('a', val('screw_a')), ('b', val('screw_b'))):
         hole('pilot_' + nm, xs, 0.0, val('pilot_d'),
-             PREFIX + 't - ' + PREFIX + 'pilot_depth', PREFIX + 'pilot_depth', CUT)
+             PREFIX + 't - ' + PREFIX + 'tab_thk - ' + PREFIX + 'pilot_depth',
+             PREFIX + 'pilot_depth', CUT)
     group(t1, PH_SERVO)
 
     # ---- phase 3: the two M3 into the standoff web -------------------------
@@ -314,7 +434,8 @@ def run(_context: str):
         hole('fix_' + nm, val('fix_x'), sz * val('fix_z'), val('fix_d'),
              '0 mm', PREFIX + 't', CUT)
         hole('fix_cbore_' + nm, val('fix_x'), sz * val('fix_z'),
-             val('fix_head_d'), PREFIX + 't - ' + PREFIX + 'fix_head_z',
+             val('fix_head_d'),
+             PREFIX + 't - ' + PREFIX + 'tab_thk - ' + PREFIX + 'fix_head_z',
              PREFIX + 'fix_head_z', CUT)
     group(t2, PH_FIX)
 
@@ -364,6 +485,20 @@ def run(_context: str):
     print('plate %.2f x %.2f x %.2f, corners r %.2f'
           % (val('x_hi') * 10 - val('x_lo') * 10, val('half_z') * 20,
              val('t') * 10, val('corner_r') * 10))
+    print('FLANGE RECESS %.2f x %.2f x %.2f deep, floor at z %.2f - the tab '
+          'plate clamps on THIS face, not on the cap face. Cut 2026-09-03 '
+          'after _check_leads MOUNTS was corrected and GATE servo_fit '
+          'measured 222.8 mm3 of SG90 flange in solid pad.'
+          % (val('recess_l') * 10, val('case_z') * 10, val('tab_thk') * 10,
+             (val('t') - val('tab_thk')) * 10))
+    print('   end walls %.2f inboard / %.2f outboard, floor left %.2f, '
+          'pilots %.2f from the floor leaving %.2f, screw heads %.2f deep '
+          'leaving %.2f - BUY M3 x 16 BUTTON HEAD for the two cap screws'
+          % ((val('recess_x0') * 10 - x_lo), (x_hi - val('recess_x1') * 10),
+             (val('t') - val('tab_thk')) * 10, val('pilot_depth') * 10,
+             (val('t') - val('tab_thk') - val('pilot_depth')) * 10,
+             val('fix_head_z') * 10,
+             (val('t') - val('tab_thk') - val('fix_head_z')) * 10))
     print('servo window %.2f x %.2f, keyway %.2f wide x %.2f out of the end face'
           % (val('case_x1') * 10 - val('case_x0') * 10, val('case_z') * 10,
              val('lead_key_d') * 10, val('lead_key_l') * 10))

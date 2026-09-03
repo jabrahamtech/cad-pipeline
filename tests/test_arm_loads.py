@@ -96,11 +96,25 @@ def test_the_reduction_costs_travel_and_says_so():
 def test_a_load_over_duty_direct_is_within_duty_geared():
     """The whole point of the elbow reduction, as one assertion.
 
-    1.5 kg.cm is over an MG90S driving direct - see the J4 case above - and
-    within it through the J3 pair. If this ever stops being true the pair is
-    not earning the travel it costs.
+    There is a band of load that a J4-style DIRECT drive cannot hold and the
+    J3 pair can, and the pair is only worth its travel while that band is not
+    empty. THE PROBE IS DERIVED, NOT TYPED. It used to be a literal 1.5 kg.cm
+    with a docstring naming the MG90S, and when J3 and J4 became SG90s on
+    2026-09-03 the geared duty fell to 1.44 and the literal walked out of the
+    band - the test failed for a reason that had nothing to do with the
+    property it exists to defend. Taking the midpoint of the two duties keeps
+    it inside the band for whatever servos the joints carry, and the first
+    assertion below is the one that actually fails if a servo swap ever
+    closes the band.
     """
-    items = [al.Item('lump', 150.0, 100.0, 'MEASURED')]     # 1500 g.cm
+    lo = al.DUTY_KGCM['J4']                 # what direct drive can hold
+    hi = al.duty_at_joint_kgcm('J3')        # what the pair can hold
+    assert hi > lo, (
+        'the elbow pair no longer buys any load over direct drive '
+        '(%.3f vs %.3f kg.cm) - it is not earning the travel it costs'
+        % (hi, lo))
+    probe_kgcm = (lo + hi) / 2.0
+    items = [al.Item('lump', probe_kgcm * 100.0, 100.0, 'MEASURED')]
     assert al.duty_report('J4', items)['over'] is True
     r = al.duty_report('J3', items)
     assert r['over'] is False

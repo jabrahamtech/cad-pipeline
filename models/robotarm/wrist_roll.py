@@ -227,6 +227,7 @@ from lib.design_rules import MAX_BRIDGE_MM  # noqa: E402 - socket floor, recesse
 from lib.design_rules import MAX_OVERHANG_DEG  # noqa: E402 - the keel bevel
 from lib.design_rules import MIN_FEATURE_MM  # noqa: E402 - split-face lands
 from lib.design_rules import NUT_POCKET_AF_CLEARANCE_MM  # noqa: E402
+from lib.joints import J5_ROTATOR_HUB_H_MM  # noqa: E402 - the front face
 from lib.servo import CATALOG  # noqa: E402 - MEASURED lead bundle
 
 COMPONENT = 'robotarm_wrist_roll'
@@ -276,12 +277,18 @@ SEAT_CLEARANCE_MM = 0.4
 # design be both halves. Deep enough for the taller of the two.
 RECESS_DEPTH_MM = max(M2_SOCKET_HEAD_H_MM, M2_NUT_THK_MM) + SEAT_CLEARANCE_MM
 NUT_POCKET_AF_MM = _M2['nut_af'] + NUT_POCKET_AF_CLEARANCE_MM
-# What models/robotarm/_check_leads.py MOUNTS currently believes the J5 roll
-# shaft plane is, in this part's frame. It is here as a CONSTANT so the
-# disagreement with wro_tab_lo is printed as arithmetic rather than as a
-# remark, and so nothing in run() types it. Not fixed here: that file is
-# owned by another pass. EXTRACTED-FROM _check_leads.py MOUNTS, 2026-09-03.
-CHECK_LEADS_J5_SHAFT_Y_MM = 5.0
+# What models/robotarm/_check_leads.py MOUNTS says the J5 roll shaft plane
+# is, in this part's frame. It is here as a CONSTANT so the agreement with
+# wro_tab_lo is ARITHMETIC rather than a remark, and so nothing in run()
+# types it. It read 5.00 - the pre-spline tab plane - while this file built
+# 4.60, and the disagreement was printed on every build for several commits
+# and fixed by none of them. It is now 4.60 on both sides and the check
+# below ASSERTS instead of printing, because a printed disagreement is a
+# thing you can keep not reading. EXTRACTED-FROM _check_leads.py MOUNTS.
+CHECK_LEADS_J5_SHAFT_Y_MM = 4.6
+# The two are typed to two decimals on either side of the boundary, so
+# they are compared at the precision they are WRITTEN at, not at eps.
+PARAM_ROUND_MM = 1e-5
 
 
 def run(_context: str):
@@ -365,14 +372,12 @@ def run(_context: str):
     # move - not for the spline migration and not for this split. The SERVO
     # stands off 0.40 further from it instead.
     #
-    # THE TAB PLANE MOVED WITH IT, 5.00 -> 4.60, AND _check_leads HAS NOT
-    # BEEN TOLD. models/robotarm/_check_leads.py MOUNTS still places J5 roll
-    # at shaft=(0.0, 5.00, 0.0) - the pre-spline tab plane. wro_tab_lo below
-    # builds out at 4.60. That row is stale by exactly this file's
-    # wro_case_gap, which is the same 0.40 class of staleness already found
-    # on the J4 row. NOT FIXED HERE - _check_leads.py is not this pass's
-    # file - but it is reported, because a lead gate sited 0.40 off the real
-    # keyway is the failure mode that file was rewritten to stop making.
+    # THE TAB PLANE MOVED WITH IT, 5.00 -> 4.60, AND _check_leads WAS TOLD.
+    # That row was stale by exactly this file's wro_case_gap - the same 0.40
+    # class of staleness found on the J4 row - and was corrected on
+    # 2026-09-03. The agreement is now an assert in run(), not a printed
+    # remark, and GATE motor_clearance audits it from the other side
+    # (audit=(1, ('wro_tab_lo',))).
     param('case_gap', '%.4f mm' % _FIT['free'],
           'running gap between the SG90 case top and wrist_rotator\'s seating\n'
           '           face. design_rules JOINT_FIT_MM free - the same number\n'
@@ -391,9 +396,8 @@ def run(_context: str):
     param('case_z_hi', PREFIX + 'shaft_end', 'derived: case top edge in Z, above the shaft')
     param('case_z_lo', PREFIX + 'case_z_hi - ' + PREFIX + 'case_l', 'derived case bottom edge in Z')
     param('tab_lo', PREFIX + 'case_bot + ' + PREFIX + 'tab_plane',
-          'derived tab underside, and the plane _check_leads MOUNTS should be\n'
-          '           reading for J5 roll. It builds out at 4.60; that file still\n'
-          '           says 5.00. See the note above - reported, not fixed here.')
+          'derived tab underside, and the plane _check_leads MOUNTS reads for\n'
+          '           J5 roll. Both are 4.60, and run() asserts it.')
     param('tab_over', '(' + PREFIX + 'tab_span - ' + PREFIX + 'case_l) / 2',
           'derived tab overhang past the case')
     param('bay_half_x', PREFIX + 'case_w / 2 + ' + PREFIX + 'loc / 2',
@@ -420,7 +424,14 @@ def run(_context: str):
           '           not the flange, locates J4 axially. It is a datum, so it is not\n'
           '           allowed to move for a print.')
     param('y_back', '-14.0 mm', 'back face')
-    param('y_front', '17.0 mm', 'front face - past the servo boss, carries the rotator bore')
+    param('y_front', PREFIX + 'rot_seat + %.4f mm' % J5_ROTATOR_HUB_H_MM,
+          'front face - past the servo boss, carries the rotator bore, and it\n'
+          '           is the plane wrist_rotator\'s DISC lands on. DERIVED, and it\n'
+          '           used to be a typed 17.0 - 1.30 mm forward of rot_seat plus\n'
+          '           the rotator\'s 4.00 back hub, so the disc buried 239 mm3 of\n'
+          '           itself in this face. GATE motor_clearance found it as a FRAME\n'
+          '           WRONG the moment its own pose stopped making the same error -\n'
+          '           see lib/joints.J5_ROTATOR_HUB_H_MM.')
     param('z_top', WRIST + 'pivot_af / cos(30 deg) / 2 + ' + PREFIX + 'wall',
           'derived top face. A guessed 10.0 put the face INSIDE the hex socket\n           circumradius (9.24) - derive it from the socket so it stays right if\n           the pivot size ever moves.')
     param('body_bot', PREFIX + 'case_z_lo - ' + PREFIX + 'loc / 2 - ' + PREFIX + 'wall',
@@ -1048,12 +1059,20 @@ def run(_context: str):
         val('case_bot') * 10, val('case_top') * 10,
         val('case_z_lo') * 10, val('case_z_hi') * 10, val('tab_lo') * 10,
         (val('case_z_hi') + val('tab_over')) * 10))
-    print('STALE GATE, REPORTED NOT FIXED: _check_leads MOUNTS puts J5 roll\'s '
-          'shaft at y %.2f; this part builds its tab plane at y %.2f. Off by '
-          '%.2f, which is wro_case_gap - the spline migration moved the servo '
-          'and that row did not follow. _check_leads.py is not this pass\'s file.'
-          % (CHECK_LEADS_J5_SHAFT_Y_MM, val('tab_lo') * 10,
-             CHECK_LEADS_J5_SHAFT_Y_MM - val('tab_lo') * 10))
+    _tab_lo_mm = val('tab_lo') * 10
+    assert abs(CHECK_LEADS_J5_SHAFT_Y_MM - _tab_lo_mm) < PARAM_ROUND_MM, (
+        '_check_leads MOUNTS puts J5 roll\'s shaft at y %.2f and this part '
+        'builds its tab plane at y %.2f - off by %.2f. Every lead and motor '
+        'clearance measured at J5 is sited from that row.'
+        % (CHECK_LEADS_J5_SHAFT_Y_MM, _tab_lo_mm,
+           CHECK_LEADS_J5_SHAFT_Y_MM - _tab_lo_mm))
+    print('J5 SEATING: tab plane y %.2f, agreed with _check_leads MOUNTS. The '
+          'rotator seats on wro_rot_seat %.2f, NOT on wro_y_front %.2f - '
+          'lib/joints.J5_ROTATOR_ORIGIN_PARTS. _check_wrist, _preview_arm and '
+          '_check_motor_clearance all posed it off the front face until '
+          '2026-09-03, 1.30 mm out, which stopped the retaining washer '
+          'reaching the spline step.'
+          % (_tab_lo_mm, val('rot_seat') * 10, val('y_front') * 10))
     print('keel: full half width now (was 8.0), y %.1f..%.1f, z %.1f..%.1f, '
           'bevel %.1f mm at %.1f deg' % (
               (val('y_back') + keel_drop) * 10, val('keel_front') * 10,

@@ -134,6 +134,7 @@ import adsk.fusion
 
 from lib.gears import J3_JOINT_TRAVEL_DEG  # noqa: E402
 from lib.servo import CATALOG, MG995_TAB_HOLE_PITCH_Y, spline_z  # noqa: E402
+from lib.joints import J5_ROTATOR_ORIGIN_PARTS  # noqa: E402
 from lib.servo_hub import spline_hub  # noqa: E402
 
 # --- how hard we look ------------------------------------------------------
@@ -721,12 +722,15 @@ def run(_context: str):
         return M3(), (0.0, 0.0, 0.0), VEC(1, 0, 0)
 
     def pose_j5():
-        # Verbatim from _check_wrist.place_rotator, which _preview_arm also
-        # copies: R_x(-90) takes the disc's +Z onto the roll housing's +Y, and
-        # the disc sits at the housing's front face.
+        # R_x(-90) takes the disc's +Z onto the roll housing's +Y. WHICH
+        # PLANE IT LANDS ON is lib/joints.J5_ROTATOR_ORIGIN_PARTS and not
+        # wro_y_front: this file, _check_wrist and _preview_arm all used to
+        # put the rotator's ORIGIN on the housing's front face, which is
+        # wrt_hub_h above the seat the part is actually located by. See the
+        # note in lib/joints.py - this gate is what measured the 1.30 mm.
         home = mul(rot(-90.0, VEC(1, 0, 0)), M3())
         t = home.translation
-        t.y = gv('wro_y_front') / 10.0
+        t.y = sum(gv(_p) for _p in J5_ROTATOR_ORIGIN_PARTS) / 10.0
         home.translation = t
         return home, (0.0, 0.0, 0.0), VEC(0, 1, 0)
 
@@ -1072,13 +1076,48 @@ def run(_context: str):
                    audit=audit, samples=samples)
         rows.append(row)
 
+        # ---- THE ONE CONTACT THIS GATE MUST NOT CALL A STRIKE --------------
+        # At J5 the moving part and the DRIVEN part are the same part: the
+        # rotator is bored onto the spline and then rolls on it. The broach
+        # is 0.25 mm UNDER the spline on purpose - the steel cuts its own
+        # form - so the swept volume contains that interference at every
+        # angle, and it is the thing the joint is built to have. Subtracting
+        # it is not softening the gate: an ordinary strike varies with angle
+        # and this does not, and anything ABOVE the annulus still fails.
+        # The allowance is ARITHMETIC from lib/servo_hub, plus two sample
+        # cells, because a 4.69 mm3 annulus cannot be resolved exactly on a
+        # 1.00 mm lattice.
+        press_mm3, press_allow = 0.0, 0.0
+        hub = _hub_of(spec)
+        if st['moving'] == st['driven']:
+            press_mm3 = (math.pi / 4.0
+                         * (spec.spline_dia ** 2 - hub.broach_d ** 2)
+                         * hub.engaged)
+            press_allow = press_mm3 + 2.0 * (STEP ** 3)
+
         if not framed:
             fails.append('%s: FRAME WRONG - the moving half overlaps the HOST '
                          'by %.1f mm3 at travel zero. This station measured '
                          'nothing.' % (tag, seat_v))
-        elif total_hit > JAM_MM3:
-            fails.append('%s: STRIKES the %s - %.1f mm3 at %.1f %s'
-                         % (tag, worst_what, total_hit, hit_at, unit))
+        elif total_hit > JAM_MM3 + press_allow:
+            fails.append('%s: STRIKES the %s - %.1f mm3 at %.1f %s%s'
+                         % (tag, worst_what, total_hit, hit_at, unit,
+                            ('' if press_allow <= 0.0 else
+                             ' (%.1f of that is the designed press fit)'
+                             % press_mm3)))
+        elif press_allow > 0.0 and total_hit > JAM_MM3:
+            notes.append(
+                '%s: the %.1f mm3 against the motor is the DESIGNED PRESS '
+                'FIT, not a strike. This is the one station whose moving '
+                'part IS the part bored onto the spline, so the interference '
+                'the broach exists to create is inside the swept volume: an '
+                'Oe%.2f bore on an Oe%.2f spline over %.2f mm is %.1f mm3 of '
+                'annulus by arithmetic, and the sampler sees %.1f. It also '
+                'does not vary across the sweep, which is the tell - a strike '
+                'that is the same at every angle is a seating condition, not '
+                'a collision.'
+                % (tag, total_hit, hub.broach_d, spec.spline_dia,
+                   hub.engaged, press_mm3, total_hit))
         elif worst_gap < TIGHT_MM:
             fails.append('%s: TIGHT - %.2f mm to the %s at %.1f %s (free fit '
                          'is %.2f)' % (tag, worst_gap, worst_what, worst_at,

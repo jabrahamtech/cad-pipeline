@@ -62,7 +62,6 @@ from lib.design_rules import (
     JOINT_FIT_MM,
     MIN_WALL_MM,
 )
-from lib.gears import J3_MOUNT, J3_PAIR
 from lib.servo import (
     CATALOG as SERVOS,
     SERVO_CASE_CLEARANCE_MM,
@@ -77,6 +76,133 @@ ROT = JOINT_FIT_MM['rotating']       # 0.35  HANDBOOK
 FREE = JOINT_FIT_MM['free']          # 0.40  HANDBOOK
 
 M3 = FASTENER_MM['M3']
+
+
+# =========================================================================
+#  0. WHICH SERVO DRIVES WHICH JOINT
+# =========================================================================
+# THE FOURTH CLASS OF SHARED DATUM, AND THE ONE THAT HAD NO HOME AT ALL.
+# lib/gears.py owns the tooth form, lib/servo.py owns the servo envelopes,
+# the sections below own the joints - and the single fact that decides which
+# envelope a joint's geometry is cut from was, until now, typed separately
+# into every file that needed it. `_SERVOS['MG90S']` appeared in lib/gears.py
+# twice, in lib/joints.py once, and in six part scripts; `_check_leads.MOUNTS`
+# carried its own `servo='MG90S'` column; `lib/arm_loads.STALL_KGCM` carried
+# the stall torques copied out of lib/servo.py by hand. Eleven copies of one
+# sentence.
+#
+# THAT IS NOT A TIDINESS PROBLEM. On 2026-09-03 three MOUNTS rows were found
+# stale against the parts they place, and lib/palette.GREEN had no entry for
+# parts that had existed for days. Both are the same failure this project
+# keeps paying for and CLAUDE.md names outright: a datum in a shared library
+# which only one file reads is a decoration, not a contract. A servo swap is
+# the change that finds every copy at once, because it changes a case
+# dimension, a spline, a stall torque and a seat height together - and any
+# consumer still holding its own copy builds to the OLD servo while every
+# gate reports green.
+#
+# So it is one dict, here, and everything downstream derives:
+#     lib/gears.py            J3_MOUNT / J3_HUB / J3_INPUT_STALL_NM
+#     lib/arm_loads.py        STALL_KGCM, and so every duty figure
+#     lib/joints.py           J3_PAD, below
+#     forearm.py              both lobe envelopes, the lead keyway
+#     j3_servo_cap.py         the cap's window and pilots
+#     j3_pinion.py            the pinion's own diagnostics
+#     wrist_hub.py            the J4 spline stack
+#     _check_leads.py         the MOUNTS servo column
+#
+# 2026-09-03, JONATHAN: "both the motors will be sg90". J3 and J4 were both
+# MG90S; both are SG90 from here. The hardware is in hand, so this is a
+# statement about the machine, not a proposal about it. What it costs is
+# recorded in specs/robotarm/_sg90_migration.md - the headline is that the
+# spline engagement HALVES, 4.00 -> 2.50, because 2.50 is the whole of an
+# SG90's spline.
+#
+# WHY THE VALUE IS A NAME AND NOT A ServoSpec. So that this dict can be read
+# and argued with without importing lib/servo.py's whole catalogue, and so
+# that a joint naming a servo this project does not own fails HERE, on the
+# assert below, rather than three modules downstream with a KeyError.
+JOINT_SERVO = {
+    'J1': 'SG90',      # base yaw       - turntable_stator
+    'J2': 'MG995',     # shoulder pitch - shoulder_bracket
+    'J3': 'SG90',      # elbow pitch    - j3_servo_cap, through the 2:1
+    'J4': 'SG90',      # wrist pitch    - forearm's +X lobe
+    'J5': 'SG90',      # wrist roll     - wrist_roll
+    'J6': 'SG90',      # pruner / gripper - pruner_shell, gripper_shell
+}
+
+# WHAT IS IN THE BOX, from lib/servo.py INVENTORY, checked against the map
+# below rather than restated. The old layout used the inventory EXACTLY -
+# 1 x MG995, 2 x MG90S, 3 x SG90, no spare - and moving J3 and J4 onto SG90s
+# needs five SG90 against three owned. Jonathan says he has them; the assert
+# is written so that if lib/servo.INVENTORY is ever updated to the real
+# count it starts checking, and until then it reports rather than blocks.
+SERVOS_REQUIRED = {}
+for _j, _n in JOINT_SERVO.items():
+    SERVOS_REQUIRED[_n] = SERVOS_REQUIRED.get(_n, 0) + 1
+del _j, _n
+
+
+# Standard gravity, m/s2. DATASHEET (CODATA). Only ever used to turn a
+# kg.cm servo rating into N.m; it is not a dimension of anything.
+G_M_S2 = 9.80665
+
+
+def servo_for(joint: str):
+    """The ServoSpec driving `joint`. THE one lookup; never re-type a name.
+
+    Raises on an unknown joint rather than returning a default, because a
+    default here is a part cut for a servo nobody chose.
+    """
+    assert joint in JOINT_SERVO, (
+        '%r is not a joint in this arm - JOINT_SERVO knows %s'
+        % (joint, ', '.join(sorted(JOINT_SERVO))))
+    return SERVOS[JOINT_SERVO[joint]]
+
+
+def servo_name_for(joint: str) -> str:
+    """The catalogue NAME, for a diagnostic line or a MOUNTS row."""
+    assert joint in JOINT_SERVO, (
+        '%r is not a joint in this arm - JOINT_SERVO knows %s'
+        % (joint, ', '.join(sorted(JOINT_SERVO))))
+    return JOINT_SERVO[joint]
+
+
+def stall_kgcm(joint: str) -> float:
+    """Stall torque at the SERVO for `joint`, kg.cm - lib/servo.py's number.
+
+    lib/arm_loads.py used to carry this table as five literals. They were
+    already in lib/servo.py, so it was a copy that could only ever go wrong:
+    a servo swap moves the stall and nothing in the load model would notice.
+    """
+    return servo_for(joint).stall_kgcm
+
+
+def stall_nm(joint: str) -> float:
+    """...and in N.m, which is what a gear pair has to be validated against.
+
+    kg.cm -> N.m is x g / 100. lib/gears.py typed this conversion out beside
+    a hardcoded 2.0; it is one line and it belongs next to the torque it
+    converts, not next to the teeth it loads.
+    """
+    return stall_kgcm(joint) * G_M_S2 / 100.0
+
+for _name in JOINT_SERVO.values():
+    assert _name in SERVOS, (
+        'JOINT_SERVO names %r and lib/servo.CATALOG has no such servo' % _name)
+del _name
+
+# J3 AND J4 ARE THE SAME JOINT (see HEX_PIVOT below) AND NOW THE SAME SERVO,
+# and several parts rely on that being true rather than a coincidence.
+# forearm.py declares ONE set of case/tab parameters and cuts BOTH lobes from
+# it; wrist_hub.py prints four copies of one design across the two joints.
+# If these two ever diverge, those files are silently cutting the J4 servo's
+# envelope for the J3 servo, so the coincidence is asserted where it is made.
+assert JOINT_SERVO['J3'] == JOINT_SERVO['J4'], (
+    'J3 is a %s and J4 is a %s. forearm.py cuts both lobes from ONE set of '
+    'case and tab parameters and wrist_hub.py prints one design for both '
+    'joints - split those files before splitting these servos.'
+    % (JOINT_SERVO['J3'], JOINT_SERVO['J4']))
 
 # M3 socket cap head, ISO 4762. DATASHEET. design_rules' FASTENER_MM has no
 # head column, which is why five scripts each typed 6.0 by hand; it lives
@@ -355,6 +481,32 @@ assert ELBOW.drum_r >= ELBOW.floor_r(HEX_PIVOT), (
 # computes it with no document at all.
 
 
+# THE ONE IMPORT IN THIS FILE THAT IS DEFERRED, AND WHY IT HAS TO BE.
+# lib/gears.py now reads `servo_for` out of THIS file to know which servo J3
+# drives, so if this file imported lib/gears.py at its head the two would
+# close a cycle: importing either one first leaves the other half-built and
+# `from lib.gears import J3_MOUNT` raises "cannot import name ... from
+# partially initialized module". lib/servo_hub.solve_stage() already carries
+# the same deferral, for the same collision, with the same comment - so this
+# is the project's own precedent rather than a new trick.
+#
+# THE ASYMMETRY IS DELIBERATE. gears -> joints is a MODULE-LEVEL import (one
+# small dict, needed while gears is still defining J3_MOUNT); joints -> gears
+# is deferred into the three places that want a tooth count. That direction
+# is the cheap one: nothing at this file's module level needs a gear, so
+# nothing here has to run before gears finishes.
+def _j3_pair():
+    """lib/gears.J3_PAIR, fetched at CALL time. See the note above."""
+    from lib.gears import J3_PAIR
+    return J3_PAIR
+
+
+def _j3_hub():
+    """lib/gears.J3_HUB - the pinion's spline seat on the J3 servo."""
+    from lib.gears import J3_HUB
+    return J3_HUB
+
+
 @dataclass(frozen=True)
 class ElbowBolt:
     """The M3 that clamps the rotating elbow group into one piece.
@@ -376,8 +528,14 @@ class ElbowBolt:
         that keeps its disc off the plate face."""
         return pivot.plate_t + pivot.gap
 
-    def head_to_hex(self, pivot: HexPivot, pair=J3_PAIR) -> float:
-        """From the head UNDERSIDE to the far face of the gear's hex."""
+    def head_to_hex(self, pivot: HexPivot, pair=None) -> float:
+        """From the head UNDERSIDE to the far face of the gear's hex.
+
+        `pair` defaults to lib/gears.J3_PAIR, imported HERE rather than at
+        the top of the file, AND THAT IS LOAD-BEARING - see the note above
+        `_j3_pair()`.
+        """
+        pair = _j3_pair() if pair is None else pair
         return (pair.face - self.cbore_depth
                 + self.gear_collar_l(pivot) + pivot.reach)
 
@@ -385,10 +543,10 @@ class ElbowBolt:
         """Through the upper arm: socket floor to socket floor."""
         return 2.0 * (pivot.straddle / 2.0 - pivot.socket_d)
 
-    def to_tap(self, pivot: HexPivot, pair=J3_PAIR) -> float:
+    def to_tap(self, pivot: HexPivot, pair=None) -> float:
         return self.head_to_hex(pivot, pair) + self.across(pivot)
 
-    def buy_mm(self, pivot: HexPivot, pair=J3_PAIR) -> float:
+    def buy_mm(self, pivot: HexPivot, pair=None) -> float:
         """WHAT LENGTH SCREW TO BUY, rounded up to the next 5 mm.
 
         Sized for 1.5 diameters of engagement, not for bottoming: a screw
@@ -398,7 +556,7 @@ class ElbowBolt:
         min_eng = self.to_tap(pivot, pair) + 1.5 * self.clearance
         return 5.0 * math.ceil(min_eng / 5.0)
 
-    def bottoms_mm(self, pivot: HexPivot, pair=J3_PAIR) -> float:
+    def bottoms_mm(self, pivot: HexPivot, pair=None) -> float:
         """The longest screw that still fits — full tap, no protrusion."""
         return self.to_tap(pivot, pair) + self.tap_l
 
@@ -694,32 +852,70 @@ def servo_pad(servo, standoff_pad_over=1.0, pad_pad=3.5, corner_r=4.5,
     return m
 
 
-J3_PAD = servo_pad(SERVOS['MG90S'])
+# THE SERVO IS NOT NAMED HERE. It is whatever JOINT_SERVO says drives J3,
+# which is now an SG90 and was an MG90S until 2026-09-03. Every number the
+# cap reads out of this object moves with that one dict.
+J3_PAD = servo_pad(servo_for('J3'))
 
 # HOW FAR THE PAD STANDS OFF THE PLATE. This is `fa_j3_standoff`, and it is
 # the whole cost of the reduction: the pinion has to land coplanar with the
 # gear, so the servo must sit out by a running gap, the gear's face width,
 # and the pinion's seat height on the servo, less the pad's own thickness.
 # Boring the pinion THROUGH rather than blind-pocketing it is what makes
-# seat_z 5.90 instead of 11.50 - see lib/gears.py.
-J3_STANDOFF = FREE + J3_PAIR.face + J3_MOUNT.seat_z - J3_PAD.pad_t
+# seat_z 7.10 instead of 13.30 on an SG90 - see lib/gears.py.
+#
+# IT IS A FUNCTION AND NOT A CONSTANT because it is the one value in this
+# file that needs a gear, and a module-level gear reference would close the
+# cycle `_j3_pair()` exists to break. Nothing outside this file read the old
+# constant, so this costs no consumer anything.
+#
+# THE SERVO SWAP DOES NOT MOVE IT, AND THAT IS ARITHMETIC RATHER THAN LUCK.
+# seat_z is the case top plus one running gap and pad_t IS the case top, so
+# the two cancel and the standoff is FREE + face + case_gap for any micro
+# servo in the catalogue. MG90S: 0.40 + 10.00 + 5.90 - 5.50 = 10.80.
+# SG90: 0.40 + 10.00 + 7.10 - 6.70 = 10.80. The forearm's standoff web, the
+# cap pilot depth and the gear band all stay exactly where they were.
+def j3_standoff() -> float:
+    """`fa_j3_standoff`, mm. Derived; forearm.py asserts against it."""
+    pair, hub = _j3_pair(), _j3_hub()
+    v = FREE + pair.face + hub.seat_z - J3_PAD.pad_t
+    assert v >= FREE + pair.face - 1e-9, (
+        'a %.2f standoff would put the pad inside the %.2f band the %dT turns '
+        'in' % (v, FREE + pair.face, pair.z_gear))
+    return v
 
 # The forearm's own solve, reproduced. These are the numbers models/ builds
 # today - if one of these fires, this function and the part have parted
 # company and the CAP WILL NOT FIT THE PAD.
-assert abs(J3_PAD.pad_t - 5.5) < 1e-9, 'fa_cap_t/fa_lobe_t is 5.5, got %.4f' % J3_PAD.pad_t
-assert abs(J3_PAD.half_z - 8.8) < 1e-9, 'fa_lobe_z is 8.8, got %.4f' % J3_PAD.half_z
-assert abs(J3_PAD.fix_z - 4.2) < 1e-9, 'fa_cap_screw_z is 4.2, got %.4f' % J3_PAD.fix_z
-assert abs(J3_PAD.fix_x - 22.70106) < 1e-4, (
-    'fa_cap_screw_y builds out at 4.90106 in the forearm frame, i.e. '
-    '22.70106 in the servo frame; got %.5f' % J3_PAD.fix_x)
-assert abs(J3_PAD.x_hi - 27.40106) < 1e-4, (
-    'fa_cap_reach builds out at 9.60106 in the forearm frame, i.e. '
-    '27.40106 in the servo frame; got %.5f' % J3_PAD.x_hi)
-assert abs(J3_STANDOFF - 10.8) < 1e-9, (
-    'fa_j3_standoff derives 10.8 today, got %.4f' % J3_STANDOFF)
-assert J3_STANDOFF >= FREE + J3_PAIR.face - 1e-9, (
-    'the pad would sit inside the band the 36T turns in')
+#
+# RE-PINNED 2026-09-03 FOR THE SG90, and every one of them moved except the
+# last. The MG90S column is kept beside each so the swap can be read off:
+#
+#     pad_t     5.50 -> 6.70   the SG90 carries more case above its tabs
+#                              (tab_below_top 3.00 -> 4.30) even though its
+#                              tabs are thinner (2.50 -> 2.40). +1.20.
+#     half_z    8.80 -> 8.70   a 0.20 narrower case, halved. -0.10.
+#     fix_z     4.20 -> 4.10   follows half_z exactly - it is half_z less a
+#                              wall and a head radius, and neither moved.
+#     fix_x    22.70 -> 22.82  the SG90's tab pitch is WIDER (27.50 -> 27.80)
+#                              and its case shorter, so the outer tab pilot
+#                              lands at the same 19.15 - but fix_z shrank, so
+#                              the screw has to stand further out along X to
+#                              keep the same 5.50 of centre distance from it.
+#                              THE TAB PILOT GOVERNS THIS, not the window.
+#     x_hi     27.40 -> 27.52  fix_x plus a head, a wall and the margin.
+#
+# The last one does NOT move: see j3_standoff() for why that is arithmetic
+# and not luck.
+assert abs(J3_PAD.pad_t - 6.7) < 1e-9, 'fa_cap_t/fa_lobe_t is 6.7, got %.4f' % J3_PAD.pad_t
+assert abs(J3_PAD.half_z - 8.7) < 1e-9, 'fa_lobe_z is 8.7, got %.4f' % J3_PAD.half_z
+assert abs(J3_PAD.fix_z - 4.1) < 1e-9, 'fa_cap_screw_z is 4.1, got %.4f' % J3_PAD.fix_z
+assert abs(J3_PAD.fix_x - 22.81606) < 1e-4, (
+    'fa_cap_screw_y builds out at 5.01606 in the forearm frame, i.e. '
+    '22.81606 in the servo frame; got %.5f' % J3_PAD.fix_x)
+assert abs(J3_PAD.x_hi - 27.51606) < 1e-4, (
+    'fa_cap_reach builds out at 9.71606 in the forearm frame, i.e. '
+    '27.51606 in the servo frame; got %.5f' % J3_PAD.x_hi)
 
 
 def pad_x_to_link_y(x_mm, l2_mm, centre=None):
@@ -732,7 +928,7 @@ def pad_x_to_link_y(x_mm, l2_mm, centre=None):
     l2 stays in forearm.py deliberately: it is that link's length, read by
     nobody else's geometry, and it is not a joint interface.
     """
-    c = J3_PAIR.centre_distance if centre is None else centre
+    c = _j3_pair().centre_distance if centre is None else centre
     return x_mm + (-l2_mm + c)
 
 
@@ -858,6 +1054,50 @@ assert abs(GRIPCUT_FACE_OFFSET - 1.5) < 1e-9, (
 
 
 # =========================================================================
+#  J5: WHICH PLANE wrist_rotator IS POSED FROM
+# =========================================================================
+# THREE FILES POSED THIS PART AND ALL THREE HELD THE WRONG PLANE.
+# _check_wrist.place_rotator, _preview_arm.py and _check_motor_clearance.py
+# each read `wro_y_front` - the roll housing's FRONT FACE - and put the
+# rotator's ORIGIN on it. The rotator's origin is not its seating face: the
+# seat is `wrt_hub_h` BELOW the origin, and wrist_roll.py names the plane
+# that is actually held in as many words - `wro_rot_seat`, "where
+# wrist_rotator's SEATING FACE sits ... This is the datum; the servo is
+# placed off it."
+#
+# The two planes are 1.30 mm apart and the error is not cosmetic. Posed
+# 1.30 too far out, the rotator's Oe4.65 broach stops 1.30 short of the
+# spline top and its Oe6.65 washer access bore no longer reaches the
+# retaining washer, which then lands on the broach bore instead of the
+# spline step. GATE motor_clearance MEASURED both halves of that on
+# 2026-09-03 - 12.0 mm3 against servo_SG90 and 12.0 mm3 against
+# retain_SG90 - and reported J5 as a STRIKE. The tell was in its own
+# output: the volume did not change across the sweep. A strike that does
+# not vary with rotation is not a strike, it is a seating error.
+#
+# The rule lives here once and the three posers read it. It is a tuple of
+# PARAMETER NAMES rather than a number because none of them can be resolved
+# outside a Fusion document, and a number here would be a fourth copy.
+J5_ROTATOR_ORIGIN_PARTS = ('wro_rot_seat', 'wrt_hub_h')
+
+# AND THE HOUSING'S FRONT FACE IS THAT SAME PLANE. Correcting the pose above
+# turned the 12 mm3 of phantom strike into 239 mm3 of REAL one, in the frame
+# self-check: seated where wro_rot_seat says it seats, the rotator's disc
+# lands 1.30 mm INSIDE wrist_roll's front face, because wro_y_front was a
+# typed 17.0 and the plane it has to be is rot_seat + the rotator's back hub.
+# That is the defect the wrong pose was hiding - the gate had been posing the
+# part into the clear air 1.30 mm further out and calling the leftover
+# spline contact the problem.
+#
+# wrt_hub_h CANNOT MOVE TO ABSORB IT. wrist_rotator.py spends a paragraph on
+# why: the disc alone is 6.00 deep, seats at 7.10, reaches the boss top at
+# 10.90 and would grip 2.20 mm of a 2.50 mm spline. The 4.00 hub is what
+# takes the whole spline, so it is the drive, not a boss. The housing is the
+# side that yields.
+J5_ROTATOR_HUB_H_MM = 4.0
+
+
+# =========================================================================
 #  WHAT THIS FILE DOES NOT OWN, STATED SO NOBODY GOES LOOKING
 # =========================================================================
 # fa_l2, ua_l1        LINK LENGTHS, not joint interfaces. They belong to
@@ -869,7 +1109,9 @@ assert abs(GRIPCUT_FACE_OFFSET - 1.5) < 1e-9, (
 # the tooth pair      lib/gears.py J3_PAIR, and the pinion's seat on the
 #                     servo, lib/gears.py J3_HUB / J3_MOUNT.
 # the servo envelope  lib/servo.py. This file consumes it; it never restates
-#                     a case dimension.
+#                     a case dimension. WHICH servo a joint gets IS owned
+#                     here - JOINT_SERVO at the top - because that is a fact
+#                     about the ARM, not about any servo in the catalogue.
 # the bearing         lib/bearings.py B608ZZ. BearingSeat above says who
 #                     touches which RACE, which is the joint, not the part.
 # sty_*               specs/robotarm/_style.md, via lib/palette.py.

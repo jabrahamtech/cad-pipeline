@@ -399,11 +399,17 @@ def run(_context: str):
 
     # ---- phase 3: the J4 servo lobe -----------------------------------------
     t2 = design.timeline.count
-    # TWO CUTS, NOT ONE, AND AN MG90S IS WHY. Reading up from its case top
-    # there are fa_tab_below_top of bare case and then fa_tab_thk of mounting
-    # FLANGE, and that flange is fa_tab_span long against a much shorter
+    # TWO CUTS, NOT ONE, AND THE SERVO'S FLANGE IS WHY. Reading up from its
+    # case top there are fa_tab_below_top of bare case and then fa_tab_thk of
+    # mounting FLANGE, and that flange is fa_tab_span long against a shorter
     # case. A single window sized for the case lands the flange on solid
-    # lobe. GATE servo_fit MEASURED that collision - 195.75 mm3 of MG90S
+    # lobe. GATE servo_fit MEASURED that collision - 195.75 mm3 of MG90S,
+    # the servo J4 carried until 2026-09-03; the band moves outboard with
+    # fa_j4_lobe_t now that it is an SG90, so re-run the gate. NOTHING IN
+    # THIS FILE HAS TO CHANGE FOR THAT: every station here is fa('...') out
+    # of forearm.py's document parameters, which derive from
+    # lib/joints.JOINT_SERVO. That is the whole reason the split was done
+    # this way round.
     # inside the host, in the flange band and nowhere else. So the case
     # window is cut for the case alone and a FLANGE RECESS takes the last
     # fa_tab_thk out to the tab plane. specs/robotarm/_flange.md.

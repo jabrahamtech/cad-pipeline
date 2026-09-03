@@ -1,0 +1,368 @@
+opened a FRESH document - nothing here is inherited
+body: 'gripper_pinion' | material: PET Plastic | appearance: Plastic - Glossy (White)
+teeth 12  module 1.50 mm  face 8.00 mm
+r base/pitch/tip/root mm: 8.457 9.000 10.500 7.125
+tooth thickness at pitch mm: 2.356 (target pi*m/2 = 2.356)
+tip thickness mm: 0.931 | rack travel per radian mm: 9.00
+centre distance (axis to rack pitch line) mm: 9.20 | backlash 0.20
+pinion sweep for full stroke: 127.3 deg
+radial clearance to rack root mm: 0.575
+seats 7.10 up the SG90 (0.40 clear of its case top) - it sat at 10.90 on the horn, so gripper_shell must bring the pinion plane and BOTH rack channels down to match
+spline hub: boss bore Oe5.40 to 3.80, then Oe4.65 BROACHED 3.80..6.30
+  2.5 mm of spline engaged | NO HORN | needs a Oe6.2 washer on the top face under the screw - the shells must leave it clear
+  face 8.00 against a 5.80 minimum to reach the spline at all
+wall between the boss bore and the tooth roots: 4.43 mm
+chamfered edges: bed 73, top 73
+bbox mm: X -10.50..10.50  Y -10.50..10.50  Z 0.00..8.00
+volume mm3: 1760 | mass g: 2.71 | valid: True
+bodies: 1 | sketches: 4 | user params: 25
+timeline groups: ['gear teeth', 'spline hub', 'finish']
+body: 'pruner_blade' | material: PET Plastic | appearance: Plastic - Glossy (White)
+EDGE OFFSET FROM THE PIVOT - one crossing point, and it travels
+linkage from lib/pruner_linkage.CHOSEN: tail 26.0, throat 8.5, tip 20.0, +/-40.0 deg
+MA 3.06 at the throat root, 1.30 at the tip
+drive slot RADIAL, r 26.00..33.94, absorbing 7.94 mm as the blade turns
+edge offset 3.50 -> mouth 7.00, ONE crossing at r = 3.50 / sin(theta)
+steel pocket 9.2 x 11.5 x 0.55 in the INNER face, covering r 6.5..17.3
+bbox mm: X -6.00..13.50  Y -37.29..22.00  Z 0.05..3.55
+volume mm3: 1688 | mass g: 2.60 (x2 = 5.20) | valid: True
+bodies: 1 | sketches: 8 | user params: 55
+timeline groups: ['carrier form', 'pivot', 'blade pocket', 'drive slot', 'finish']
+body: 'gripcut_finger' | material: PET Plastic
+ONE design, TWO copies, the second FLIPPED - like the carriers.
+grip face: plane x 1.50 (edge_off - lead 2.0), y 6.3..8.2, z 3.65..9.55 - ABOVE the blade stack
+  the grip is a COUPLE: finger presses from above, the piece leans
+  on the carrier's own nose edge below. Empty close: fingers
+  BYPASS, no z overlap - only a stem loads the leaf.
+leaf: t 1.2 x w 6.0, hairpin out to y 20.7 and back - effective length ~33 mm (solver sized 29.1 straight; coupon calibrates)
+anchor: ring Ø12.0 on the pivot M3, key boss 4.0 x 3.0 x 1.4 at y -7.9 into the carrier pocket
+bbox mm: X -6.00..9.90  Y -9.40..20.70  Z 2.15..9.55
+volume mm3: 1036 | mass g: 1.60 (pair 3.19) | valid: True
+bodies: 1 | sketches: 5 | user params: 78
+timeline groups: ['gear teeth', 'spline hub', 'finish', 'carrier form', 'pivot', 'blade pocket', 'drive slot', 'ring and key', 'leaf', 'tip']
+body: 'pruner_rack' | material: PET Plastic | appearance: Plastic - Glossy (White)
+8 teeth, toothed run x -29.70..8.00, covers a 29.70 mm stroke (needs 21.82)
+drive pin 3.0 dia at y 16.0 | BACK EDGE 14.50, pinion disc ends 4.00
+pin spans z -9.15..-5.65 in the rack frame; tip lands at effector z 0.05, facing the other pin across 0.10
+bbox mm: X -32.70..11.00  Y -4.00..19.00  Z -9.15..5.38
+volume mm3: 3562 | mass g: 5.49 (x2 = 10.98) | valid: True
+bodies: 1 | sketches: 4 | user params: 97
+timeline groups: ['rack bar', 'drive bracket', 'finish']
+body: 'pruner_shell' | material: PET Plastic | appearance: Plastic - Glossy (Green)
+form: 59 long x 16.3 tall, 48 wide at the hand tapering to 40 at the wrist
+style: 4.0 mm facet, R6.0 corners, 0.4 mm elephant foot
+channel floor 14.70 mm | half width 4.125 mm | pinion recess r 10.90 mm
+servo bay y -31.90..-8.20 | tabs at y -14.90 | far-tab slot x 16.6..21.4
+cheek: 13.0 -> 9.0 half width, tapering from y 36.0, 3.0 thick, 1.0 facet
+J5 roll interface: 4 x M3 at x +/-11.0, z +/-9.0 through a 2.6 mm wall
+tail wall beside the servo pocket: 3.76 mm
+bridges (all under 40 mm, no support): channel floor 8.25 mm, servo bay roof 19.90 mm, tail cavity cap 35.00 mm
+bbox mm: X -24.00..24.00  Y -34.50..45.50  Z 0.00..16.30
+volume mm3: 13695 | mass g: 21.10 | valid: True
+bodies: 1 | sketches: 22 | user params: 150
+timeline groups: ['outer form', 'mouth, rack channel and pinion', 'servo bay', 'fasteners', 'finish', 'effector bolts']
+
+batch 0 built: gripper_pinion, pruner_blade, gripcut_finger, pruner_rack, pruner_shell
+now run BATCH = 1
+body: 'wrist_hub' | material: PET Plastic | appearance: Plastic - Glossy (White)
+hex 15.80 af (socket 16.0 - 0.2 loc) reaching 3.8 mm
+hex across corners 18.24, threaded through a 20.0 collar bore
+collar OD 20.0 x 5.0, retaining flange OD 24.0 x 2.0
+seats 7.10 up the SG90 (0.40 clear of its case top) - forearm.py must stand the J4 servo off to match
+spline hub: boss bore Oe5.40 to 3.80, then Oe4.65 BROACHED 3.80..6.30
+  2.50 mm of spline engaged against a 2.00 floor - the WHOLE 2.50 mm the SG90 has, so a taller hub buys none. NO HORN | needs a Oe6.2 washer under the screw, passed down a Oe6.65 access bore
+  bore-able stack 10.80 (collar 7.00 + hex reach 3.80) against a 5.80 minimum - the collar ALONE would not reach the spline
+walls: collar/boss bore 7.30 | hex flats/access bore 4.58 mm
+PRINTABILITY - FLANGE FACE ON THE BED (z -7.00), BUILT +Z, SUPPORT OFF.
+  stack narrows all the way up: Oe24.0 flange -> Oe20.0 collar -> 15.80 af hex (18.24 across corners). No outside overhang.
+  one 90 deg face: a 0.37 mm inward annulus where the Oe4.65 broach bore steps out of the Oe5.40 boss bore. Anchored all round; printed.
+  bed contact ~452 mm2 - hex-down it would be ~216 and both annular steps would invert into ceilings.
+bbox mm: X -12.00..12.00  Y -12.00..12.00  Z -7.00..3.80
+volume mm3: 2990 | mass g: 4.61 | valid: True
+bodies: 1 | sketches: 6 | user params: 174
+timeline groups: ['hub form', 'spline hub', 'finish']
+body: 'wrist_rotator' | material: PET Plastic | appearance: Plastic - Glossy (White)
+SCALLOPS: 4 lobes at az [45, 135, 225, 315] - _style.md 4b. The inserts sit on the
+  lobes because the notches are in the GAPS: a rectangular bolt
+  pattern has no lobe count that lands on all four.
+  notch r 4.0 at r 20.0, biting 2.0 mm out of an 18.0 rim
+disc OD 36.0 x 6.0 | effector pattern 4 x M3 at +/-11.0, +/-9.0 (corner 14.21)
+seats 7.10 up the SG90 (0.40 clear of its case top) - wrist_roll.py must stand the J5 servo off to match
+spline hub: boss bore Oe5.40 to 3.80, then Oe4.65 BROACHED 3.80..6.30
+  2.5 mm of spline engaged | NO HORN | needs a Oe6.2 washer under the screw, passed down a Oe6.65 access bore
+  bore-able stack 10.00 (back hub 4.00 + disc 6.00) against a 5.80 minimum - the DISC ALONE would grip only 2.20 mm
+back-hub wall around the boss bore: 2.55 mm
+PRINTABILITY - FRONT FACE ON THE BED (z 6.0), BUILT -Z, SUPPORT OFF.
+  cross-section shrinks all the way up: Oe36.0 disc -> Oe10.5 hub, so
+  every outer face is vertical or up-facing. Bed contact ~1018 mm2.
+  HUB-DOWN, WHICH IS WHAT THIS FILE USED TO SAY, the disc underside
+  is 931 mm2 of flat 90 deg ceiling on a Oe10.5 post with 64 mm2 of
+  bed contact - a full raft against the effector face. That is the
+  support Jonathan could not clean. Do not turn this part back over.
+  left over air, declared not gated: 4 x Oe4.0 insert roofs under 0.50 mm of disc, and a 1.00 mm bore ledge at the broach bore top.
+inserts 5.5 deep from the front, 5.76 mm clear of the hub radially
+bbox mm: X -17.70..17.70  Y -17.70..17.70  Z -4.00..6.00
+volume mm3: 5681 | mass g: 8.75 | valid: True
+bodies: 1 | sketches: 13 | user params: 198
+timeline groups: ['disc', 'scallops', 'spline hub', 'effector inserts', 'finish']
+body: 'wrist_roll' | material: PET Plastic | appearance: Plastic - Glossy (White)
+CLAMSHELL HALF. ONE DESIGN, TWO COPIES, THE SECOND MIRRORED IN X.
+  split face x 0.0, this half x 0.0..12.0; the pair still straddle 24.0
+  the bench rejected the monolith TWICE - "worst supports, impossible to clean", then "impossible to print" after the gable. The gable is reverted; the front wall is 5.60 again.
+roll servo: case y -12.4..11.3, z -16.6..6.1 | tabs y 4.6, z +/-10.9
+STALE GATE, REPORTED NOT FIXED: _check_leads MOUNTS puts J5 roll's shaft at y 5.00; this part builds its tab plane at y 4.60. Off by 0.40, which is wro_case_gap - the spline migration moved the servo and that row did not follow. _check_leads.py is not this pass's file.
+keel: full half width now (was 8.0), y -7.4..8.6, z -23.2..-16.6, bevel 6.6 mm at 45.0 deg
+crest: y 5.88..13.92, top 12.70 (z_top 10.84) - THE ONLY ENVELOPE GROWTH, 1.86 mm in +Z over 8.05 mm of Y, to seat one nut
+clamshell: 3 x M2 through-bolt, Oe2.40 clearance, seat 4.20 af x 2.40 deep at the bed face (head Oe3.80 OR nut, same recess)
+    clamp_keel_aft   y   -5.52  z  -19.50   J4 socket clearance 10.30 mm
+    clamp_keel_fwd   y    1.70  z  -19.50   J4 socket clearance 10.30 mm
+    clamp_crest      y    9.90  z    9.00   J4 socket clearance 3.87 mm
+    the arm's other two clamshells are on M3. This one cannot be: an M3 head is 6.00 across and an M3 nut pocket 5.70, so one recess cannot take both ends and the one-design-mirrored trick fails.
+PRINTABILITY - OUTER FACE ON THE BED (x 12.0), BUILT -X, SUPPORT OFF.
+  the entire outer form is ONE prism along the build axis, so no outer face is an overhang. Every cavity opens at the top face.
+  faces over 50.0 deg: NONE.
+  bridges (90 deg, anchored all round, limit 40.0 mm):
+    J4 socket floor        18.48 mm
+    nut recess shoulder     4.85 mm
+  GONE with the split: a 7.6 mm bay crown 25.4 mm down a hole that opened only at the bed, two 12.4 mm tab-slot bridges, a 3.6 mm keyway bridge, and four J4 socket roof facets at 60 deg.
+WORST SWEEP about J4: corner (17.0, -18.3) at 24.98 mm (forearm allows 25.4)
+hex socket 16.0 af, 3.4 deep, leaving 2.40 mm of wall beside the servo
+SERVICE: the SG90 retaining screw and Oe6.3 washer are driven down wrt_access_d from the ROTATOR front face, forward of y 17.0. This half is entirely behind it and the crest stops at y 13.92, so the wrist is still serviceable assembled.
+bbox mm: X 0.00..12.00  Y -14.00..17.00  Z -23.20..12.70
+volume mm3: 7001 | mass g: 10.79 | valid: True   (ONE HALF - double it for the assembly)
+bodies: 1 | sketches: 12 | user params: 248
+timeline groups: ['housing form', 'roll servo bay', 'pitch socket', 'clamshell', 'finish']
+body: 'forearm' | material: PET Plastic | appearance: Plastic - Glossy (Green)
+SERVOS: J3 SG90, J4 SG90 - lib/joints.JOINT_SERVO, not typed here. case 22.70 x 12.20, tabs 2.40 thick at 27.80 pitch, flange 32.30 span
+L2 45.0 | plates |x| 12.4..19.9 (7.5 thick) | waist 3.5 flush inside
+silhouette: r 13.78 bosses joined by r 129.7 concave arcs (DERIVED from the 12.0 waist), waist half 12.00
+journal bore 20.35 / flange counterbore 24.35 x 2.5 deep, boss r 13.78
+j4 lobe on +X: case y -16.6..6.1, screws y -19.2 / 8.7, lobe y -23.2..12.8
+j3 lobe on -X: case y -23.9..-1.2, screws y -26.5 / 1.4, lobe y -30.6..5.5
+box beam: 2 walls 3.5 thick + rails 6.0 top and bottom, duct 24.8 x 12.0
+SPLIT: this body is the ASSEMBLED REFERENCE and is NOT the printed part - see forearm_px / forearm_nx / forearm_rail x2
+   seam: 8 x M3 at y -31.68 / -27.09, z +/-8.90 - 3.40 clearance through each 3.50 waist, 2.60 pilot through the rail, 8.0 engagement each end
+servo seats: fa_lobe_seat 5.00 in from each plate outer face, z +/-7.10, +Y capped at 10.68 - filling the 3.00 mm of air each servo block bridged outside its boss circle
+POLYGONAL: 1.00 mm facet (LOCAL, probed ceiling on BOTH faces) on 5 plate-outline edges (1 boss circle + silhouette, split on -X by the J3 standoff)
+lobe corners: j4 r2.1 on 4 edges (0 too short, 0 inside a boss) | j3 r4.5 on 0 edges (2 too short, 2 inside a boss)
+
+GEARED ELBOW: J3 servo moved 27.20 mm toward the wrist (y -17.80) and 10.80 mm out
+   gear turns at r 19.40, pinion at r 10.40, both in the 10.80 band off the plate face
+   the pinion circle (r 10.40) is taller than the lobe (8.70), so the standoff
+   survives only as a web at the WRIST end, y -7.40 .. 5.45 - 12.85 mm of it
+   608ZZ: 21.98 pocket x 7.0 deep from the plate INNER face, 0.50 shoulder
+   shoulder bores 13.0 - OUTSIDE the 12.0 inner race, so the stationary plate bears on the OUTER one
+   J3 drive-side flange counterbore DELETED - j3_gear has no flange and its journal is built for the full 7.5 plate
+   the servo PAD is not here - it is j3_servo_cap, 6.7 thick, bolted to this web
+   by 2 x M3 at y 5.02, z +/-4.10, 2.6 pilot x 8.0 deep. Without that split
+   the gear, the pinion and the retention M3 could none of them be fitted - GATE j3_installs.
+
+J4 DRIVE: no horn. wrist_hub bores onto the SG90 spline and seats 0.40 off the case top,
+   so the lobe is 7.10 thick (servo stack 6.70 + running gap 0.40) against 6.70 before. The case top now sits 0.40 OUTBOARD of the plate outer face and the hub seats ON it - the wrist does not move, the arm is 0.40 wider
+   THE FLANGE NEVER FITTED THE ONE-STEP WINDOW: tab plate 32.30 long against a 23.70 window, overhanging 4.30 at EACH end onto solid lobe - GATE servo_fit MEASURED 195.75 mm3 of MG90S in that band, and that gate has not been re-run since the servo changed
+   SO THE LOBE IS CUT TWICE: case window 23.70 x 13.20 deep 4.70, then a flange recess 32.80 x 13.20 deep 2.40 to the tab plane at 27.00
+   walls left: end 1.60, side 2.10, fillet corner 1.60, all against MIN_WALL 1.60 - fa_lobe_pad 4.10 and fa_lobe_radius_j4 2.10 are DERIVED from those three floors, not chosen
+   pilots 1.8 x 3.00 deep FROM THE RECESS FLOOR, leaving 1.70 to fa_plate_out and the J4 flange counterbore behind it
+   J3 STACK UNCHANGED: fa_cap_t 6.70 and fa_j3_standoff 10.80 both still read fa_lobe_t, so the cap thickness and the pinion plane did not move
+   BUT J3 IS NOT DONE. No recess is cut in the J3 lobe here and none is wanted: that lobe carries no servo any more, only the standoff web. The J3 SERVO sits on j3_servo_cap, which cuts its window through the full fa_cap_t at a tighter clearance still, so it has this same flange landing on solid pad - and it is not this file. What it gets from here is the pad: it reads fa_lobe_pad, now 4.10, which is exactly the room a 32.80 recess needs.
+
+WEB ON THE CENTRELINE: 6.2 mm between the two swings (J4 takes 25.4, J3 takes 13.4)
+bbox mm: X -30.70..27.00  Y -58.78..13.78  Z -13.78..13.78
+volume mm3: 20898 | mass g: 32.20 | valid: True
+bodies: 1 | sketches: 41 | user params: 319
+timeline groups: ['link form', 'joint clearance', 'pivot journals', 'elbow drive clearance', 'servo lobes', 'cable route', 'plate/rail seam', 'finish']
+
+batch 1 built: wrist_hub, wrist_rotator, wrist_roll, forearm
+now run BATCH = 2
+body: 'upper_arm' | appearance: Plastic - Glossy (Green)
+L1 125.0 | straddled BOTH ends at |x| 12.0 - no prongs, no journals
+drums r 13.0 (forearm allows 13.4 about J3, so 0.4 of running gap)
+silhouette: r 13.0 drums joined by r 1940.6 arcs, waist half 12.00
+4 hex sockets 16.0 af x 3.4 deep, 1.60 of wall beside the duct
+elbow bolt: 3.4 clear on the J3 axis, through the duct. Screw length not stated - jg_face, jg_bolt_head_d, jg_collar_l, ja_tap_l not in this document
+POLYGONAL: 4.0 mm facet on 8 silhouette arcs, 0.4 on 24 socket flats; 3.18 mm of wall left at the duct corner
+duct 14.0 x 19.0 runs the full length, hollowing both drums, 2.5 rails
+bbox mm: X -12.00..12.00  Y -138.00..13.00  Z -13.00..13.00
+volume mm3: 45207 | mass g: 69.66 | printed ~41.8 g | valid: True
+body: 'shoulder_hub' | material: PET Plastic | appearance: Plastic - Glossy (White)
+hex 15.80 af (socket 16.0 - 0.2 loc) reaching 3.8 mm
+hex across corners 18.24, threaded through a 20.0 collar bore
+collar OD 20.0 x 7.0 (FLANGELESS - widest point 20.00), journal band 5.0
+seats 10.20 up the MG995 (0.50 clear of its case top) - shoulder_bracket must stand the servo off to match
+spline hub: boss bore Oe13.40 to 2.50, then Oe5.65 BROACHED 2.50..6.10
+  3.6 mm of spline engaged | NO HORN | needs a Oe7.3 washer under the screw, passed down a Oe7.65 access bore
+walls: collar/boss bore 3.30 | hex flats/access bore 4.07 mm
+bbox mm: X -10.00..10.00  Y -10.00..10.00  Z -7.00..3.80
+volume mm3: 2339 | mass g: 3.60 | valid: True
+bodies: 1 | sketches: 5 | user params: 346
+timeline groups: ['hub form', 'spline hub', 'finish']
+body: 'shoulder_bracket' | material: PET Plastic | appearance: Plastic - Glossy (White)
+fork: plates |x| 12.4..19.9 (7.5 thick), bore 20.35, cbore 24.35 x 2.5, boss r 13.78
+column: 27.6 wide x 38.0 tall from the boss top to the axis
+TURNTABLE ROTOR (this part IS J1's rotating half):
+  race face z -47.40 | rim 76.0 dia x 5.00 to z -42.40 | journal boss 68.0 dia, 4.40 proud, top z -38.00
+  race band r 23.0..31.0, rollers at r 27.0 - LEFT FLAT, never pocketed
+  ring laps the rim from r 34.2 and finishes FLUSH with the boss top
+  J1 DRIVE, NO HORN: flat face + 3 x M3 clearance O4.40 on r 8.00 at az (90.0, 210.0, 330.0)
+    heads O5.90 x 3.00 counterbored FLUSH into the boss top; screw bore O5.40 is clearance only, no torque
+    the hub itself (O21.80, broach O4.65 over 2.50 of spline) is a SEPARATE part - specs/robotarm/j1_hub.md, built by neither host
+    holes are M3 clearance + 1.00 of DELIBERATE float: no register, the spline centres the hub and this joint takes up the difference
+CLEARANCES:
+  servo pad reaches r 32.0, fork legs r 24.2, journal boss is r 34.0
+  MG995 case bottom z -30.90 vs ring top z -38.00 -> 7.10 mm of daylight
+  servo pad ends z -41.15, 3.15 mm inside the boss top
+MG995 runs DOWN: case z -30.9..10.0, tab slots z -34.4 / 13.5 (5.6 long x 2.5), pad z -41.2..20.3 x 9.7 thick
+  FLANGE RECESS 55.0 x 21.2 x 2.50 deep from the pad face (z -37.95..17.05, x 27.10..29.60): the tab plate is 13.1 mm longer than the case and all of it used to land on solid pad - GATE servo_fit MEASURED 243.0 mm3 there
+    end walls 3.20 / 3.20, skin over the corner under the r6.0 pad fillet 0.78, flank beside the window 1.60 (MIN_WALL 1.60)
+    tab pilots start at the RECESS FLOOR x 27.10, bottom at 22.10, 2.20 above plate_out - engagement is still the full 5.0 and the screw is still 7.5 long
+    slots z -37.15..16.25 sit 0.80 / 0.80 inside the recess ends, so every disputed pitch (47.5 / 47.8 / 49.5) lands on its floor
+    the pad clamps the tab TOP on that floor, not the tab underside - see the docstring, lib/servo.py's datum sentence needs a second case
+J2 DOWN-PITCH LIMIT: 25.0 deg before the arm reaches the turntable (arm 125 long, 13.0 half height, ring r 50.0)
+CONNECTOR GATE: 9.8 x 5.8 keyhole at az 270, r 12.2..18.0 - servo
+  plugs (~8.7 x 4.5) pass here; the 3.4 window takes only wires.
+J1 TRAVEL: the full servo 180 deg - the ring hooks over the rim, so nothing caps rotation
+filleted 2 pad corners at r 6.0
+bbox mm: X -38.00..38.00  Y -38.00..38.00  Z -47.40..20.25
+volume mm3: 55706 | mass g: 85.84 | printed ~51.5 g | valid: True
+bodies: 1 | sketches: 26 | user params: 412
+timeline groups: ['bracket form', 'pivot journals', 'servo mount', 'turntable interface', 'finish']
+
+batch 2 built: upper_arm, shoulder_hub, shoulder_bracket
+now run BATCH = 3
+body: 'turntable_stator' | material: PET Plastic | appearance: Plastic - Glossy (White)
+DATUM: z 0 is the printed platter rim top (its z 42.00, MEASURED)
+base plate r 10.0..50.0 x 4.0, 3 posts r 45.0 dia 11.0 to z 29.50
+rollers: 3 x 608ZZ at r 27.0, az (90.0, 210.0, 330.0), axles RADIAL at z 13.10
+  stub 7.90 dia from r 35.00 to 22.50 past a 11.0 collar 0.50 proud
+  cheeks r 31.00..35.00, top z 19.10 (rotor rides at 24.10)
+RACE FACE z 24.10 = axle 13.10 + 608 OD/2. Rotor rim top 29.10, ring under 29.50.
+J1 SPLINE DRIVE - NO HORN. deck 10.20, case top 16.90, boss top 21.10, spline top 23.60
+  the rotor race face is at 24.10, so the spline stops 0.50 SHORT of it - nothing on the servo touches the rotor and the rollers carry the arm
+  hub: O4.65 broach over 2.50 of spline, 2.10 left with the ring fully lifted (min 2.00). Bolted to the rotor, 3 x M3 on r 8.00.
+  hub body z 17.30..24.10 - built by NEITHER of J1's two host parts. specs/robotarm/j1_hub.md.
+SG90: tabs bear at z 10.20, case bottom z -6.80 (into the platter column)
+  bearing seat: 11.0 collar on a 12.0 inner race, retained by a 11.0 washer (NOT a standard M3 Ø7 - it falls through the Ø8 bore)
+  SHAFT ON AXIS: case centre offset +5.25 in Y so the output shaft
+    lands at y 0. The SG90 shaft is 6.1 from the near end of a 22.7
+    case, so centring the CASE would put it 5.2 mm off the J1 axis.
+  ONE pilot 1.8 at y +19.1 (FAR tab). The near tab at y -8.7 has no screw:
+    the lead keyway runs straight through it and lead_y = 0 means it cannot
+    be moved aside. ONE screw and a 0.5-per-side pocket is all that holds
+    this servo against its own reaction torque - see the keyway note: a
+    bridge cap over the near tab is the outstanding fix.
+  LEAD KEYWAY 3.6 wide, centred, END wall at y -6.1, out to y -12.0
+  pad 18 x 33 centred y +5.25
+CABLE WINDOW: r 13.7..20.0, 70 deg at az 270 - the fixed half of the
+  loom route. The servo well is 12.40 x 22.90 on a 12.20 x 22.70 case,
+  so NOTHING could pass beside the servo - 15 leads cross J1 here.
+  base_lid repeats it below; shoulder_bracket's window is the moving half.
+ONE M3 per post: ring -> post -> platter insert. 3 screws hold the turret.
+bbox mm: X -50.50..50.00  Y -50.00..50.00  Z 0.00..29.50
+volume mm3: 34750 | mass g: 53.55 | printed ~32.1 g | valid: True
+bodies: 1 | sketches: 32 | user params: 462
+timeline groups: ['stator form', 'rollers', 'yaw servo', 'platter interface']
+body: 'turntable_ring' | material: PET Plastic | appearance: Plastic - Glossy (White)
+ring: bore 68.35 x OD 100.0 x 4.0 thick, underside z 29.50, top z 33.50
+UPLIFT: laps the 76.0 rotor rim by 3.82 mm, with 0.40 of daylight under it
+RADIAL: journal on the rotor's 68.0 boss, 0.35 of clearance, 4.00 engaged
+SCALLOPS: 12 lobes, notch r 6.0 centred at r 53.0, reaching in to r 47.0
+  lobes at az [30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360] - every M3 post lands on a lobe
+fixings: 3 x 3.4 clearance at r 45.0 az (120.0, 180.0, 240.0), heads 6.5 x 2.4 recessed
+bbox mm: X -50.00..50.00  Y -50.00..50.00  Z 29.50..33.50
+volume mm3: 15438 | mass g: 23.79 | printed ~14.3 g | valid: True
+bodies: 1 | sketches: 19 | user params: 470
+timeline groups: ['ring form', 'scallops', 'fixings']
+body: 'base_lid' | material: PET Plastic | appearance: Plastic - Glossy (White)
+REPLACES the printed base_lid_v1, which has NO central opening -
+  measured, not assumed: its own spec claims a 60.0 servo hole and the
+  STEP has nothing in the middle. The SG90 could never have gone in.
+disc 171.75 x 3.00, on the platter shelf z 39.00, flush at 42.00
+OPENING 22.0 x 32.6 (r 3.0 corners) - clears the stator's own void
+  stator void: 20.0 circle + 12.4 x 22.9 well | SG90 case 12.2 x 22.7
+LOOM SLOT: r 13.7..20.0, 70 deg at az 270 - matches ts_cable_*
+  15 leads cross J1 (5 servos above it). They CANNOT go beside the
+  yaw servo: the stator's well is 12.40 x 22.90 on a 12.20 case.
+fixings: 3 x 9.50 at r 45.0 az (120.0, 180.0, 240.0) | 4 x M3 at r 78.0 az (45.0, 135.0, 225.0, 315.0), heads 6.5 x 1.2
+vents: 12 x 4.0 at r 62.0 - OUTSIDE the stator's 50.0 footprint
+band: r 54.0..70.0 recessed 0.8, leaving 2.2 of lid
+zip-tie anchors: 2 x 2.0 x 4.0 at x +-20.0
+bbox mm: X -85.88..85.88  Y -85.88..85.88  Z 0.00..3.00
+volume mm3: 60840 | printed ~50.2 g PETG | valid: True
+bodies: 1 | sketches: 29 | user params: 495
+timeline groups: ['disc', 'servo + cable opening', 'fixings', 'vents']
+
+batch 3 built: turntable_stator, turntable_ring, base_lid
+now run BATCH = 4
+seats 7.10 up the SG90 (0.40 clear of its case top) - forearm.py must stand the J3 lobe off to match
+spline hub: boss bore Oe5.40 to 3.80, then Oe4.65 BROACHED 3.80..6.30
+  2.50 mm of spline engaged against a 2.00 floor (25% margin) - NO HORN | needs a Oe6.2 washer under the screw
+  THAT IS THE WHOLE SPLINE. engaged = min(hub top, spline top) less the boss top, and this face is far above the spline, so it equals spline_h exactly - 2.50 on the SG90. A thicker gear buys no more of it; only a different servo would.
+wall between the boss bore and the tooth roots: 5.05 mm
+centre distance to the J3 servo shaft 27.200 mm
+bbox mm: X -10.00..10.00  Y -9.89..9.89  Z 0.00..10.00
+volume mm3: 2225 | mass g: 3.43 | valid: True
+bodies: 1 | sketches: 4 | user params: 512
+timeline groups: ['gear teeth', 'spline hub', 'finish']
+body: 'j3_gear' | material: PET Plastic | appearance: Plastic - Glossy (White)
+36T module 1.00 face 10.00 - lib/gears.py J3_PAIR, ratio 2.0000
+r base/pitch/tip/root mm: 16.914 18.000 19.000 16.750
+tooth thickness at pitch 1.471 mm (target 1.471 incl. backlash)
+tip land 0.647 mm - a pointed tooth would read 0
+stem: hex 15.80 af reaching 3.8 | journal 20.0 x 7.90 | M3 bore 3.4
+centre distance to the J3 servo shaft 27.200 mm
+bbox mm: X -19.00..19.00  Y -19.00..19.00  Z -11.70..10.00
+volume mm3: 13028 | mass g: 20.08 | valid: True
+bodies: 1 | sketches: 6 | user params: 529
+timeline groups: ['gear teeth', 'journal + hex', 'finish']
+body: 'j3_axle' | material: PET Plastic | appearance: Plastic - Glossy (White)
+608ZZ: bore 8.0 od 22.0 width 7.0, inner race reaches 12.0
+stack from the socket floor: hex 15.80 af x 3.4 | collar 11.0 x 0.4 | journal 7.98 x 7.50
+journal is a 0.02 press in the 8.0 race bore
+collar land: r 3.99..5.50 inside a race that ends at r 6.00
+M3 retention: 2.6 pilot x 9.0 deep, from the j3_gear side
+bbox mm: X -9.12..9.12  Y -7.90..7.90  Z 0.00..11.30
+volume mm3: 1092 | mass g: 1.68 | valid: True
+bodies: 1 | sketches: 4 | user params: 546
+timeline groups: ['hex + collar', 'journal', 'finish']
+body: 'j3_servo_cap' | material: PET Plastic | appearance: Plastic - Glossy (Green)
+the J3 servo pad, lifted off the forearm so the elbow can be built
+plate 40.27 x 17.40 x 6.70, corners r 4.50
+servo window 23.70 x 13.20, keyway 3.60 wide x 7.65 out of the end face
+servo pilots 1.8 x 3.5 deep at x -8.65 / 19.15
+fixing: 2 x M3 at x 22.82, z +/-4.10 - 3.4 clear, 6.0 cbore x 3.2 deep, 3.50 of cap under the head
+   heads MUST be flush: the servo tab plate lands on this face
+   screws go 8.0 into the standoff web, so 14.7 of screw is wanted - BUY M3 x 16
+interface READ from the forearm: cap_t 6.70, cap_reach 9.72, screw y 5.02 z 4.10
+bbox mm: X -12.75..27.52  Y -8.70..8.70  Z 0.00..6.70
+volume mm3: 2063 | mass g: 3.18 | valid: True
+timeline groups: ['cap plate', 'servo window', 'fixing', 'finish']
+
+=== volume ledger ===
+part                         ledger        built      delta
+gripper_pinion             1760.000     1760.467      0.467
+pruner_blade               1687.736     1687.736      0.000
+gripcut_finger             1035.602     1035.602      0.000
+pruner_rack                3562.163     3562.163      0.000
+pruner_shell              13694.587    13694.587      0.000
+wrist_hub                  2982.000     2990.357      8.357  <<< DRIFT
+wrist_rotator              5681.000     5681.056      0.056
+wrist_roll                 7001.000     7001.355      0.355
+forearm                   20582.000    20898.472    316.472  <<< DRIFT
+upper_arm                 45207.000    45207.244      0.244
+shoulder_hub               2339.000     2339.253      0.253
+shoulder_bracket          55706.000    55705.999     -0.001
+turntable_stator          34750.000    34750.173      0.173
+turntable_ring            15438.449    15438.449      0.000
+base_lid                  60840.453    60840.453      0.000
+j3_pinion                  2158.974     2224.817     65.843  <<< DRIFT
+j3_gear                   13027.658    13027.658      0.000
+j3_axle                    1092.372     1092.372      0.000
+j3_servo_cap               1646.000     2063.278    417.278  <<< DRIFT
+
+IN THE LEDGER BUT NOT BUILT: ['forearm_nx', 'forearm_px', 'forearm_rail', 'gripper_shell', 'j1_hub']
+components 20 | timeline 97 | params 568
+GATE ledger : FAIL - wrist_hub +8.4 mm3; forearm +316.5 mm3; j3_pinion +65.8 mm3; j3_servo_cap +417.3 mm3
+  Volumes UP means a shared parameter moved - look for a style(),
+  wrist() or turret() call giving a shared name a different value.
+  Volumes DOWN means an unscoped CUT - look for a non-NewBody
+  feature with no participantBodies. See fusion/PLAYBOOK.md.

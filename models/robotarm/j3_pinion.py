@@ -2,9 +2,12 @@
 
 Rebuilds `robotarm_j3_pinion` (idempotent). Spec: lib/gears.py J3_PAIR.
 
-THE 18T INPUT HALF OF THE ELBOW REDUCTION, pressed onto the J3 MG90S's own
-horn. j3_gear.py is the other half and both trace the SAME involute out of
-lib/gears.py - see that file's tooth_polar().
+THE 18T INPUT HALF OF THE ELBOW REDUCTION, bored straight onto the J3
+servo's own spline. j3_gear.py is the other half and both trace the SAME
+involute out of lib/gears.py - see that file's tooth_polar().
+
+WHICH SERVO IS NOT THIS FILE'S TO SAY. lib/joints.JOINT_SERVO holds it for
+the whole arm; J3 is an SG90 as of 2026-09-03 and was an MG90S before.
 
 18 TEETH IS THE FLOOR, NOT A ROUND NUMBER. z_min = 2/sin^2(20 deg) = 17.1,
 so 17 undercuts and 18 does not. gripper_pinion gets away with 12 because a
@@ -27,16 +30,34 @@ first assembly - one diameter to get right instead of twenty teeth. The
 interference is ASSUMED until a gauge settles it.
 
 TWO DIAMETERS, because the spline sits ABOVE the boss: the lower bore clears
-the Oe6.0 collar, the upper bore grips the Oe5.0 spline over 4.00 mm. A gear
-thinner than the boss height cannot drive a servo directly at all.
+the output collar, the upper bore grips the spline. A gear thinner than the
+boss height cannot drive a servo directly at all.
+
+THE ENGAGEMENT HALVED WITH THE SERVO AND IT IS THE ONE NUMBER TO ARGUE
+ABOUT. MG90S: Oe6.0 collar, then 4.00 mm of Oe5.0 spline. SG90: Oe5.0
+collar, then 2.50 mm of Oe4.9 - and 2.50 is ALL an SG90 has, so the bore
+grips the whole of it and a thicker pinion cannot buy more.
+
+Priced, because this pinion drives the entire arm outboard of the elbow
+through a 2:1: the spline sees the SERVO's torque, not the joint's, and the
+SG90 stalls 20 % LOWER. Shear on the broached cylinder goes 1.38 -> 1.85 MPa
+against a 5.25 MPa allowable that already carries a safety factor of 4 -
+35 % utilised, and the length the torque actually needs is 0.88 mm. What
+binds is the 2.00 mm FORMING floor, which 2.50 clears by 25 %. The exposure
+is not stress, it is that spline_h 2.50 is DATASHEET for a cheap servo and
+lib/servo.py rates that grade weak: caliper it before printing.
+lib/gears.py J3_ENGAGE_FLOOR_MM carries the arithmetic.
 
 WHAT IT COSTS: nothing. The three interfaces priced -
     pressed on the horn   gear plane  5.90   varies by batch, does not fit
     bolted horn adapter   gear plane 18.50   +12.60 mm of forearm width
     ON THE SPLINE         gear plane  5.90   +0.00, and no horn at all
-J3_PAIR is unchanged - m1.00 18T/36T, centre 27.20, gear Oe38.0 - because the
-Oe6.40 boss bore sets the root floor at 4.80 and an 18T pinion roots at 7.75.
-forearm.py needs no rework: seat_z is still 5.90.
+J3_PAIR is unchanged by BOTH migrations - m1.00 18T/36T, centre 27.20, gear
+Oe38.0. The horn going was free because the Oe6.40 boss bore set the root
+floor at 4.80 against a 7.75 root. The SG90 is freer still: its smaller boss
+gives a Oe5.40 bore and a 4.30 floor, so the pinion clears by 3.45 instead of
+2.95. And forearm.py needs no rework either time - the seat rises 5.90 ->
+7.10 but fa_lobe_t rises by the same 1.20, so fa_j3_standoff stays 10.80.
 
 A WASHER IS REQUIRED under the servo's retaining screw. The screw head is
 near Oe5 and the broach bore is Oe4.75, so the head lands almost entirely
@@ -61,8 +82,8 @@ import adsk.core
 import adsk.fusion
 
 from lib.design_rules import MIN_WALL_MM  # noqa: E402
-from lib.gears import J3_HUB, J3_PAIR  # noqa: E402
-from lib.servo import CATALOG as _SERVOS  # noqa: E402
+from lib.gears import J3_ENGAGE_FLOOR_MM, J3_HUB, J3_PAIR  # noqa: E402
+from lib.joints import servo_for as _servo_for  # noqa: E402
 from lib.palette import hints_for  # noqa: E402
 
 COMPONENT = 'robotarm_j3_pinion'
@@ -74,7 +95,10 @@ MATERIAL_NAME = 'PET Plastic'
 APPEARANCE_HINTS = hints_for('j3_pinion')
 PH_TEETH = 'gear teeth'
 PH_STEM = 'spline hub'
-_MG90S = _SERVOS['MG90S']
+# THE J3 SERVO, from the arm's one mapping. `_SERVOS['MG90S']` used to be
+# typed here; it is lib/joints.JOINT_SERVO's answer now, which is an SG90
+# since 2026-09-03 and was an MG90S before it.
+_SERVO = _servo_for('J3')
 # Geometric comparison epsilons and sample counts, not dimensions.
 TOL = 1e-6
 TOOTH_SAMPLES = 14      # involute points per flank
@@ -337,23 +361,38 @@ def run(_context: str):
     assert val('broach_to') * 10 <= val('face') * 10 + TOL, (
         'the spline tops out %.2f into a %.2f face'
         % (val('broach_to') * 10, val('face') * 10))
-    assert val('engaged') * 10 >= J3_HUB.engaged - TOL, (
-        'only %.2f mm of spline engagement' % (val('engaged') * 10))
+    # AGAINST THE DERIVED FLOOR, NOT AGAINST ITSELF. This read
+    # `>= J3_HUB.engaged`, which is the value being checked - an assert that
+    # cannot fail. lib/gears.J3_ENGAGE_FLOOR_MM is the larger of the shear
+    # floor the servo's own stall torque needs (0.88 mm on the SG90) and the
+    # forming floor a broach needs to cut a usable tooth trace in PETG
+    # (2.00 mm, ASSUMED). The forming floor binds; see lib/gears.py.
+    assert val('engaged') * 10 >= J3_ENGAGE_FLOOR_MM - TOL, (
+        'only %.2f mm of spline engagement on the %s against a %.2f floor'
+        % (val('engaged') * 10, _SERVO.name, J3_ENGAGE_FLOOR_MM))
     assert val('washer_d') * 10 < P.r_root(P.z_pinion) * 2, (
         'the Oe%.2f washer does not land on the top face' % (val('washer_d') * 10))
     assert abs(val('module') * 10 - P.module) < TOL, (
         'the module parameter %.4f does not match J3_PAIR %.4f'
         % (val('module') * 10, P.module))
-    _case_top = _MG90S.tab_thk + _MG90S.tab_below_top
-    print('seats %.2f up the MG90S (%.2f clear of its case top) - forearm.py '
+    _case_top = _SERVO.tab_thk + _SERVO.tab_below_top
+    print('seats %.2f up the %s (%.2f clear of its case top) - forearm.py '
           'must stand the J3 lobe off to match'
-          % (val('seat_z') * 10, val('seat_z') * 10 - _case_top))
+          % (val('seat_z') * 10, _SERVO.name, val('seat_z') * 10 - _case_top))
     print('spline hub: boss bore Oe%.2f to %.2f, then Oe%.2f BROACHED %.2f..%.2f'
           % (val('boss_bore_d') * 10, val('boss_bore_h') * 10,
              val('broach_d') * 10, val('boss_bore_from') * 10,
              val('broach_to') * 10))
-    print('  %.1f mm of spline engaged | NO HORN | needs a Oe%.1f washer under the screw'
-          % (val('engaged') * 10, val('washer_d') * 10))
+    print('  %.2f mm of spline engaged against a %.2f floor (%.0f%% margin) - '
+          'NO HORN | needs a Oe%.1f washer under the screw'
+          % (val('engaged') * 10, J3_ENGAGE_FLOOR_MM,
+             100.0 * (val('engaged') * 10 / J3_ENGAGE_FLOOR_MM - 1),
+             val('washer_d') * 10))
+    print('  THAT IS THE WHOLE SPLINE. engaged = min(hub top, spline top) less '
+          'the boss top, and this face is far above the spline, so it equals '
+          'spline_h exactly - %.2f on the %s. A thicker gear buys no more of '
+          'it; only a different servo would.'
+          % (_SERVO.spline_h, _SERVO.name))
     print('wall between the boss bore and the tooth roots: %.2f mm' % hub_wall)
     print('centre distance to the J3 servo shaft %.3f mm' % P.centre_distance)
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f'

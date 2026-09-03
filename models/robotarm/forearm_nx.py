@@ -68,6 +68,16 @@ structural and neither inside the straddle:
 The SHARED derivations come from lib/forearm_split.py, the same objects
 forearm.py and forearm_px.py use.
 
+NO SERVO DIMENSION IS TYPED IN THIS FILE AND NONE NEEDS TO BE. Every station
+here is fa_* read out of the document, and those are derived in forearm.py
+from lib/joints.JOINT_SERVO. When J3 and J4 went MG90S -> SG90 on 2026-09-03
+this file needed no edit at all: fa_lobe_z came down 0.10, fa_cap_reach went
+out 0.12 and fa_j3_standoff did not move, and the standoff block, the corner
+fillets and the build-height check all followed. That is the payoff for the
+split being done through the parameter table rather than through a second
+copy of the arithmetic - and it is worth stating, because a file with no
+mention of the servo at all looks like one the migration forgot.
+
 A NOTE ON ONE WORD. Like forearm.py, this docstring avoids the word
 tests/test_fusion_scripts.py scans for - the one naming a script that places
 an imported mesh or a measured transform. Carrying it SKIPS the magic-number

@@ -52,10 +52,23 @@ unchanged.
 import os
 import sys
 
+REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
+if REPO not in sys.path:
+    sys.path.insert(0, REPO)
+for _stale in [m for m in list(sys.modules)
+               if m == 'lib' or m.startswith('lib.')]:
+    del sys.modules[_stale]
+
 import adsk.core
 import adsk.fusion
 
-REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
+# THE TABLE BELOW IS DERIVED NOW, NOT TYPED, AND THAT IS THE REPAIR THIS
+# FILE'S OWN COMMENT ASKED FOR. See the MOUNTS header.
+from lib.joints import HEX_PIVOT as _PIVOT  # noqa: E402
+from lib.joints import servo_for as _servo_for  # noqa: E402
+from lib.joints import servo_name_for as _servo_name_for  # noqa: E402
+from lib.servo_hub import spline_hub as _spline_hub  # noqa: E402
+
 ESCAPE_MM = 8.0     # how far a lead must run clear before it can be bent away
 STEPS = 12          # insertion-path samples, seated last
 JAM_MM3 = 0.5       # interference below this is meshing noise, not a jam
@@ -85,17 +98,49 @@ JAM_MM3 = 0.5       # interference below this is meshing noise, not a jam
 # _check_motor_clearance.py now carries a placement audit that compares each
 # row against the host's own parameters. The real fix is for these to be
 # DERIVED, not audited - see specs/robotarm/_decouple.md.
+#
+# THE SERVO COLUMN IS NOW DERIVED, AND THAT WAS THE WORST COPY OF THE THREE.
+# Each row used to name its motor - `servo='MG90S'` - which is the same fact
+# lib/joints.JOINT_SERVO holds and lib/gears.py, lib/arm_loads.py and six
+# part scripts each held their own version of. On 2026-09-03 J3 and J4 went
+# MG90S -> SG90, and a typed column here would have gone on driving a solid
+# MG90S case through an SG90 pocket in every probe this file builds - and
+# reported CLEAR, because an MG90S case is BIGGER in every dimension that
+# matters. A stale row that errs toward "clear" is worse than one that errs
+# toward "jam": it is the shape of failure that survives a gate.
+#
+# TWO STATIONS ARE NOW DERIVED TOO - J3's and J4's, the two the swap moves.
+# They are exactly the sums the hosts build them from:
+#   J4  the tab plane is the forearm's plate outer face plus fa_j4_lobe_t,
+#       and fa_j4_lobe_t IS wrist_hub's spline seat height, because that is
+#       what the lobe was thickened to deliver (forearm.py's j4_standoff
+#       block). 25.80 -> 27.00 on the SG90, and the 25.80 itself was a
+#       2026-09-03 correction of a 25.40 that was stale by 0.40.
+#   J3  the cap's tab plane is its own outer face, sc_t = fa_cap_t =
+#       fa_lobe_t = the servo's case-top height above its tab underside.
+#       5.50 -> 6.70.
+# The other five stations stay typed: they belong to hosts this pass does not
+# touch, and inventing a derivation for a frame nobody has re-checked would
+# be worse than leaving a number a person can compare against a screenshot.
+_J4_SEAT_Z = _spline_hub(
+    _servo_for('J4'),
+    face=_PIVOT.journal + _PIVOT.flange_t + _PIVOT.reach).seat_z
+_J4_TAB_X = _PIVOT.plate_out + _J4_SEAT_Z
+_J3_SERVO = _servo_for('J3')
+_J3_CAP_T = _J3_SERVO.tab_below_top + _J3_SERVO.tab_thk
+
 MOUNTS = [
     # 12.60 -> 10.20, CORRECTED 2026-09-03. turntable_stator builds its deck
     # as `race_z - tt_hub_h - tt_hub_seat_z` = 10.20 since the J1 horn came
     # out and the bolted j1_hub went in. This row still carried the horn-era
     # 12.60, so every gate reading it has been placing the yaw servo 2.40 mm
     # too high - including GATE servo_fit, which reported J1 clear.
-    dict(tag='J1 yaw', host='turntable_stator', servo='SG90',
+    dict(tag='J1 yaw', host='turntable_stator', servo=_servo_name_for('J1'),
          shaft=(0.0, 0.0, 10.20),
          xa=('y', +1), za=('z', +1),
          insert=(0.0, 0.0, -1.0), travel=30.0),
-    dict(tag='J2 shoulder', host='shoulder_bracket', servo='MG995',
+    dict(tag='J2 shoulder', host='shoulder_bracket',
+         servo=_servo_name_for('J2'),
          shaft=(29.6, 0.0, 0.0),
          xa=('z', -1), za=('x', -1),
          insert=(-1.0, 0.0, 0.0), travel=45.0),
@@ -112,32 +157,54 @@ MOUNTS = [
     # the servo. The tab plane is the cap's outer face, so the shaft origin
     # sits at z = sc_t. Insertion is into the cap OFF THE ARM, which is the
     # whole point of the cap existing - see _HANDOFF.md section 10.
-    dict(tag='J3 elbow', host='j3_servo_cap', servo='MG90S',
-         shaft=(0.0, 0.0, 5.5),
-         xa=('x', +1), za=('z', +1),
+    # sc_t is fa_cap_t is fa_lobe_t is the servo's own case-top height, so it
+    # is derived from the servo rather than typed: 5.50 on the MG90S, 6.70 on
+    # the SG90 that replaced it.
+    #
+    # za +1 -> -1, CORRECTED 2026-09-03, AND THE COMMENT ABOVE IS WHAT
+    # CONVICTED IT. It says "+Z out of the seating face TOWARD THE SERVO",
+    # and lib/servo.py's frame puts the servo's BODY at its own -z with the
+    # boss and spline at +z. Toward the servo body is therefore the servo's
+    # -z, so servo +z maps to cap -z and this column is -1. It was +1, which
+    # modelled the J3 motor INSIDE OUT: case and lead pointing inboard into
+    # the 10.80 standoff band where the gear and pinion run, spline pointing
+    # outboard into open air. Every consumer of this row inherited it -
+    # servo_fit measured the case against the cap with the case on the wrong
+    # side and read 0.0, GATE leads sited the escape corridor on the wrong
+    # side, and GATE motor_clearance reported the 36T gear STRIKING the lead
+    # for 23.0 mm3, which is the gear passing through a cable that is not
+    # there. The parts themselves were never wrong: GATE j3_mesh places the
+    # pinion from the PART's own jp_seat_z and reads 0 of 420 flank points
+    # buried, so the pinion is in the gear's plane and the servo that drives
+    # it can only be the way round that puts it there.
+    dict(tag='J3 elbow', host='j3_servo_cap', servo=_servo_name_for('J3'),
+         shaft=(0.0, 0.0, _J3_CAP_T),
+         xa=('x', +1), za=('z', -1),
          insert=(0.0, 0.0, -1.0), travel=30.0),
-    # 25.40 -> 25.80, CORRECTED 2026-09-03. forearm.py's tab plane is
-    # `fa_plate_out + fa_j4_lobe_t` = 19.90 + 5.90; the 0.40 is
-    # fa_j4_standoff, added when wrist_hub moved onto the spline and stopped
-    # rubbing the servo case. A 0.40 sliver falls between GATE servo_fit's
-    # 1.50 mm samples, which is why a stale row read CLEAR.
-    dict(tag='J4 wrist', host='forearm', servo='MG90S',
-         shaft=(25.8, 0.0, 0.0),
+    # 25.40 -> 25.80 (CORRECTED 2026-09-03), then DERIVED and 27.00 with the
+    # SG90. forearm.py's tab plane is `fa_plate_out + fa_j4_lobe_t` = 19.90 +
+    # 7.10; the running gap inside that 7.10 is fa_j4_standoff, added when
+    # wrist_hub moved onto the spline and stopped rubbing the servo case. A
+    # 0.40 sliver falls between GATE servo_fit's 1.50 mm samples, which is why
+    # the stale row read CLEAR - the 1.20 the servo swap adds would not have,
+    # but nothing should be relying on an error being big enough to see.
+    dict(tag='J4 wrist', host='forearm', servo=_servo_name_for('J4'),
+         shaft=(_J4_TAB_X, 0.0, 0.0),
          xa=('y', -1), za=('x', -1),
          insert=(-1.0, 0.0, 0.0), travel=30.0),
     # 5.00 -> 4.60, CORRECTED 2026-09-03. wrist_roll builds wro_tab_lo at
     # 4.60; the 0.40 is wro_case_gap, added when wrist_rotator moved onto the
     # spline. Found by the agent that split this part, which was told to
     # report a stale row rather than edit a file it did not own.
-    dict(tag='J5 roll', host='wrist_roll', servo='SG90',
+    dict(tag='J5 roll', host='wrist_roll', servo=_servo_name_for('J5'),
          shaft=(0.0, 4.60, 0.0),
          xa=('z', -1), za=('y', +1),
          insert=(0.0, 1.0, 0.0), travel=30.0),
-    dict(tag='gripper', host='gripper_shell', servo='SG90',
+    dict(tag='gripper', host='gripper_shell', servo=_servo_name_for('J6'),
          shaft=(0.0, -14.90, 0.0),
          xa=('x', +1), za=('y', +1),
          insert=None, travel=0.0, clamshell=True),
-    dict(tag='effector', host='pruner_shell', servo='SG90',
+    dict(tag='effector', host='pruner_shell', servo=_servo_name_for('J6'),
          shaft=(0.0, -14.90, 0.0),
          xa=('x', +1), za=('y', +1),
          insert=None, travel=0.0, clamshell=True),
@@ -295,6 +362,9 @@ def run(_context: str):
     print('=== servo INSERTION + lead ESCAPE ===')
     print('probe positions are computed from lib/servo.py lead_x/lead_y/lead_z')
     print('and each row\'s frame. Nothing about the lead is typed in this file.')
+    print('WHICH servo each row drives is lib/joints.JOINT_SERVO, not this '
+          'table: %s' % ', '.join('%s %s' % (m['tag'], m['servo'])
+                                  for m in MOUNTS))
     print('')
     print('%-12s %-19s %-6s %9s %9s %9s  %s'
           % ('mount', 'host', 'servo', 'seated', 'insert', 'escape', 'verdict'))
@@ -397,6 +467,20 @@ def run(_context: str):
     print('so the case alone must overlap ~0. A large number means the ROW is')
     print('wrong - a rotation or an origin - not that the part is.')
     print('')
+    # A GATE THAT CHECKED NOTHING IS NOT A PASS. Run into an empty document
+    # this file skips all seven rows, prints them under "NOT CHECKED", and
+    # then printed "GATE leads : PASS" underneath - which is the one output a
+    # gate must never produce. It happened on 2026-09-03, in a run that was
+    # meant to confirm the SG90 swap, and the log read green. Every row
+    # skipped is a question that was not asked, so it fails here.
+    assert rows, (
+        'GATE leads CHECKED NOTHING - all %d hosts are absent from this '
+        'document. Build the hosts first (see _check_servo_fit, which builds '
+        'its own); a run with no rows is not a pass.' % len(skipped))
+    if skipped:
+        fails.append('%d of %d rows NOT CHECKED - their hosts are not in this '
+                     'document, so this run says nothing about them'
+                     % (len(skipped), len(skipped) + len(rows)))
     print('GATE leads : %s' % ('PASS' if not fails else 'FAIL'))
     for f in fails:
         print('   %s' % f)

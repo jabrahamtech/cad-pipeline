@@ -35,6 +35,13 @@ they are 12 % HIGH on every printed part. Servos and payload are unaffected
 because they are bought, not printed. Both are reported below.
 """
 
+import os
+import sys
+
+_REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO not in sys.path:
+    sys.path.insert(0, _REPO)
+
 # --- what a gram of printed plastic actually weighs -------------------------
 FUSION_PET = 1.541      # g/cm3, what _assembly.md's masses were computed with
 FUSION_INFILL = 0.60
@@ -42,8 +49,31 @@ PETG = 1.27             # g/cm3, real filament
 REAL_INFILL = 0.65      # measured off the gauge_fits v4 slice
 MASS_CORRECTION = (PETG * REAL_INFILL) / (FUSION_PET * FUSION_INFILL)
 
-# --- servo duty, from lib/servo.py: duty limit = stall x 0.5 ---------------
-DUTY_KGCM = {'J2': 9.4 * 0.5, 'J3': 2.0 * 0.5, 'J4': 2.0 * 0.5}
+# --- servo duty, and the servo masses, IMPORTED --------------------------
+# These were three typed numbers - 9.4, 2.0, 2.0 - plus a 13.4 g servo in
+# CLUSTER and a second 13.4 in j2_moment(). 2.0 kg.cm and 13.4 g are the
+# MG90S; J3 and J4 became SG90s (1.6 kg.cm, 9.0 g) on 2026-09-03 and none of
+# the five noticed. The result was a budget that gave both joints 25 % more
+# duty than they have and hung 4.4 g too much on each - generous in both
+# directions at once, which is the worst way for a load model to be wrong.
+# lib/arm_loads already derives duty from lib/joints.JOINT_SERVO; this file
+# reads it from there rather than keeping a sixth copy.
+#
+# AND IT IS THE DUTY AT THE JOINT, NOT AT THE SERVO. This file compared its
+# J3 moment against the SERVO's 1.00 kg.cm, which was right when the elbow
+# was direct drive and has been wrong since the 18T/36T pair went in: the
+# joint holds ratio x efficiency more than the servo does. Left alone with
+# the SG90's lower stall it printed "107 % of duty" for an elbow running at
+# 59 %, which is the kind of false alarm that gets a real one ignored.
+# lib/arm_loads.duty_at_joint_kgcm() already carries the reduction.
+from lib.arm_loads import duty_at_joint_kgcm as _duty_at_joint  # noqa: E402
+from lib.joints import servo_name_for as _servo_name_for  # noqa: E402
+from lib.servo import CATALOG as _CATALOG  # noqa: E402
+
+DUTY_KGCM = {j: _duty_at_joint(j) for j in ('J2', 'J3', 'J4')}
+_J4_NAME = '%s J4' % _servo_name_for('J4')
+_J4_MASS_G = _CATALOG[_servo_name_for('J4')].mass_g
+_J3_MASS_G = _CATALOG[_servo_name_for('J3')].mass_g
 # EVERYTHING ELSE IN THIS FILE IS IN g.cm. Mixing the two is how the first
 # run of this script reported the arm at 873 % of duty and refused to find a
 # link section that fitted. Convert once, here, and never compare the two.
@@ -58,7 +88,7 @@ CLUSTER = [
     ('wrist_hub x2',      5.2,    0.0,   False),
     ('wrist_roll',       12.2,    2.3,   False),
     ('wrist_rotator',     5.3,   19.8,   False),
-    ('MG90S J4',         13.4,   -6.0,   True),
+    (_J4_NAME,      _J4_MASS_G,   -6.0,   True),
     ('SG90 J5 roll',      9.0,    0.0,   True),
     ('SG90 effector',     9.0,   32.0,   True),
 ]
@@ -103,7 +133,11 @@ VALIDATION_HEAD_OFFSET_MM = 47.0              # historical
 # tests/test_arm_loads.py doing exactly that.
 BUILT = dict(l1=65.0, l2=45.0, head_g=38.3, section=1.0)
 VALIDATION = dict(l1=85.0, l2=65.0, head_g=38.3, section=1.0)
-VALIDATION_J3_TARGET = 873.7         # g.cm, _assembly.md, at VALIDATION's L2
+# 873.7 -> 848.3 on 2026-09-03: the J4 servo in this cluster became an
+# SG90, 4.4 g lighter at r 5.90 cm, which is 25.4 g.cm less moment. The
+# target moved because the ARM moved, and this assert is what made the
+# change announce itself instead of sliding through.
+VALIDATION_J3_TARGET = 848.3         # g.cm, _assembly.md, at VALIDATION's L2
 VALIDATION_TOL = 1.0
 
 
@@ -158,7 +192,7 @@ def j2_moment(l1, l2, head_g, section=1.0, correct_density=False):
     total = j3 + mass_outboard * l1 / 10.0
     ua = UPPERARM_G_PER_MM * l1 * section * k
     total += ua * UPPERARM_COM_FRAC * l1 / 10.0
-    total += 13.4 * l1 / 10.0            # the J3 MG90S sits at the elbow
+    total += _J3_MASS_G * l1 / 10.0      # the J3 servo sits at the elbow
     return total
 
 

@@ -31,11 +31,17 @@ where they will sit and everything above them is yawed about J1 as one body.
 import importlib.util
 import math
 import os
+import sys
 
 import adsk.core
 import adsk.fusion
 
 REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
+if REPO not in sys.path:
+    sys.path.insert(0, REPO)
+
+from lib.joints import J5_ROTATOR_ORIGIN_PARTS  # noqa: E402
+
 OUT = os.path.join(REPO, 'docs', 'robotarm')
 W, H = 1800, 1300
 
@@ -140,11 +146,14 @@ def run(_context: str):
     # wr_ block buys. At pitch 0 it is the identity.
     M_roll = mul(M_fa, rotx(J4_PITCH_DEG))
 
-    # rotator, verbatim from _check_wrist.place_rotator
+    # rotator. The PLANE is lib/joints.J5_ROTATOR_ORIGIN_PARTS - this line
+    # read wro_y_front, the housing front face, which is wrt_hub_h above the
+    # seat the rotator is located by, so the whole hand hung 1.30 mm proud in
+    # every preview render. See lib/joints.py.
     m = rotz(J5_ROLL_DEG)
     m.transformBy(rot(-math.pi / 2, VEC(1, 0, 0)))
     t = m.translation
-    t.y = gv('wro_y_front')
+    t.y = sum(gv(_p) for _p in J5_ROTATOR_ORIGIN_PARTS)
     m.translation = t
     M_rot = mul(M_roll, m)
 

@@ -15,18 +15,24 @@ been since the forearm went to 65 mm. Doubling it costs half the elbow's
 travel (a 180 deg servo through 2:1 gives 90 deg at the joint) and buys the
 rated payload back: 25 g -> roughly 60 g.
 
+WHICH SERVO DRIVES J3 IS NOT DECIDED HERE. It is `lib/joints.JOINT_SERVO`,
+and this file reads it - see J3_SERVO below. That dict is the arm's single
+statement of which motor is on which joint, and it exists because the answer
+used to be typed into eleven files at once. As of 2026-09-03 J3 is an SG90.
+
 MODULE 1.00, FACE 10.0 - AND THE FACE IS WHAT PAYS FOR THE MODULE.
 2026-08-31: Jonathan asked whether the train could sit less proud of the arm.
-The WIDTH cannot move - the 9.60 mm standoff is the MG90S's own horn stack
-and J3_MOUNT already has it at its floor. The RADIUS is the module, and it
-can: m 1.25 -> 1.00 takes the 36T from r_tip 23.75 to 19.00 and the centre
-distance from 33.95 to 27.20.
+The WIDTH cannot move - the 10.80 mm standoff is the servo's own stack plus
+the gear band, and J3_MOUNT already has it at its floor. The RADIUS is the
+module, and it can: m 1.25 -> 1.00 takes the 36T from r_tip 23.75 to 19.00
+and the centre distance from 33.95 to 27.20.
 
 Root stress goes the other way, as 1/(face x module): at m 1.00 on the old
 8.0 face it is 8.82 MPa against an 8.75 allowable, which FAILS - validate()
 said so rather than letting it through. Face 8.0 -> 10.0 buys it back to
-7.05. That costs 2.0 mm of standoff, so the part is 4.75 mm less proud
-radially and 2.0 mm wider axially.
+7.05 on the MG90S, and 5.64 now that J3 is an SG90 - a 20 % smaller stall
+torque goes straight into the root. That costs 2.0 mm of standoff, so the
+part is 4.75 mm less proud radially and 2.0 mm wider axially.
 
 What is not a cost: both clearance cylinders in the forearm shrink with the
 gears, so the standoff web GROWS. The pinion circle now cuts the 8.80-tall
@@ -234,8 +240,26 @@ class SpurPair:
 # are the same thickness and one test print settles both.
 J3_PAIR = SpurPair(name='J3', module=1.00, z_pinion=18, z_gear=36, face=10.0)
 
-# MG90S stall, lib/servo.py, in N.m: 2.0 kg.cm x 9.80665 / 100.
-J3_INPUT_STALL_NM = 2.0 * 9.80665 / 100.0
+# WHAT THE PINION IS VALIDATED AGAINST: the stall torque of whatever servo
+# JOINT_SERVO says drives J3, in N.m.
+#
+# IT USED TO BE `2.0 * 9.80665 / 100.0` WITH A COMMENT SAYING "MG90S stall,
+# lib/servo.py". That is a copy of a number lib/servo.py already holds, with
+# a comment naming the file it was copied from - which is the shape this
+# project's failures take, not a citation. Put an SG90 on J3 and the 2.0
+# stays 2.0, the Lewis check passes against a torque the servo cannot
+# produce, and nothing anywhere says so.
+#
+# IMPORTED HERE, AT MODULE LEVEL, AND lib/joints.py DEFERS ITS SIDE OF THE
+# PAIR SO THAT THIS CAN. See the `_j3_pair()` note in that file: gears needs
+# one small dict from joints while it is still defining J3_MOUNT, and joints
+# needs a tooth count only inside three functions. The cheap direction is
+# the one taken.
+from lib.joints import servo_for as _servo_for  # noqa: E402
+from lib.joints import stall_nm as _stall_nm  # noqa: E402
+
+J3_SERVO = _servo_for('J3')
+J3_INPUT_STALL_NM = _stall_nm('J3')
 
 # What the reduction does to the joint, for anything that reports it.
 J3_SERVO_TRAVEL_DEG = 180.0
@@ -262,11 +286,12 @@ assert not _bad, 'J3_PAIR is not buildable: ' + '; '.join(_bad)
 #     hub top    = boss top + horn_hub_h
 #
 # WHY THE BORE GOES STRAIGHT THROUGH. Blind-pocketing the horn puts the
-# pinion's seat face on the BOSS TOP, 11.5 mm up an MG90S - and every one of
-# those millimetres is standoff the forearm has to grow. Boring straight
-# through at the hub press diameter lets the servo's own output boss pass
-# freely and drops the seat face to just clear the case top, which is 4.8 mm
-# of arm width on the MG90S. Thickening the pinion to swallow the boss in a
+# pinion's seat face on the BOSS TOP - 11.5 mm up an MG90S, 10.9 up an SG90 -
+# and every one of those millimetres is standoff the forearm has to grow.
+# Boring straight through at the hub press diameter lets the servo's own
+# output boss pass freely and drops the seat face to just clear the case top,
+# which is 4.8 mm of arm width on the MG90S and 3.8 on the SG90 (its boss is
+# shorter, so it had less to give). Thickening the pinion to swallow the boss in a
 # blind pocket does NOT work: the swallowed depth comes out of the pinion's
 # own thickness, the pinion is bounded inboard by the fork plate, and it ends
 # up 2.7 mm inside it needing a relief that breaks into the J4 counterbore.
@@ -392,10 +417,89 @@ def horn_pinion(servo, pair, arm_r=6.0, arm_w=None, press=0.15,
     return m
 
 
-from lib.servo import CATALOG as _SERVOS  # noqa: E402
 from lib.servo_hub import spline_hub  # noqa: E402
 
-J3_MOUNT = horn_pinion(_SERVOS['MG90S'], J3_PAIR)
+J3_MOUNT = horn_pinion(J3_SERVO, J3_PAIR)
+
+# HOW MUCH SPLINE THE PINION HAS TO GRIP, PRICED RATHER THAN DEFAULTED
+# -------------------------------------------------------------------------
+# lib/servo_hub.spline_hub() takes `engage_min` and defaults it to 2.00 mm.
+# That default is fine on a joint nobody has thought about; J3 is not one.
+# The J3 pinion drives the ENTIRE forearm, wrist, head and payload through a
+# 2:1, and on an SG90 it does it through 2.50 mm of broached PETG - all the
+# spline an SG90 has, against the MG90S's 4.00. Letting a library default
+# decide whether that is enough is exactly the "decoration, not a contract"
+# failure, so the floor is DERIVED here and passed IN.
+#
+# THE SHEAR ARITHMETIC. The broach is a round hole the steel spline cuts its
+# own form into, so what carries the torque is the cylindrical surface at the
+# bore. Torque T (N.mm) on a bore of diameter d over an engaged length L:
+#
+#     tangential force   F   = T / (d/2)          = 2T/d
+#     sheared area       A   = pi * d * L
+#     shear stress       tau = F/A = 2T / (pi d^2 L)
+#     so                 L  >= 2T / (pi d^2 tau_allow)
+#
+# THE ALLOWABLE. PETG_TENSILE_MPA 35.0 in plane, x PETG_SHEAR_FACTOR, over
+# design_rules SAFETY_FACTOR['cyclic'] 4.0 - the same allowable the tooth
+# roots are checked against, because it is the same material loaded the same
+# number of times. IN PLANE is right here and it is worth saying why: the
+# pinion prints tooth-face-on-the-bed with the bore vertical, so this shear
+# runs WITHIN each layer, not across the layer boundaries. Print it on its
+# side and Z_TENSILE_FACTOR would halve everything below.
+#
+# WHAT IT COMES OUT AT, and this is the honest answer rather than the
+# comfortable one:
+#
+#     SG90   T 156.91 N.mm, d 4.65 -> tau 1.85 MPa at L 2.50, floor L 0.88
+#     MG90S  T 196.13 N.mm, d 4.75 -> tau 1.38 MPa at L 4.00, floor L 1.05
+#
+# SO SHEAR IS NOT WHAT BINDS, and the SG90 is not close to it - 2.50 mm is
+# 2.8x the length the torque needs. The swap raises the stress in this joint
+# by 34 % (1.38 -> 1.85 MPa) and it is still at 35 % of an allowable that
+# already carries a safety factor of 4. The 20 % LOWER stall torque is doing
+# real work here: the spline sees the SERVO's torque, not the joint's, so
+# the 2:1 that multiplies the elbow's output is entirely downstream of it.
+#
+# WHAT DOES BIND IS THE FLOOR BELOW, AND IT IS NOT A STRESS AT ALL. 2.00 mm
+# is a MANUFACTURING floor: it is how much broached bore is needed for the
+# steel to form a usable tooth trace in PETG rather than skive a short lip,
+# and it is ASSUMED - specs/robotarm/_gauge_broach_sheet.md is the print that
+# settles it and it has not been run. 2.50 clears it by 0.50 mm, 25 %.
+#
+# AND THE MARGIN CANNOT BE BOUGHT. `engaged` is min(hub top, spline top) less
+# the boss top, and with a 10.00 face the hub top is far above the spline, so
+# engaged IS spline_h - the whole spline and not a millimetre more. A thicker
+# gear buys nothing. That is the real exposure and it is stated rather than
+# hidden: spline_h 2.50 is DATASHEET for a cheap servo, and lib/servo.py's
+# own docstring rates that grade weak. A spline 0.5 shorter than the drawing
+# puts this joint ON the floor. CALIPER IT before the pinion prints.
+PETG_SHEAR_FACTOR = 0.6            # HANDBOOK - ductile polymer, shear/tensile
+
+# ASSUMED. The least broached length that forms a tooth trace rather than a
+# lip. specs/robotarm/_gauge_broach_sheet.md is the print that promotes it.
+SPLINE_BROACH_MIN_FORM_MM = 2.0
+
+
+def broach_shear_floor_mm(servo, torque_nm, bore_d=None,
+                          shear_factor=PETG_SHEAR_FACTOR):
+    """Least engaged spline length that carries `torque_nm` in shear, mm.
+
+    See the block above for the derivation. `bore_d` defaults to the broach
+    bore lib/servo.py sizes for this servo, so the two cannot disagree.
+    """
+    from lib.servo import spline_bore_d
+    d = spline_bore_d(servo) if bore_d is None else bore_d
+    tau = PETG_TENSILE_MPA * shear_factor / SAFETY_FACTOR['cyclic']
+    return 2.0 * (torque_nm * 1000.0) / (math.pi * d * d * tau)
+
+
+J3_BROACH_SHEAR_FLOOR_MM = broach_shear_floor_mm(J3_SERVO, J3_INPUT_STALL_NM)
+# THE LARGER OF THE TWO FLOORS, and it is written as a max so that whichever
+# one binds is visible in the diagnostics rather than assumed. Today the
+# forming floor binds on both servos, which is the useful thing to know.
+J3_ENGAGE_FLOOR_MM = max(J3_BROACH_SHEAR_FLOOR_MM, SPLINE_BROACH_MIN_FORM_MM)
+
 
 # --- THE HORN IS OUT OF THE LOAD PATH. -----------------------------------
 # Jonathan, 2026-08-31: "we should not [mount] at the horns but rather add
@@ -404,19 +508,28 @@ J3_MOUNT = horn_pinion(_SERVOS['MG90S'], J3_PAIR)
 # spline teeth are not printed (they are a third of MIN_FEATURE_MM) and why a
 # broached round bore is what replaces them.
 #
-# IT COSTS NOTHING AND IT WAS THE CHEAPEST OF THE THREE OPTIONS PRICED:
-#   pressed on the horn   gear plane  5.90   varies by batch, does not fit
-#   bolted horn adapter   gear plane 18.50   +12.60 mm of forearm width
-#   ON THE SPLINE         gear plane  5.90   +0.00, and no horn at all
-# J3_PAIR is UNCHANGED by this - m1.00 18T/36T, centre 27.20, gear Oe38.0 -
-# because the boss bore Oe6.40 puts the root floor at 4.80 and an 18T pinion
-# roots at 7.75. The compact gears survive; only the horn goes.
+# IT COSTS NOTHING AND IT WAS THE CHEAPEST OF THE THREE OPTIONS PRICED
+# (gear plane in the SERVO's frame, MG90S first, SG90 as built today):
+#   pressed on the horn   gear plane  5.90 / 7.10  varies by batch, no fit
+#   bolted horn adapter   gear plane 18.50 / 17.10 +12.60 mm of forearm width
+#   ON THE SPLINE         gear plane  5.90 / 7.10  +0.00, and no horn at all
+#
+# J3_PAIR IS UNCHANGED BY THE SERVO SWAP TOO, and that is the thing worth
+# checking rather than assuming - m1.00 18T/36T, centre 27.20, gear Oe38.0
+# survives because the pinion's root radius has to clear the BOSS BORE, and
+# the SG90's boss is SMALLER than the MG90S's:
+#   MG90S  boss Oe6.0 -> bore Oe6.40 -> root floor 4.80
+#   SG90   boss Oe5.0 -> bore Oe5.40 -> root floor 4.30
+# An 18T pinion at m1.00 roots at 7.75, which was clear by 2.95 and is now
+# clear by 3.45. The swap makes the compact gears MORE comfortable, not less.
+# The assert below is what actually says so.
 #
 # J3_MOUNT is kept above ONLY because forearm.py still reads its seat_z, and
-# the two agree to the millimetre (both 5.90) - which is the whole reason the
-# forearm needs no change. It should be deleted once j3_pinion and
-# _check_elbow read J3_HUB directly.
-J3_HUB = spline_hub(_SERVOS['MG90S'], J3_PAIR.face)
+# the two agree to the millimetre (both 7.10 on the SG90, both 5.90 on the
+# MG90S) - which is why the forearm's standoff arithmetic needs no rework.
+# It should be deleted once j3_pinion and _check_elbow read J3_HUB directly.
+J3_HUB = spline_hub(J3_SERVO, J3_PAIR.face,
+                    engage_min=J3_ENGAGE_FLOOR_MM)
 assert abs(J3_HUB.seat_z - J3_MOUNT.seat_z) < 1e-9, (
     'the spline hub seats at %.2f and the horn press at %.2f - forearm.py '
     'stands the servo off by one of them and would now be wrong'
@@ -431,7 +544,10 @@ assert J3_PAIR.r_root(J3_PAIR.z_pinion) >= J3_HUB.min_gear_root_r, (
 #
 #   standoff = (gear band outboard face) - seat_z - (lobe outer face today)
 #
-# which for the MG90S/J3_PAIR combination is 9.60 mm of extra forearm width,
-# NOT the 7 the handoff claimed and not the 14.40 a blind-pocketed pinion
-# would have cost.
+# which is 10.80 mm of extra forearm width, NOT the 7 the handoff claimed and
+# not the 14.40 a blind-pocketed pinion would have cost. It is the SAME 10.80
+# on an SG90 as on an MG90S, and that is arithmetic rather than luck:
+# seat_z is the case top plus one running gap, the lobe IS the case top, and
+# the two cancel. lib/joints.j3_standoff() states the cancellation and
+# forearm.py asserts its own expression against it.
 J3_MOUNT_SEAT_Z = J3_MOUNT.seat_z

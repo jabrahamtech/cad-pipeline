@@ -35,8 +35,11 @@ way, and all three go when it lifts off. See _HANDOFF.md section 10.
 What stays here is the standoff WEB, so section 9's load path is unchanged.
 
 BOTH wrist servos hang off this part, staggered: J4's on +X, J3's on -X.
-That is forced, not chosen. An MG90S is 24.0 mm along its own shaft axis,
-so a servo driving a joint whose axis is X occupies 24 mm of X. Inboard is
+That is forced, not chosen. A micro servo is ~24 mm along its own shaft
+axis, so a servo driving a joint whose axis is X occupies 24 mm of X.
+WHICH micro servo is lib/joints.JOINT_SERVO's answer, not this file's - both
+were MG90S until 2026-09-03 and both are SG90 now, and every case, tab and
+lobe number below is read from that mapping rather than typed. Inboard is
 the straddle and it is spoken for, so the servo goes outboard. Hiding it in
 the link behind a 1:1 gear pair was priced and rejected: the case would
 have had to start 28.6 mm behind the pitch axis and end 12.6 mm PAST the
@@ -48,7 +51,8 @@ forearm_rail - and lib/forearm_split.py is the contract all four scripts
 share. This body is still built, and has to be: every fa_* parameter is
 declared here, and wrist_hub.py, j3_servo_cap.py, _check_leads.py and
 _check_servo_fit.py all read them out of the document BY NAME, with GATE
-servo_fit measuring a solid MG90S against this solid. Build it; do not print
+servo_fit measuring a solid servo (lib/joints.JOINT_SERVO says which)
+against this solid. Build it; do not print
 it. _export_plates.py still carries a row for `forearm` and knows nothing
 about the three pieces - that row has to be replaced, and this file cannot
 do it.
@@ -101,9 +105,10 @@ recess floor and at the pilot tops: 0.00 mm2 each. The flange recess that
 fixed GATE servo_fit costs this part nothing to print.
 
 THE J4 LOBE IS 0.40 THICKER THAN IT WAS, AND THAT IS THE HORN MIGRATION
-LANDING HERE. wrist_hub.py now bores onto the MG90S SPLINE instead of a
+LANDING HERE. wrist_hub.py now bores onto the servo's SPLINE instead of a
 horn, and lib/servo_hub seats every spline hub ONE RUNNING GAP off the case
-top - wh_seat_z 5.50 -> 5.90. The horn-era stack sat that hub's face FLAT
+top - wh_seat_z 5.50 -> 5.90 on the MG90S, and 7.10 on the SG90 that
+replaced it, because that servo carries 1.20 mm more case above its tabs. The horn-era stack sat that hub's face FLAT
 on the case top with zero gap while it rotated against it, which is a brake
 rather than a joint. So the J4 tab PLANE stands 0.40 further out
 (fa_j4_lobe_t) and the case top lands 0.40 outboard of fa_plate_out, which
@@ -111,15 +116,16 @@ puts the hub's seating face back exactly on fa_plate_out where every
 downstream wrist dimension already expects it. Cost: 0.40 mm of arm width,
 once. J3 is deliberately untouched - see the note at fa_j4_standoff.
 
-THE J4 LOBE IS CUT IN TWO STEPS, NOT ONE, AND THE FLANGE IS WHY. An MG90S
-is not a box. Reading up from its case top there are tab_below_top 3.00 mm
-of bare case and then tab_thk 2.50 mm of mounting FLANGE, and that flange
-is tab_span 32.10 long against a 22.80 case - 4.65 wider at each end than
-the case, 4.15 wider than even the case window. A single window sized for
-the case lands the flange on solid lobe. That is measured, not argued:
-GATE servo_fit builds the MG90S solid from servo_body.py and found 195.75
-mm3 of it inside this part, in the band x 23.40..24.90 and nowhere else,
-which is the flange band exactly. So the case window is cut for the case
+THE J4 LOBE IS CUT IN TWO STEPS, NOT ONE, AND THE FLANGE IS WHY. A micro
+servo is not a box. Reading up from its case top there is tab_below_top of
+bare case and then tab_thk of mounting FLANGE, and that flange is tab_span
+long against a much shorter case - 4.65 wider at each end on the MG90S,
+4.80 on the SG90 that replaced it. A single window sized for the case lands
+the flange on solid lobe. That is measured, not argued: GATE servo_fit
+builds the servo solid from servo_body.py and found 195.75 mm3 of MG90S
+inside this part, in the band x 23.40..24.90 and nowhere else, which is the
+flange band exactly. THAT MEASUREMENT IS NOW AGAINST THE OLD SERVO and the
+band has moved outboard with fa_j4_lobe_t - re-run the gate. So the case window is cut for the case
 alone and a FLANGE RECESS takes the last tab_thk out to the tab plane.
 specs/robotarm/_flange.md has the derivation, the two rejected
 alternatives and every cost.
@@ -150,8 +156,9 @@ torque as a couple into this lobe, and until now that couple was carried by
 a 1.00 mm lip of fa_lobe_over into a plate that was not there.
 
 The SHARED wr_* block is defined identically in wrist_hub.py and
-wrist_roll.py. MG90S dimensions are DATASHEET (lib/servo.py) - the tab
-plane is the datum, the case pocket is only clearance.
+wrist_roll.py. Servo dimensions are DATASHEET (lib/servo.py) and WHICH servo
+is lib/joints.JOINT_SERVO - the tab plane is the datum, the case pocket is
+only clearance.
 
 A NOTE ON ONE WORD, so that it is not innocently put back. This docstring
 avoids the word tests/test_fusion_scripts.py scans docstrings for - the
@@ -182,7 +189,9 @@ from lib.design_rules import JOINT_FIT_MM as _FIT  # noqa: E402 - the J4 running
 from lib.forearm_split import Seam, Seat, ServoBlock  # noqa: E402
 from lib.forearm_split import Silhouette, Straddle  # noqa: E402
 from lib.gears import J3_MOUNT, J3_PAIR  # noqa: E402 - the elbow reduction
-from lib.servo import CATALOG  # noqa: E402 - MEASURED lead bundle
+from lib.joints import j3_standoff as _j3_standoff  # noqa: E402
+from lib.joints import servo_for as _servo_for  # noqa: E402
+from lib.joints import servo_name_for as _servo_name_for  # noqa: E402
 
 COMPONENT = 'robotarm_forearm'
 BODY_NAME = 'forearm'
@@ -214,6 +223,27 @@ MATERIAL_NAME = 'PET Plastic'
 # so they live up here where they read as what they are.
 EPS = 1e-9                 # against internal (cm) values
 EPS_MM = 1e-6              # against values already scaled to mm for a message
+# THE PRECISION A DERIVED STATION IS WRITTEN TO, in mm. Not a dimension and
+# not a tolerance on the part: it is one unit in the last place of the
+# '%.5f mm' every solved station in this file is written with.
+#
+# WHY IT HAS TO EXIST. Several stations here are solved to land EXACTLY on a
+# limit - fa_cap_screw_y is placed at precisely `_sep` from the servo's own
+# tab pilot, because the smallest block that can carry the screw is the one
+# that wants no more than that. Writing it to five decimals then rounds it,
+# and rounding is signed: it can land a few 1e-7 mm the WRONG side of the
+# limit it was solved to sit on. Checking that against EPS (1e-8 mm) is not
+# checking the design, it is checking the printf.
+#
+# IT IS NOT A FUDGE AND THE DIFFERENCE MATTERS. Anything that fails by more
+# than this is a real interference; anything that fails by less is the
+# parameter table's own write precision. The MG90S rounded UP on this station
+# and passed; the SG90 rounds DOWN by 4.1e-7 mm and did not - the design is
+# identical either way, and a check that a servo swap can flip by changing
+# the fifth decimal place is measuring nothing. fa_cap_margin exists for the
+# same reason and says so in its own comment; this is that argument applied
+# to a station that has no margin to spend.
+PARAM_ROUND_MM = 1e-5
 # The floor on what is left of the fork plate outboard of the 608ZZ pocket.
 # ASSUMED, and it is BELOW design_rules MIN_FEATURE_MM 0.8 - it is one
 # nozzle width, and it is what a 7.50 plate can spare against a 7.00 mm
@@ -363,29 +393,78 @@ def run(_context: str):
     # fastener has taken its room. Both are solved in the SEAM block below,
     # after the fixing sizes they depend on exist. lib/forearm_split.Seam.
 
-    # --- MG90S, DATASHEET (lib/servo.py) -------------------------------------
-    param('case_l', '22.8 mm', 'MG90S case length - lies along Y. 24.0 -> 22.8 on\n           TowerPro B, 2026-08-27 flange audit (lib/servo.py)')
-    param('case_w', '12.4 mm', 'MG90S case width - lies along Z. TowerPro D')
-    param('shaft_end', '6.0 mm', 'shaft axis to the near end of the case, along Y')
-    param('tab_thk', '2.5 mm', 'MG90S tab thickness - ASSUMED micro-family value, the\n           TowerPro table does not give it. Part of the lobe_t datum stack')
-    param('tab_below_top', '3.0 mm', 'case top to the tab TOP, along X - DERIVED from\n           TowerPro F 18.5: case_h - F - tab_thk. Was 1.0, which floated the\n           tabs 2.0 too high and sank the case 1.5 too shallow')
-    param('tab_pitch', '27.5 mm', 'MG90S tab hole pitch - DERIVED, holes centred in the\n           tab overhang of TowerPro B/E ((22.8+32.1)/2). The 29.0 it replaces\n           came from a drawing TowerPro\'s own table contradicts. CALIPER\n           before printing anything that screws to these tabs')
-    param('tab_span', '%.2f mm' % CATALOG['MG90S'].tab_span,
-          'MG90S mounting FLANGE, tip to tip - DATASHEET, TowerPro E. READ from\n'
-          '           lib/servo.py rather than typed like its neighbours above: it\n'
-          '           arrived with the flange recess and there is no reason to give\n'
-          '           it a second home to drift from. It is the dimension this lobe\n'
-          '           was blind to - 32.10 of flange against a 22.80 case, so 4.65 of\n'
-          '           tab hangs past the case at EACH end and 4.15 past even the case\n'
-          '           window. lib/servo.py rates the whole MG90S table weak and says\n'
-          '           CALIPER before printing to it; that goes double here, because a\n'
-          '           recess cut to this number is charged mm for mm to fa_lobe_pad.')
+    # --- THE WRIST SERVO, DERIVED. lib/joints.JOINT_SERVO -> lib/servo.py ---
+    # SIX OF THESE SEVEN WERE TYPED LITERALS AND ALL SIX WERE WRONG THE MOMENT
+    # THE SERVO CHANGED. `param('case_l', '22.8 mm', 'MG90S case length ...')`
+    # is a copy of a number lib/servo.py already holds, with a comment naming
+    # the file it was copied from - and on 2026-09-03 J3 and J4 went MG90S ->
+    # SG90 (Jonathan: "both the motors will be sg90"). Every one of these
+    # moves, and every one of them feeds a cut: the case window, the flange
+    # recess, the tab pilots, the lobe height and fa_lobe_t itself.
+    #
+    # ONE SET OF PARAMETERS FOR BOTH LOBES, and that is only legitimate
+    # because J3 and J4 are the SAME servo. lib/joints asserts that where it
+    # is decided; this file asserts it again where it is USED, because the day
+    # they diverge this block silently cuts the J4 envelope for the J3 lobe.
+    _J34 = _servo_for('J4')
+    assert _servo_name_for('J3') == _servo_name_for('J4'), (
+        'this file declares ONE case/tab block and cuts BOTH lobes from it, '
+        'but J3 is a %s and J4 is a %s - the J3 lobe would be cut to the J4 '
+        'servo. Split fa_case_* per lobe before splitting the servos.'
+        % (_servo_name_for('J3'), _servo_name_for('J4')))
+    param('case_l', '%.4f mm' % _J34.case_l,
+          'servo case length - lies along Y. lib/servo.py, for whatever\n'
+          '           lib/joints.JOINT_SERVO puts on J3 and J4 (SG90 today, %.2f;\n'
+          '           MG90S until 2026-09-03, 22.80 - itself a 24.0 -> 22.8\n'
+          '           correction on TowerPro B in the 2026-08-27 flange audit)'
+          % _J34.case_l)
+    param('case_w', '%.4f mm' % _J34.case_w,
+          'servo case width - lies along Z. lib/servo.py. SG90 %.2f against\n'
+          '           the MG90S 12.40 it replaces, so fa_lobe_z comes down 0.10 and\n'
+          '           every Z-derived wall on the lobe moves with it.' % _J34.case_w)
+    param('shaft_end', '%.4f mm' % _J34.shaft_from_end,
+          'shaft axis to the NEAR end of the case, along Y - lib/servo.py\n'
+          '           shaft_from_end. It is also where the lead bundle leaves, so the\n'
+          '           keyway station is this and not the far end. SG90 %.2f, MG90S\n'
+          '           6.00.' % _J34.shaft_from_end)
+    param('tab_thk', '%.4f mm' % _J34.tab_thk,
+          'servo tab thickness - lib/servo.py. It is the depth of the FLANGE\n'
+          '           RECESS and part of the fa_lobe_t datum stack. Both micro values\n'
+          '           are weak: the MG90S 2.50 is ASSUMED (the TowerPro table does not\n'
+          '           give it) and the SG90 %.2f is drawing-stated. CALIPER.'
+          % _J34.tab_thk)
+    param('tab_below_top', '%.4f mm' % _J34.tab_below_top,
+          'case top to the tab TOP, along X - lib/servo.py. THE NUMBER THE\n'
+          '           SERVO SWAP MOVES MOST: MG90S 3.00 (DERIVED from TowerPro F 18.5)\n'
+          '           against SG90 %.2f (= TowerPro F 17.0, exact). +1.30 straight\n'
+          '           into fa_lobe_t, so the J4 lobe and the J3 cap both get thicker\n'
+          '           by it - and fa_j3_standoff does NOT, because the pinion seat\n'
+          '           rises by the same amount. See fa_j3_standoff.' % _J34.tab_below_top)
+    param('tab_pitch', '%.4f mm' % _J34.tab_hole_pitch,
+          'servo tab hole pitch - lib/servo.py. SG90 %.2f is DRAWING-STATED\n'
+          '           (SG90_Model_A, and holes 2.3 in from each tip of a 32.3 span\n'
+          '           gives 27.7 - agreement to 0.1). The MG90S 27.50 it replaces was\n'
+          '           DERIVED and no drawing stated it, so the swap actually IMPROVES\n'
+          '           the provenance of the two pilots this lobe drills. CALIPER\n'
+          '           anyway before printing anything that screws to these tabs.'
+          % _J34.tab_hole_pitch)
+    param('tab_span', '%.4f mm' % _J34.tab_span,
+          'servo mounting FLANGE, tip to tip - lib/servo.py, DATASHEET. It is\n'
+          '           the dimension this lobe was blind to: %.2f of flange against a\n'
+          '           %.2f case, so %.2f of tab hangs past the case at EACH end and\n'
+          '           more than that past the case window. A recess cut to it is\n'
+          '           charged mm for mm to fa_lobe_pad, so lib/servo.py\'s standing\n'
+          '           CALIPER warning on the micro tables bites hardest here.'
+          % (_J34.tab_span, _J34.case_l,
+             (_J34.tab_span - _J34.case_l) / 2))
     param('lobe_t', PREFIX + 'tab_below_top + ' + PREFIX + 'tab_thk',
           'derived SERVO STACK, TAB PLANE to case top - and read the next\n'
           '           four lines before using it as a bearing face, because it is not\n'
-          '           one. The 5.50 is TWO different things: fa_tab_below_top 3.00 of\n'
-          '           bare case, then fa_tab_thk 2.50 of FLANGE that runs 4.65\n'
-          '           past the case at EACH end. NOTHING BEARS ON THE LOBE\'S OUTER\n'
+          '           one. It is TWO different things: fa_tab_below_top of bare case,\n'
+          '           then fa_tab_thk of FLANGE that runs past the case at EACH end.\n'
+          '           6.70 on the SG90 (4.30 + 2.40), 5.50 on the MG90S it replaced\n'
+          '           (3.00 + 2.50) - so the J4 lobe and the J3 cap are both 1.20\n'
+          '           thicker than they were. NOTHING BEARS ON THE LOBE\'S OUTER\n'
           '           FACE: at that plane the tab UNDERSIDE is level with the face and\n'
           '           the tab BODY is already 2.50 inside it, in what used to be solid\n'
           '           lobe. GATE servo_fit MEASURED that collision - 195.75 mm3 of\n'
@@ -397,9 +476,10 @@ def run(_context: str):
           '           exactly this thick (fa_cap_t) and fa_j3_standoff subtracts it.\n'
           '           The J4 LOBE is fa_j4_lobe_t, this plus a running gap - see there.')
     # ---- THE J4 RUNNING GAP, AND WHY THE LOBE GOT 0.40 THICKER -------------
-    # wrist_hub.py no longer bores onto a horn; it bores onto the MG90S
+    # wrist_hub.py no longer bores onto a horn; it bores onto the servo's
     # spline, and lib/servo_hub seats every spline hub ONE RUNNING GAP above
-    # the case top. wh_seat_z therefore moves 5.50 -> 5.90.
+    # the case top. wh_seat_z therefore moves 5.50 -> 5.90 on the MG90S, and
+    # to 7.10 on the SG90 that replaced it (fa_lobe_t 6.70 + this gap).
     #
     # THE HORN-ERA STACK WAS RUBBING BY CONSTRUCTION. lobe_t 5.50 put the
     # case top EXACTLY on this plate's outer face, and the hub's seating
@@ -421,7 +501,7 @@ def run(_context: str):
     # compensate - a change to another part's contract, to buy a gap J3
     # already has (J3_HUB.seat_z carries its own case_gap).
     param('j4_standoff', '%.4f mm' % _FIT['free'],
-          'running gap between the MG90S case top and wrist_hub\'s seating\n'
+          'running gap between the servo case top and wrist_hub\'s seating\n'
           '           face. design_rules JOINT_FIT_MM free - the same number\n'
           '           lib/servo_hub.spline_hub() seats on and wh_case_gap declares.\n'
           '           The hub ROTATES against that case, so the horn-era 0.00 was\n'
@@ -574,7 +654,7 @@ def run(_context: str):
     # right station, wrong walls, and it would have printed. Jonathan, at the
     # bench: "thats not on the right side its on the short side". ONE notch,
     # centred, in the END wall.
-    _LEAD = CATALOG['MG90S'].lead_bundle_dia
+    _LEAD = _J34.lead_bundle_dia
     param('lead_key_d', '%.2f mm' % (_LEAD + val('loc') * 10),
           'keyway WIDTH across the case width, centred on the bundle - one\n'
           '           bundle diameter plus a locational fit')
@@ -597,8 +677,9 @@ def run(_context: str):
     # --- THE GEARED ELBOW ---------------------------------------------------
     # Every number here is READ, not chosen. The handoff priced this drive at
     # "~7 mm of forearm width" and it was never a free parameter - see
-    # lib/gears.py J3_MOUNT, which solves it from the MG90S stack and the
-    # pair's face width, and specs/robotarm/_HANDOFF.md section 9.
+    # lib/gears.py J3_MOUNT, which solves it from the servo stack (whichever
+    # servo lib/joints.JOINT_SERVO puts on J3) and the pair's face width, and
+    # specs/robotarm/_HANDOFF.md section 9.
     _P, _M, _B = J3_PAIR, J3_MOUNT, B608ZZ
     param('j3_centre', '%.5f mm' % _P.centre_distance,
           'lib/gears.py J3_PAIR - do not edit here. The J3 servo shaft sits\n'
@@ -623,8 +704,16 @@ def run(_context: str):
           'derived, and the whole cost of this drive: how far the J3 servo pad\n'
           '           stands off the plate so the pinion lands coplanar with the gear.\n'
           '           free + face + J3_MOUNT.seat_z - lobe_t. Boring the pinion\n'
-          '           through instead of blind-pocketing it is what makes seat_z 6.70\n'
-          '           rather than 11.50, and that is 4.8 mm of arm width.')
+          '           through instead of blind-pocketing it is what makes seat_z %.2f\n'
+          '           rather than the %.2f a blind pocket would need (the seat would\n'
+          '           land on the output BOSS top), and that is %.2f mm of arm width.\n'
+          '           THE SERVO SWAP DOES NOT MOVE THIS PARAMETER. seat_z is the case\n'
+          '           top plus a running gap and fa_lobe_t IS the case top, so the two\n'
+          '           cancel and this is free + face + case_gap for any micro servo in\n'
+          '           the catalogue: 10.80 on the MG90S, 10.80 on the SG90. The\n'
+          '           standoff web, fa_cap_pilot_depth and fa_j3_band are all\n'
+          '           untouched by the change. Asserted against lib/joints below.'
+          % (_M.seat_z, val('lobe_t') * 10 + _J34.boss_h, _J34.boss_h))
 
     # --- 608ZZ at the idler side, in place of a flange counterbore ----------
     # A gear mesh loads this axis RADIALLY and slop at the elbow is backlash
@@ -1018,12 +1107,12 @@ def run(_context: str):
     # The cable leaves the END face, so it steals LENGTH, not width. The
     # superseded form of this assert charged it against case_w and passed
     # happily while the keyway was on the wrong wall entirely.
-    _need = CATALOG['MG90S'].case_l + CATALOG['MG90S'].lead_bundle_dia
+    _need = _J34.case_l + _J34.lead_bundle_dia
     _have = val('case_l') * 10 + val('loc') * 10 + val('lead_key_l') * 10
     assert _have >= _need, (
         'the window plus its end keyway passes %.1f mm along the case and the '
-        'MG90S with its cable is %.1f mm long at the lead - it cannot be '
-        'threaded through' % (_have, _need))
+        '%s with its cable is %.1f mm long at the lead - it cannot be '
+        'threaded through' % (_have, _J34.name, _need))
     _to_edge = (val('tab_pitch') - val('case_l')) / 2 + val('lobe_pad')
     assert val('lead_key_l') >= _to_edge, (
         'the keyway runs %.2f mm from the case face but the lobe edge is '
@@ -1084,18 +1173,33 @@ def run(_context: str):
         'the cap screw HEAD at z %.2f leaves under a wall to the edge at %.2f - '
         'the counterbore is what binds here, not the hole'
         % (val('cap_screw_z') * 10, val('lobe_z') * 10))
+    # AGAINST THE WRITE PRECISION, NOT AGAINST EPS - see PARAM_ROUND_MM.
+    # fa_cap_screw_y is SOLVED to sit exactly _sep from this pilot, so the
+    # only thing between it and the limit is how the station rounds.
     for _ys in _scr:
         _d = math.hypot(val('cap_screw_y') - _ys, val('cap_screw_z'))
-        assert _d >= _sep - EPS, (
-            'the cap screw and the servo tab pilot at y %.2f are %.2f apart '
-            'and a flush head plus a wall needs %.2f'
-            % (_ys * 10, _d * 10, _sep * 10))
+        assert _d * 10 >= _sep * 10 - PARAM_ROUND_MM, (
+            'the cap screw and the servo tab pilot at y %.2f are %.4f apart '
+            'and a flush head plus a wall needs %.4f - short by %.6f mm, '
+            'which is more than the %.0e mm the station is written to'
+            % (_ys * 10, _d * 10, _sep * 10, (_sep - _d) * 10,
+               PARAM_ROUND_MM))
     assert val('cap_pilot_depth') + val('wall') <= val('j3_standoff'), (
         'a %.1f deep pilot in a %.2f standoff leaves under %.1f of floor'
         % (val('cap_pilot_depth') * 10, val('j3_standoff') * 10,
            val('wall') * 10))
 
     # ---- the geared elbow, checked before any of it is cut ------------------
+    # THE STANDOFF, AGAINST THE LIBRARY THAT ALSO SOLVES IT. j3_servo_cap.py
+    # is built to lib/joints.J3_PAD and this part is built to the expression
+    # above; the two are the same arithmetic in two languages, and the servo
+    # swap is exactly the change that would make one of them stale. Cheap to
+    # check, and it is the check that would have caught a J3 lobe still cut
+    # for an MG90S while lib/ had already moved.
+    assert abs(val('j3_standoff') * 10 - _j3_standoff()) < EPS_MM, (
+        'fa_j3_standoff is %.4f and lib/joints.j3_standoff() derives %.4f - '
+        'this part and j3_servo_cap.py are being built to different servos'
+        % (val('j3_standoff') * 10, _j3_standoff()))
     assert val('j3_standoff') >= val('j3_band') - EPS, (
         'the J3 lobe stands off %.2f but the gear turns through %.2f of that '
         'band - the servo pad would sit in the gear'
@@ -1305,16 +1409,19 @@ def run(_context: str):
             continue          # the window, keyway and pilots are on the cap
         assert sx > 0, 'the only lobe this phase still cuts is J4, on +X'
         c0, c1, screws, _, _ = lobe_geometry(y_p, run)
-        # TWO CUTS, NOT ONE, AND AN MG90S IS WHY.
+        # TWO CUTS, NOT ONE, AND THE SERVO'S FLANGE IS WHY.
         #
-        # An MG90S is not a box. fa_tab_below_top down from its case top the
-        # case grows a fa_tab_thk FLANGE, fa_tab_span long - 4.15 mm past the
-        # case WINDOW at each end, 4.65 past the case itself. Cut one window
+        # A micro servo is not a box. fa_tab_below_top down from its case top
+        # the case grows a fa_tab_thk FLANGE, fa_tab_span long - several mm
+        # past the case WINDOW at each end. Cut one window
         # sized for the case and that flange lands on solid lobe, which is
         # the last fa_tab_thk of the travel it has to pass through and the
         # only material the tab screws have. GATE servo_fit MEASURED
         # it: 195.75 mm3 of MG90S inside this part, in the band
-        # x 23.40..24.90, which is the flange band and nothing else. The two
+        # x 23.40..24.90, which was the flange band and nothing else. That
+        # measurement predates the SG90 and its band has moved outboard with
+        # fa_j4_lobe_t; the two-cut FIX is unchanged, the number is stale
+        # until the gate is re-run. The two
         # rejected alternatives - standing the whole lobe off outboard of the
         # tab plane (+5.50 mm of arm width at the wrist), and simply widening
         # the one window to the flange (nothing left for the tabs to bear on
@@ -1552,6 +1659,11 @@ def run(_context: str):
     bb = body.boundingBox
     print('body: %r | material: %s | appearance: %s' % (
         body.name, body.material.name, used_appearance))
+    print('SERVOS: J3 %s, J4 %s - lib/joints.JOINT_SERVO, not typed here. '
+          'case %.2f x %.2f, tabs %.2f thick at %.2f pitch, flange %.2f span'
+          % (_servo_name_for('J3'), _servo_name_for('J4'),
+             val('case_l') * 10, val('case_w') * 10, val('tab_thk') * 10,
+             val('tab_pitch') * 10, val('tab_span') * 10))
     print('L2 %.1f | plates |x| %.1f..%.1f (%.1f thick) | waist %.1f flush inside' % (
         L2 * 10, val('plate_in') * 10, val('plate_out') * 10,
         val('plate_t') * 10, val('waist_t') * 10))
@@ -1617,8 +1729,8 @@ def run(_context: str):
     print('   the gear, the pinion and the retention M3 could none of them be '
           'fitted - GATE j3_installs.')
     print('')
-    print('J4 DRIVE: no horn. wrist_hub bores onto the MG90S spline and seats '
-          '%.2f off the case top,' % (val('j4_standoff') * 10))
+    print('J4 DRIVE: no horn. wrist_hub bores onto the %s spline and seats '
+          '%.2f off the case top,' % (_J34.name, val('j4_standoff') * 10))
     print('   so the lobe is %.2f thick (servo stack %.2f + running gap %.2f) '
           'against %.2f before. The case top now sits %.2f OUTBOARD of the '
           'plate outer face and the hub seats ON it - the wrist does not move, '
@@ -1628,7 +1740,10 @@ def run(_context: str):
              val('j4_standoff') * 10, val('j4_standoff') * 10))
     print('   THE FLANGE NEVER FITTED THE ONE-STEP WINDOW: tab plate %.2f '
           'long against a %.2f window, overhanging %.2f at EACH end onto solid '
-          'lobe - GATE servo_fit MEASURED 195.75 mm3 of MG90S in that band'
+          'lobe - GATE servo_fit MEASURED 195.75 mm3 of MG90S in that band. '
+          'Re-run 2026-09-03 against the SG90 that replaced it, this lobe '
+          'reads 0.0 - the double cut below is what fixed it, and it fixed '
+          'it for the smaller case too'
           % (val('tab_span') * 10, (val('case_l') + val('srv_clear')) * 10,
              (val('tab_span') - val('case_l') - val('srv_clear')) * 10 / 2))
     print('   SO THE LOBE IS CUT TWICE: case window %.2f x %.2f deep %.2f, '

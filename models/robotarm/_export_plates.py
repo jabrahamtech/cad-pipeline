@@ -138,7 +138,7 @@ LEDGER = os.path.join(REPO, 'specs', 'robotarm', '_volumes.json')
 # 7, not 6: wrist_roll is a different part than the one v6 was cut from, and
 # wrist_rotator is the other way up. Reusing the version would leave two
 # files with the same name meaning two different things.
-VERSION = 7
+VERSION = 8
 BED_X, BED_Y = 256.0, 256.0
 MARGIN, GAP = 6.0, 4.0
 # A BRIM IS FOOTPRINT. base_lid is 171.75 across, 3 thick, and warps without

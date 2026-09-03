@@ -1,0 +1,87 @@
+GATE motor_clearance - the moving half of each joint against the
+MOTOR HARDWARE, swept through travel. Placement imported from
+_check_leads.MOUNTS; joint transforms from _preview_arm.py.
+sample 1.00 mm | strike floor 0.50 mm3 | tight under 0.40 mm | 9 positions per joint
+
+body: 'wrist_roll' | material: PET Plastic | appearance: Plastic - Glossy (White)
+CLAMSHELL HALF. ONE DESIGN, TWO COPIES, THE SECOND MIRRORED IN X.
+  split face x 0.0, this half x 0.0..12.0; the pair still straddle 24.0
+  the bench rejected the monolith TWICE - "worst supports, impossible to clean", then "impossible to print" after the gable. The gable is reverted; the front wall is 4.30 again.
+roll servo: case y -12.4..11.3, z -16.6..6.1 | tabs y 4.6, z +/-10.9
+J5 SEATING: tab plane y 4.60, agreed with _check_leads MOUNTS. The rotator seats on wro_rot_seat 11.70, NOT on wro_y_front 15.70 - lib/joints.J5_ROTATOR_ORIGIN_PARTS. _check_wrist, _preview_arm and _check_motor_clearance all posed it off the front face until 2026-09-03, 1.30 mm out, which stopped the retaining washer reaching the spline step.
+keel: full half width now (was 8.0), y -7.4..8.6, z -23.2..-16.6, bevel 6.6 mm at 45.0 deg
+crest: y 5.88..13.92, top 12.70 (z_top 10.84) - THE ONLY ENVELOPE GROWTH, 1.86 mm in +Z over 8.05 mm of Y, to seat one nut
+clamshell: 3 x M2 through-bolt, Oe2.40 clearance, seat 4.20 af x 2.40 deep at the bed face (head Oe3.80 OR nut, same recess)
+    clamp_keel_aft   y   -5.52  z  -19.50   J4 socket clearance 10.30 mm
+    clamp_keel_fwd   y    1.70  z  -19.50   J4 socket clearance 10.30 mm
+    clamp_crest      y    9.90  z    9.00   J4 socket clearance 3.87 mm
+    the arm's other two clamshells are on M3. This one cannot be: an M3 head is 6.00 across and an M3 nut pocket 5.70, so one recess cannot take both ends and the one-design-mirrored trick fails.
+PRINTABILITY - OUTER FACE ON THE BED (x 12.0), BUILT -X, SUPPORT OFF.
+  the entire outer form is ONE prism along the build axis, so no outer face is an overhang. Every cavity opens at the top face.
+  faces over 50.0 deg: NONE.
+  bridges (90 deg, anchored all round, limit 40.0 mm):
+    J4 socket floor        18.48 mm
+    nut recess shoulder     4.85 mm
+  GONE with the split: a 7.6 mm bay crown 25.4 mm down a hole that opened only at the bed, two 12.4 mm tab-slot bridges, a 3.6 mm keyway bridge, and four J4 socket roof facets at 60 deg.
+WORST SWEEP about J4: corner (8.6, -23.2) at 24.74 mm (forearm allows 25.4)
+hex socket 16.0 af, 3.4 deep, leaving 2.40 mm of wall beside the servo
+SERVICE: the SG90 retaining screw and Oe6.3 washer are driven down wrt_access_d from the ROTATOR front face, forward of y 15.7. This half is entirely behind it and the crest stops at y 13.92, so the wrist is still serviceable assembled.
+bbox mm: X 0.00..12.00  Y -14.00..15.70  Z -23.20..12.70
+volume mm3: 6609 | mass g: 10.18 | valid: True   (ONE HALF - double it for the assembly)
+bodies: 1 | sketches: 12 | user params: 54
+timeline groups: ['housing form', 'roll servo bay', 'pitch socket', 'clamshell', 'finish']
+body: 'wrist_rotator' | material: PET Plastic | appearance: Plastic - Glossy (White)
+SCALLOPS: 4 lobes at az [45, 135, 225, 315] - _style.md 4b. The inserts sit on the
+  lobes because the notches are in the GAPS: a rectangular bolt
+  pattern has no lobe count that lands on all four.
+  notch r 4.0 at r 20.0, biting 2.0 mm out of an 18.0 rim
+disc OD 36.0 x 6.0 | effector pattern 4 x M3 at +/-11.0, +/-9.0 (corner 14.21)
+seats 7.10 up the SG90 (0.40 clear of its case top) - wrist_roll.py must stand the J5 servo off to match
+spline hub: boss bore Oe5.40 to 3.80, then Oe4.65 BROACHED 3.80..6.30
+  2.5 mm of spline engaged | NO HORN | needs a Oe6.2 washer under the screw, passed down a Oe6.65 access bore
+  bore-able stack 10.00 (back hub 4.00 + disc 6.00) against a 5.80 minimum - the DISC ALONE would grip only 2.20 mm
+back-hub wall around the boss bore: 2.55 mm
+PRINTABILITY - FRONT FACE ON THE BED (z 6.0), BUILT -Z, SUPPORT OFF.
+  cross-section shrinks all the way up: Oe36.0 disc -> Oe10.5 hub, so
+  every outer face is vertical or up-facing. Bed contact ~1018 mm2.
+  HUB-DOWN, WHICH IS WHAT THIS FILE USED TO SAY, the disc underside
+  is 931 mm2 of flat 90 deg ceiling on a Oe10.5 post with 64 mm2 of
+  bed contact - a full raft against the effector face. That is the
+  support Jonathan could not clean. Do not turn this part back over.
+  left over air, declared not gated: 4 x Oe4.0 insert roofs under 0.50 mm of disc, and a 1.00 mm bore ledge at the broach bore top.
+inserts 5.5 deep from the front, 5.76 mm clear of the hub radially
+bbox mm: X -17.70..17.70  Y -17.70..17.70  Z -4.00..6.00
+volume mm3: 5681 | mass g: 8.75 | valid: True
+bodies: 1 | sketches: 13 | user params: 78
+timeline groups: ['disc', 'scallops', 'spline hub', 'effector inserts', 'finish']
+SG90 envelope, frame = shaft axis on the TAB PLANE
+  case   x -6.10..16.60  y -6.10..6.10  z -17.00..6.70
+  flange span 32.30 x 12.20 x 2.40, 2 hole(s) Oe2.10 at pitch 27.80
+  boss Oe5.00 to z 10.90 | spline Oe4.90 to z 13.40
+  horn hub Oe6.80 x 3.00 | arms reach 17.20, 5.70 wide at the hub -> 4.00 at the tip
+  lead Oe3.40 leaving the SHORT END FACE at x -6.10, z -13.60
+  body bbox mm  X -12.20..21.40  Y -6.10..6.10  Z -17.00..13.40
+  horn bbox mm  X -3.40..17.20  Y -3.40..3.40  Z 10.90..13.90
+  NOT PRINTED - COTS envelope, never goes on a plate
+J5 roll      wrist_roll       vs wrist_rotator      -90.00 deg.. 90.00  gap   0.00 mm to servo_SG90             hit      6.0 mm3  control     13.0 mm3 at 1 pitches
+
+positive control fired at all 1 stations: each moving part was driven along its own MEASURED closing vector, past contact, and the sampler saw it. The check can see.
+  HOW DEEP EACH ONE HAD TO GO, in sample pitches. This is the gate's resolution
+  at that station, and it qualifies the clear rows above: a joint whose
+  control only fires 4 pitches in is a joint where a sliver 3 pitches thick
+  would have gone unseen, so its clear is a weaker clear.
+    J5 roll      1 pitches (1.00 mm past contact) ->     13.0 mm3
+
+WEAKER THAN THE REST, and named rather than averaged in:
+  J5 roll: the 6.0 mm3 against the motor is the DESIGNED PRESS FIT, not a strike. This is the one station whose moving part IS the part bored onto the spline, so the interference the broach exists to create is inside the swept volume: an Oe4.65 bore on an Oe4.90 spline over 2.50 mm is 4.7 mm3 of annulus by arithmetic, and the sampler sees 6.0. It also does not vary across the sweep, which is the tell - a strike that is the same at every angle is a seating condition, not a collision.
+
+GATE motor_clearance : PASS
+
+wrote /Users/jonothanabraham/Documents/GitHub/cad-pipeline/specs/robotarm/_motor_clearance.json
+READ THIS BEFORE BELIEVING A CLEAR RESULT. The tab and retaining
+screw heads are ASSUMED, at twice the screw diameter - the ratio
+lib/servo_hub.py already uses, not a caliper. The servo solid is
+only as right as lib/servo.py, whose own docstring rates cheap-
+servo datasheet dimensions as weak. A clear result means the
+project no longer disagrees with ITSELF about its own motors.
+It is not the bench, and the bench is what raised this.

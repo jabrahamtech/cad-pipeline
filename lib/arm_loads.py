@@ -41,6 +41,9 @@ unit and nothing is compared across units without a conversion on the line.
 import math
 
 from lib.gears import J3_PAIR as _J3_PAIR
+from lib.joints import JOINT_SERVO as _JOINT_SERVO
+from lib.joints import servo_name_for as _servo_name_for
+from lib.joints import stall_kgcm as _stall_kgcm
 
 # --- what a gram of printed plastic actually weighs -------------------------
 # Identical to lib/arm_budget.py, deliberately: if these two files disagree
@@ -54,7 +57,31 @@ SOLID_TO_PRINTED = PETG_FILAMENT_DENSITY * REAL_INFILL / 1000.0
 # --- servo duty -------------------------------------------------------------
 # Duty limit = stall x 0.5 (knowledge/motion_mechanisms.md: stall is a PEAK
 # rating; held above half of it they run hot, buzz and strip).
-STALL_KGCM = {'J1': 1.6, 'J2': 9.4, 'J3': 2.0, 'J4': 2.0, 'J5': 1.6}
+#
+# DERIVED, AND IT USED TO BE FIVE LITERALS. This table read
+#     {'J1': 1.6, 'J2': 9.4, 'J3': 2.0, 'J4': 2.0, 'J5': 1.6}
+# which is two facts wearing one coat: WHICH SERVO is on each joint, and WHAT
+# THAT SERVO STALLS AT. The second half was already in lib/servo.py and the
+# first half was nowhere at all - typed independently into eleven files. So a
+# servo swap moved a case dimension in the part scripts and left this model
+# reporting duty against a motor that is no longer on the arm. That is the
+# whole reason lib/joints.JOINT_SERVO exists, and this is its most load-
+# bearing consumer: every percentage in _check_loads.py comes through here.
+#
+# 2026-09-03: J3 and J4 went MG90S -> SG90, 2.0 -> 1.6 kg.cm. Every duty
+# figure at those two joints falls by exactly 20 %, so every REPORTED
+# fraction rises by 25 %. Nothing in this file had to be told.
+#
+# J6 IS NOT HERE AND THAT IS NOT AN OVERSIGHT. It is the pruner/gripper
+# actuator: its load is a cutting force through a rack, not a moment about a
+# joint axis, and lib/pruner_linkage.py is the authority on it. Adding a row
+# here would invite duty_report() to be called on a joint this model does not
+# describe. The keys are taken from JOINT_SERVO so the two cannot drift, less
+# the joints this file has no moment model for.
+NOT_A_MOMENT_JOINT = ('J6',)
+STALL_KGCM = {j: _stall_kgcm(j) for j in _JOINT_SERVO
+              if j not in NOT_A_MOMENT_JOINT}
+SERVO_AT = {j: _servo_name_for(j) for j in STALL_KGCM}
 DUTY_FRACTION = 0.5
 DUTY_KGCM = {k: v * DUTY_FRACTION for k, v in STALL_KGCM.items()}
 
@@ -163,6 +190,10 @@ def duty_report(joint, items):
         'duty_kgcm': duty_at_joint_kgcm(joint),
         'servo_duty_kgcm': DUTY_KGCM[joint],
         'stall_kgcm': STALL_KGCM[joint],
+        # WHICH MOTOR THIS FIGURE IS FOR. Reported, not assumed: a duty
+        # percentage with no servo name beside it is the number that went on
+        # being believed after the servo under it changed.
+        'servo': SERVO_AT[joint],
         'ratio': ratio,
         'efficiency': eff,
         'reduction': REDUCTION.get(joint, {}).get('what', 'direct drive'),

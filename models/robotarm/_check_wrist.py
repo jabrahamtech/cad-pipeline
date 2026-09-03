@@ -27,11 +27,17 @@ this project:
 import importlib.util
 import math
 import os
+import sys
 
 import adsk.core
 import adsk.fusion
 
 REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
+if REPO not in sys.path:
+    sys.path.insert(0, REPO)
+
+from lib.joints import J5_ROTATOR_ORIGIN_PARTS  # noqa: E402
+
 PARTS = ['wrist_hub', 'wrist_roll', 'wrist_rotator', 'forearm']
 PITCH_DEG = [-90.0, -60.0, -30.0, 0.0, 30.0, 60.0, 90.0]
 ROLL_DEG = [-90.0, 0.0, 90.0]
@@ -100,7 +106,10 @@ def run(_context: str):
     rot = gv('fa_rot')
     loc = gv('wh_loc')
     tol = gv('fa_tol')
-    y_front = gv('wro_y_front')
+    # NOT wro_y_front - that is the housing's front face, wrt_hub_h above
+    # the plane the rotator is actually seated on. lib/joints.py carries
+    # the rule and the 1.30 mm this used to be wrong by.
+    rot_origin = sum(gv(_p) for _p in J5_ROTATOR_ORIGIN_PARTS)
 
     def rot_m(angle, axis):
         m = M3()
@@ -135,7 +144,7 @@ def run(_context: str):
         m = rot_m(math.radians(roll), VEC(0, 0, 1))
         m.transformBy(rot_m(-math.pi / 2, VEC(1, 0, 0)))
         t = m.translation
-        t.y = y_front
+        t.y = rot_origin
         m.translation = t
         m.transformBy(place_roll(pitch))
         return m

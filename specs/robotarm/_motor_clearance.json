@@ -238,102 +238,102 @@
     {
       "audit": {
         "axis": "z",
-        "delta": 0.0,
-        "part": 5.5,
+        "delta": -0.0,
+        "part": 6.7,
         "parts": "sc_t",
-        "table": 5.5
+        "table": 6.699999999999999
       },
       "control_gap_mm": 0.0,
-      "control_mm3": 11.0,
-      "control_overdrive_mm": 1.0,
-      "control_pitches": 1.0,
-      "control_shift_mm": 1.0,
+      "control_mm3": 4.0,
+      "control_overdrive_mm": 2.0,
+      "control_pitches": 2.0,
+      "control_shift_mm": 4.138,
       "frame_ok": true,
       "frame_seated_mm3": 0.0,
       "furniture": {
-        "hub_top": 15.9,
+        "hub_top": 17.1,
         "retain_head_d": 5.0,
-        "retain_stack_d": 6.35,
-        "retain_top": 18.45,
+        "retain_stack_d": 6.25,
+        "retain_top": 19.650000000000002,
         "tab_head_d": 4.0,
         "tab_head_h": 1.4,
         "tab_screw": "M2",
-        "washer_d": 6.35,
+        "washer_d": 6.25,
         "washer_fitted": true
       },
       "host": "j3_servo_cap",
       "kind": "revolute",
-      "min_gap_against": "servo_MG90S",
-      "min_gap_at": -45.0,
-      "min_gap_mm": 0.0,
+      "min_gap_against": "servo_SG90",
+      "min_gap_at": 0.0,
+      "min_gap_mm": 2.138,
       "moving": "j3_gear",
       "retain_basis": "PROUD of j3_pinion top face",
       "samples": [
         {
           "at": -45.0,
-          "gap_mm": 0.0,
-          "hit_mm3": 13.0,
-          "nearest": "servo_MG90S",
+          "gap_mm": 2.184,
+          "hit_mm3": 0.0,
+          "nearest": "servo_SG90",
           "unit": "deg"
         },
         {
           "at": -33.75,
-          "gap_mm": 0.0,
-          "hit_mm3": 11.0,
-          "nearest": "servo_MG90S",
+          "gap_mm": 2.16,
+          "hit_mm3": 0.0,
+          "nearest": "servo_SG90",
           "unit": "deg"
         },
         {
           "at": -22.5,
-          "gap_mm": 0.0,
-          "hit_mm3": 17.0,
-          "nearest": "servo_MG90S",
+          "gap_mm": 2.144,
+          "hit_mm3": 0.0,
+          "nearest": "servo_SG90",
           "unit": "deg"
         },
         {
           "at": -11.25,
-          "gap_mm": 0.0,
-          "hit_mm3": 15.0,
-          "nearest": "servo_MG90S",
+          "gap_mm": 2.138,
+          "hit_mm3": 0.0,
+          "nearest": "servo_SG90",
           "unit": "deg"
         },
         {
           "at": 0.0,
-          "gap_mm": 0.0,
-          "hit_mm3": 15.0,
-          "nearest": "servo_MG90S",
+          "gap_mm": 2.138,
+          "hit_mm3": 0.0,
+          "nearest": "servo_SG90",
           "unit": "deg"
         },
         {
           "at": 11.25,
-          "gap_mm": 0.0,
-          "hit_mm3": 17.0,
-          "nearest": "servo_MG90S",
+          "gap_mm": 2.138,
+          "hit_mm3": 0.0,
+          "nearest": "servo_SG90",
           "unit": "deg"
         },
         {
           "at": 22.5,
-          "gap_mm": 0.0,
-          "hit_mm3": 11.0,
-          "nearest": "servo_MG90S",
+          "gap_mm": 2.144,
+          "hit_mm3": 0.0,
+          "nearest": "servo_SG90",
           "unit": "deg"
         },
         {
           "at": 33.75,
-          "gap_mm": 0.0,
-          "hit_mm3": 13.0,
-          "nearest": "servo_MG90S",
+          "gap_mm": 2.16,
+          "hit_mm3": 0.0,
+          "nearest": "servo_SG90",
           "unit": "deg"
         },
         {
           "at": 45.0,
-          "gap_mm": 0.0,
-          "hit_mm3": 13.0,
-          "nearest": "servo_MG90S",
+          "gap_mm": 2.184,
+          "hit_mm3": 0.0,
+          "nearest": "servo_SG90",
           "unit": "deg"
         }
       ],
-      "servo": "MG90S",
+      "servo": "SG90",
       "tag": "J3 elbow",
       "travel": [
         -45.0,
@@ -341,116 +341,109 @@
       ],
       "travel_unit": "deg",
       "what": "the 36T output gear, turning about the elbow",
-      "worst_hit_at": -22.5,
-      "worst_hit_mm3": 17.0,
-      "worst_hit_span": [
-        -11.0,
-        -1.2,
-        -10.0,
-        -9.0,
-        0.8,
-        -8.0
-      ]
+      "worst_hit_at": null,
+      "worst_hit_mm3": 0.0,
+      "worst_hit_span": null
     },
     {
       "audit": {
         "axis": "x",
-        "delta": -0.0,
-        "part": 25.8,
+        "delta": 0.0,
+        "part": 27.0,
         "parts": "fa_plate_out+fa_j4_lobe_t",
-        "table": 25.8
+        "table": 27.0
       },
       "control_gap_mm": 0.0,
       "control_mm3": 31.0,
-      "control_overdrive_mm": 1.0,
-      "control_pitches": 1.0,
-      "control_shift_mm": 1.0,
+      "control_overdrive_mm": 2.0,
+      "control_pitches": 2.0,
+      "control_shift_mm": 4.45,
       "frame_ok": true,
       "frame_seated_mm3": 0.0,
       "furniture": {
-        "hub_top": 15.5,
+        "hub_top": 13.399999999999999,
         "retain_head_d": 5.0,
-        "retain_stack_d": 6.35,
-        "retain_top": 18.05,
+        "retain_stack_d": 6.25,
+        "retain_top": 15.95,
         "tab_head_d": 4.0,
         "tab_head_h": 1.4,
         "tab_screw": "M2",
-        "washer_d": 6.35,
+        "washer_d": 6.25,
         "washer_fitted": true
       },
       "host": "forearm",
       "kind": "revolute",
-      "min_gap_against": "retain_MG90S",
+      "min_gap_against": "retain_SG90",
       "min_gap_at": -90.0,
-      "min_gap_mm": 0.0,
+      "min_gap_mm": 2.45,
       "moving": "wrist_roll",
       "retain_basis": "recessed in wrist_hub (wh_access_d)",
       "samples": [
         {
           "at": -90.0,
-          "gap_mm": 0.0,
+          "gap_mm": 2.45,
           "hit_mm3": 0.0,
-          "nearest": "retain_MG90S",
+          "nearest": "retain_SG90",
           "unit": "deg"
         },
         {
           "at": -67.5,
-          "gap_mm": 0.0,
+          "gap_mm": 2.45,
           "hit_mm3": 0.0,
-          "nearest": "retain_MG90S",
+          "nearest": "retain_SG90",
           "unit": "deg"
         },
         {
           "at": -45.0,
-          "gap_mm": 0.0,
+          "gap_mm": 2.45,
           "hit_mm3": 0.0,
-          "nearest": "retain_MG90S",
+          "nearest": "retain_SG90",
           "unit": "deg"
         },
         {
           "at": -22.5,
-          "gap_mm": 0.0,
+          "gap_mm": 2.45,
           "hit_mm3": 0.0,
-          "nearest": "retain_MG90S",
+          "nearest": "retain_SG90",
           "unit": "deg"
         },
         {
           "at": 0.0,
-          "gap_mm": 0.0,
+          "gap_mm": 2.45,
           "hit_mm3": 0.0,
-          "nearest": "retain_MG90S",
+          "nearest": "retain_SG90",
           "unit": "deg"
         },
         {
           "at": 22.5,
-          "gap_mm": 0.0,
+          "gap_mm": 2.45,
           "hit_mm3": 0.0,
-          "nearest": "retain_MG90S",
+          "nearest": "retain_SG90",
           "unit": "deg"
         },
         {
           "at": 45.0,
-          "gap_mm": 0.0,
+          "gap_mm": 2.45,
           "hit_mm3": 0.0,
-          "nearest": "retain_MG90S",
+          "nearest": "retain_SG90",
           "unit": "deg"
         },
         {
           "at": 67.5,
-          "gap_mm": 0.0,
+          "gap_mm": 2.45,
           "hit_mm3": 0.0,
-          "nearest": "retain_MG90S",
+          "nearest": "retain_SG90",
           "unit": "deg"
         },
         {
           "at": 90.0,
-          "gap_mm": 0.0,
+          "gap_mm": 2.45,
           "hit_mm3": 0.0,
-          "nearest": "retain_MG90S",
+          "nearest": "retain_SG90",
           "unit": "deg"
         }
       ],
-      "servo": "MG90S",
+      "servo": "SG90",
       "tag": "J4 wrist",
       "travel": [
         -90.0,
@@ -471,7 +464,7 @@
         "table": 4.6
       },
       "control_gap_mm": 0.0,
-      "control_mm3": 8.0,
+      "control_mm3": 13.0,
       "control_overdrive_mm": 1.0,
       "control_pitches": 1.0,
       "control_shift_mm": 1.0,
@@ -499,63 +492,63 @@
         {
           "at": -90.0,
           "gap_mm": 0.0,
-          "hit_mm3": 12.0,
+          "hit_mm3": 0.0,
           "nearest": "servo_SG90",
           "unit": "deg"
         },
         {
           "at": -67.5,
           "gap_mm": 0.0,
-          "hit_mm3": 14.0,
+          "hit_mm3": 6.0,
           "nearest": "servo_SG90",
           "unit": "deg"
         },
         {
           "at": -45.0,
           "gap_mm": 0.0,
-          "hit_mm3": 14.0,
+          "hit_mm3": 6.0,
           "nearest": "servo_SG90",
           "unit": "deg"
         },
         {
           "at": -22.5,
           "gap_mm": 0.0,
-          "hit_mm3": 14.0,
+          "hit_mm3": 6.0,
           "nearest": "servo_SG90",
           "unit": "deg"
         },
         {
           "at": 0.0,
           "gap_mm": 0.0,
-          "hit_mm3": 12.0,
+          "hit_mm3": 0.0,
           "nearest": "servo_SG90",
           "unit": "deg"
         },
         {
           "at": 22.5,
           "gap_mm": 0.0,
-          "hit_mm3": 14.0,
+          "hit_mm3": 6.0,
           "nearest": "servo_SG90",
           "unit": "deg"
         },
         {
           "at": 45.0,
           "gap_mm": 0.0,
-          "hit_mm3": 14.0,
+          "hit_mm3": 6.0,
           "nearest": "servo_SG90",
           "unit": "deg"
         },
         {
           "at": 67.5,
           "gap_mm": 0.0,
-          "hit_mm3": 14.0,
+          "hit_mm3": 6.0,
           "nearest": "servo_SG90",
           "unit": "deg"
         },
         {
           "at": 90.0,
           "gap_mm": 0.0,
-          "hit_mm3": 12.0,
+          "hit_mm3": 0.0,
           "nearest": "servo_SG90",
           "unit": "deg"
         }
@@ -569,14 +562,14 @@
       "travel_unit": "deg",
       "what": "the effector disc, rolling about J5",
       "worst_hit_at": -67.5,
-      "worst_hit_mm3": 14.0,
+      "worst_hit_mm3": 6.0,
       "worst_hit_span": [
-        -2.12,
-        17.0,
+        -0.1,
+        15.7,
         -2.4,
-        2.88,
-        19.0,
-        2.88
+        1.9,
+        17.7,
+        -1.4
       ]
     },
     {

@@ -50,6 +50,13 @@ import sys
 import adsk.core
 import adsk.fusion
 
+REPO_FOR_IMPORT = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
+if REPO_FOR_IMPORT not in sys.path:
+    sys.path.insert(0, REPO_FOR_IMPORT)
+
+from lib.joints import servo_name_for  # noqa: E402
+from lib.servo import CATALOG  # noqa: E402
+
 # Set inside run() from lib.gears.J3_PAIR, once lib is importable.
 J3_OFFSET_MM = None
 
@@ -58,13 +65,35 @@ OUT = os.path.join(REPO, 'specs', 'robotarm', '_mass_properties.json')
 
 # Bought parts carry no printed-density correction and no volume in Fusion,
 # because none of them is modelled. lib/servo.py is the source for the servos.
+#
+# THE SERVO ROWS ARE DERIVED, NAME AND MASS BOTH. They were typed - 'MG90S
+# J3': 13.4 and 'MG90S J4': 13.4 - and stayed typed through the 2026-09-03
+# swap to SG90s, which is 9.0 g. This model was carrying 4.4 g of servo that
+# is not on the arm at each of J3 and J4, 8.8 g in total, and every duty
+# percentage downstream of it was quietly generous. That is the failure
+# CLAUDE.md names: a servo mapping copied out of lib/joints instead of read
+# from it. J3's copy is worse than J4's, because it hangs on the far end of
+# a 125 mm upper arm.
+def _srv(joint, where):
+    """('<SERVO> <where>', mass_g) for the servo lib/joints gives that joint."""
+    name = servo_name_for(joint)
+    return '%s %s' % (name, where), CATALOG[name].mass_g
+
+
+J3_SERVO, _J3_SERVO_G = _srv('J3', 'J3')
+J4_SERVO, _J4_SERVO_G = _srv('J4', 'J4')
+J5_SERVO, _J5_SERVO_G = _srv('J5', 'J5')
+J6_SERVO, _J6_SERVO_G = _srv('J6', 'effector')
+J1_SERVO, _J1_SERVO_G = _srv('J1', 'J1 yaw')
+J2_SERVO, _J2_SERVO_G = _srv('J2', 'J2')
+
 BOUGHT_G = {
-    'MG995 J2': 55.0,
-    'MG90S J3': 13.4,
-    'MG90S J4': 13.4,
-    'SG90 J5': 9.0,
-    'SG90 effector': 9.0,
-    'SG90 J1 yaw': 9.0,
+    J2_SERVO: _J2_SERVO_G,
+    J3_SERVO: _J3_SERVO_G,
+    J4_SERVO: _J4_SERVO_G,
+    J5_SERVO: _J5_SERVO_G,
+    J6_SERVO: _J6_SERVO_G,
+    J1_SERVO: _J1_SERVO_G,
     '608ZZ x3': 3 * 32.0,
 }
 
@@ -79,9 +108,9 @@ BOUGHT_G = {
 # What is left here is the BOUGHT parts, which appear in no model file and so
 # have no COM to read. These stay declared, and stay flagged BOUGHT.
 BOUGHT_OFFSET_MM = {
-    'MG90S J4': -6.0,
-    'SG90 J5': 0.0,
-    'SG90 effector': 32.0,
+    J4_SERVO: -6.0,
+    J5_SERVO: 0.0,
+    J6_SERVO: 32.0,
 }
 HUB_SPIN_DEG = 90.0          # matches _check_wrist - every socket in this arm
                              # has a hex vertex on the assembly's +Y
@@ -125,8 +154,7 @@ ROTATING = ('shoulder_bracket', 'shoulder_hub', 'upper_arm', 'forearm',
             'wrist_hub', 'wrist_roll', 'wrist_rotator', 'pruner_shell',
             'pruner_blade', 'pruner_rack', 'gripper_pinion',
             'j3_gear', 'j3_pinion', 'j3_axle', 'j3_servo_cap')
-ROTATING_BOUGHT = ('MG995 J2', 'MG90S J3', 'MG90S J4', 'SG90 J5',
-                   'SG90 effector')
+ROTATING_BOUGHT = (J2_SERVO, J3_SERVO, J4_SERVO, J5_SERVO, J6_SERVO)
 
 
 def compose_wrist(design, root, gv):
@@ -328,11 +356,11 @@ def run(_context: str):
           'MEASURED'),
         I('wrist_rotator', mass('wrist_rotator'), composed['wrist_rotator'],
           'MEASURED'),
-        I('MG90S J4', BOUGHT_G['MG90S J4'], BOUGHT_OFFSET_MM['MG90S J4'],
+        I(J4_SERVO, BOUGHT_G[J4_SERVO], BOUGHT_OFFSET_MM[J4_SERVO],
           'BOUGHT'),
-        I('SG90 J5', BOUGHT_G['SG90 J5'], BOUGHT_OFFSET_MM['SG90 J5'],
+        I(J5_SERVO, BOUGHT_G[J5_SERVO], BOUGHT_OFFSET_MM[J5_SERVO],
           'BOUGHT'),
-        I('SG90 effector', BOUGHT_G['SG90 effector'],
+        I(J6_SERVO, BOUGHT_G[J6_SERVO],
           BOUGHT_OFFSET_MM['SG90 effector'], 'BOUGHT'),
         I('pruner head', head_g, HEAD_OFFSET_MM, 'MEASURED'),
     ]
@@ -361,7 +389,7 @@ def run(_context: str):
     #
     # The offset is imported, not typed. It is the same centre distance the
     # teeth are cut from.
-    j3_items.append(I('MG90S J3', BOUGHT_G['MG90S J3'], J3_OFFSET_MM, 'BOUGHT'))
+    j3_items.append(I(J3_SERVO, BOUGHT_G[J3_SERVO], J3_OFFSET_MM, 'BOUGHT'))
     j3_items.append(I('j3_servo_cap', mass('j3_servo_cap'), J3_OFFSET_MM,
                       'MEASURED'))
     j3_items.append(I('j3_pinion', mass('j3_pinion'), J3_OFFSET_MM, 'MEASURED'))

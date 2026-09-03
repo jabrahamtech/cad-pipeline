@@ -1,0 +1,30 @@
+j3_gear    tooth band z 0.000 .. 10.000 (body z -11.700 .. 10.000)
+j3_pinion  tooth band z 0.000 .. 10.000 (body z 0.000 .. 10.000)
+J3 pair: 18T/36T module 1.00 face 10.00, ratio 2.0000, centre 27.200 mm
+phasing: the gear carries a TOOTH on the line of centres, so the pinion is spun 10.000 deg to face it with a SPACE
+rolled through one gear tooth pitch (10.000 deg) in 5 steps, sampling 28 flank points of 3 teeth per step
+
+GATE j3_mesh      : 0 of 420 flank points buried in the pinion - PASS
+   CONTROL (half-pitch mis-phase, tooth onto tooth): 116 of 420 buried - the test can see
+
+1. j3_gear along the elbow axis, x -36.70 -> -20.15 (cap off):
+   tightest aperture r 19.50 at x -30.70; the 36T is r 19.00
+2. an M3 driver on the same axis, from the counterbore mouth at x -30.30 out 25.0:
+   tightest aperture r 19.50 at x -30.55; a bit needs about r 3.2
+3. servo + pinion + cap along the pinion axis (y -17.80), x -36.70 -> -20.55:
+   tightest aperture r 10.50 at x -30.70; the 18T is r 10.00
+4. the 608ZZ carried in along the straddle at x 8.90, then pressed to x 15.90:
+   carry clear, press-in clear (probed at r 10.94, just inside the 10.99 pocket wall)
+   CONTROL, the same ring 1.0 outside the pocket wall: 72 in material - the probe can see
+   CONTROL, the same probe inside the fork plate at x -16.15: first material at r 10.25 - the probe can see
+
+GATE j3_installs   : PASS
+
+GATE j3_contract  : 8 terms checked, 0 absent, 0 disagree - PASS
+   checked: fa_bore_d, fa_brg_bore, fa_brg_od, fa_brg_w, fa_j3_centre, fa_j3_gear_clear, fa_plate_t == jg_plate_t, ja_collar_d
+
+608ZZ: bore 8.0 od 22.0 width 7.0, inner race reaches 12.0
+       stationary side (forearm shoulder) must bear OUTSIDE 12.0
+       rotating side  (j3_axle collar)   must bear INSIDE  12.0
+
+ELBOW: j3_mesh PASS, j3_contract PASS

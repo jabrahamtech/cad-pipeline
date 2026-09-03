@@ -1,0 +1,33 @@
+=== servo INSERTION + lead ESCAPE ===
+probe positions are computed from lib/servo.py lead_x/lead_y/lead_z
+and each row's frame. Nothing about the lead is typed in this file.
+WHICH servo each row drives is lib/joints.JOINT_SERVO, not this table: J1 yaw SG90, J2 shoulder MG995, J3 elbow SG90, J4 wrist SG90, J5 roll SG90, gripper SG90, effector SG90
+
+mount        host                servo     seated    insert    escape  verdict
+  lead point (0.00, -6.10, -3.40), escape run X -1.70..1.70 Y -14.10..-6.10 Z -5.10..-1.70
+J1 yaw       turntable_stator    SG90        0.00      0.00      0.00  CLEAR
+  lead point (52.20, 0.00, 10.00), escape run X 50.10..54.30 Y -2.10..2.10 Z 10.00..18.00
+J2 shoulder  shoulder_bracket    MG995       0.00      0.00      0.00  CLEAR
+  lead point (-6.10, 0.00, 20.30), escape run X -14.10..-6.10 Y -1.70..1.70 Z 18.60..22.00
+J3 elbow     j3_servo_cap        SG90        0.00      0.00      0.00  CLEAR
+  lead point (40.60, 6.10, 0.00), escape run X 38.90..42.30 Y 6.10..14.10 Z -1.70..1.70
+J4 wrist     forearm             SG90        0.00      0.00      0.00  CLEAR
+  lead point (0.00, -9.00, 6.10), escape run X -1.70..1.70 Y -10.70..-7.30 Z 6.10..14.10
+J5 roll      wrist_roll          SG90        0.00      0.00      0.00  CLEAR
+  lead point (-6.10, -28.50, 0.00), escape run X -14.10..-6.10 Y -30.20..-26.80 Z -1.70..1.70
+gripper      gripper_shell       SG90        0.00 clamshell      0.00  CLEAR
+  lead point (-6.10, -28.50, 0.00), escape run X -14.10..-6.10 Y -30.20..-26.80 Z -1.70..1.70
+effector     pruner_shell        SG90        0.00 clamshell      0.00  CLEAR
+
+CONTROL: the two clamshells cut a deliberate outboard lead
+  notch and have no insertion path, so both must read CLEAR.
+  they do, so the escape method works
+
+SEATED is the frame self-check: every pocket is cut to case + loc,
+so the case alone must overlap ~0. A large number means the ROW is
+wrong - a rotation or an origin - not that the part is.
+
+GATE leads : PASS
+
+NOT CHECKED: whether an escaped lead can then REACH the duct. That
+needs the loom modelled, and nothing models it.
