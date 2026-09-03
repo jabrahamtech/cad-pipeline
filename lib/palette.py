@@ -29,7 +29,12 @@ is filament - so this drives renders and the assembly diagrams only.
 """
 
 # the parts that were YELLOW: the links and the shells
-GREEN = ('forearm', 'upper_arm', 'gripper_shell', 'gripper_rack_jaw',
+# forearm was split into three printed pieces on 2026-09-03; they are the
+# same link and stay the same colour. 'forearm' itself is now only the
+# assembled reference and is never printed, but it is kept here so the
+# reference body renders in the right colour in the assembly.
+GREEN = ('forearm', 'forearm_px', 'forearm_nx', 'forearm_rail',
+         'upper_arm', 'gripper_shell', 'gripper_rack_jaw',
          'pruner_shell')
 
 # forest green #228B22, white #F5F5F5 - the exact values, for a tinted

@@ -90,7 +90,18 @@ PLATE_OF has always been the one place the grouping is decided. Its values
 are now plate KEYS rather than only plate numbers, and ONLY_PLATES names
 which of those keys to build. So "give me just the wrist plate" is
 
-    ONLY_PLATES = 'armstack'
+    # SPLIT THE SELECTED PLATES BY FILAMENT COLOUR. Jonathan prints this arm in
+# two colours - forest green for the links and shells, white for the joints,
+# hubs and gears (lib/palette.py) - so a plate that mixes them is a plate he
+# has to stop and swap filament in the middle of.
+#
+# THE COLOUR IS READ OFF THE BUILT BODY, NOT FROM palette.colour_of(). Those
+# two disagree: j3_servo_cap.py calls hints_for('forearm') on purpose, because
+# the cap IS part of the forearm and prints with it - but its own name is not
+# in palette.GREEN, so colour_of() calls it white. The body knows what it will
+# actually print as; the name table does not.
+SPLIT_BY_COLOUR = True
+ONLY_PLATES = 'armstack'
 
 and the parts, the grouping, the note and the exported filename all come
 from the same table the full build uses. Nothing is re-listed anywhere.
@@ -182,9 +193,22 @@ MIRRORED = {'wrist_roll'}
 #   wrist  THE WHOLE WRIST, five pieces. It used to be three pieces riding on
 #          plate 1; the clamshell split turned wrist_roll into two and the
 #          wrist became a sub-assembly you can print, build and hang off the
-#          forearm on its own. Giving it its own key is what makes
-#          ONLY_PLATES = 'armstack' possible at all, and it also takes 1795 mm2
+#          forearm on its own. Giving it its own key is what makes a
+#          wrist-only export possible at all, and it also takes 1795 mm2
 #          of new footprint off plate 1, which had no room for it.
+
+# SPLIT THE SELECTED PLATES BY FILAMENT COLOUR. Jonathan prints this arm in
+# two colours - forest green for the links and shells, white for the joints,
+# hubs and gears (lib/palette.py) - so a plate that mixes them is a plate he
+# has to stop and swap filament in the middle of.
+#
+# THE COLOUR IS READ OFF THE BUILT BODY, NOT FROM palette.colour_of(). Those
+# two disagree: j3_servo_cap.py calls hints_for('forearm') on purpose, because
+# the cap IS part of the forearm and prints with it - but its own name is not
+# in palette.GREEN, so colour_of() calls it white. The body knows what it will
+# actually print as; the name table does not.
+SPLIT_BY_COLOUR = True
+ONLY_PLATES = 'armstack'
 PLATE_OF = {
     'turntable_stator': 1, 'turntable_ring': 1, 'shoulder_bracket': 1,
     'shoulder_hub': 1, 'pruner_shell': 1, 'gripper_pinion': 1,
@@ -210,6 +234,17 @@ PLATE_OF = {
 # sequence of keys from PLATE_OF - 'wrist', 1, (1, 2) - and only those parts
 # are measured, packed and exported. Every name is checked against PLATE_OF,
 # so a mistyped key is an assert and not a silently empty plate.
+# SPLIT THE SELECTED PLATES BY FILAMENT COLOUR. Jonathan prints this arm in
+# two colours - forest green for the links and shells, white for the joints,
+# hubs and gears (lib/palette.py) - so a plate that mixes them is a plate he
+# has to stop and swap filament in the middle of.
+#
+# THE COLOUR IS READ OFF THE BUILT BODY, NOT FROM palette.colour_of(). Those
+# two disagree: j3_servo_cap.py calls hints_for('forearm') on purpose, because
+# the cap IS part of the forearm and prints with it - but its own name is not
+# in palette.GREEN, so colour_of() calls it white. The body knows what it will
+# actually print as; the name table does not.
+SPLIT_BY_COLOUR = True
 ONLY_PLATES = 'armstack'
 # A SUBSET BY PART NAME, when some of a plate is already on the bench. Empty
 # means everything ONLY_PLATES selected. Parts not named in PLATE_OF land in
@@ -487,6 +522,10 @@ def run(_context: str):
         want = ([ONLY_PLATES] if isinstance(ONLY_PLATES, (int, str))
                 else list(ONLY_PLATES))
         for k in want:
+            if SPLIT_BY_COLOUR and any(
+                    str(v) == k or str(v).startswith(k + '_')
+                    for v in PLATE_OF.values()):
+                continue
             assert k in set(PLATE_OF.values()), (
                 'ONLY_PLATES names plate %r, which is not a key in PLATE_OF. '
                 'The plates are %s.'
@@ -500,8 +539,10 @@ def run(_context: str):
     # ---- measure every piece in its PRINT orientation ----------------------
     pieces = []
     for name, qty, spec, note in ORIENT:
-        if keys is not None and PLATE_OF.get(name) not in keys:
-            continue
+        if keys is not None:
+            _k = str(PLATE_OF.get(name))
+            if not (_k in keys or any(_k.startswith(str(w) + '_') for w in keys)):
+                continue
         if ONLY and name not in ONLY:
             continue
         assert name not in MIRRORED or qty == 2, (
@@ -511,6 +552,11 @@ def run(_context: str):
         full = 'robotarm_' + name
         assert full in comps, '%s not in this document' % full
         comp = comps[full]
+        if SPLIT_BY_COLOUR:
+            _b = comp.bRepBodies.item(0)
+            _ap = (_b.appearance.name if _b.appearance else '')
+            _col = 'green' if 'green' in _ap.lower() else 'white'
+            PLATE_OF[name] = '%s_%s' % (PLATE_OF[name], _col)
         assert comp.bRepBodies.count == 1, '%s is not one body' % name
         body = comp.bRepBodies.item(0)
         vol = body.volume * 1000.0

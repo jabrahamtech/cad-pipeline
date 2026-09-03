@@ -1,5 +1,15 @@
 {
-  "control_overdrive_mm": 0.5,
+  "control_overdrive_mm": [
+    1.0,
+    2.0,
+    4.0
+  ],
+  "control_overdrive_pitches": [
+    1.0,
+    2.0,
+    4.0
+  ],
+  "control_touch_tol_mm": 0.01,
   "grade": "tab and retaining screw heads are ASSUMED - caliper before cutting a part to them",
   "j3_joint_travel_deg": 90.0,
   "jam_floor_mm3": 0.5,
@@ -14,8 +24,10 @@
         "table": 10.2
       },
       "control_gap_mm": 0.0,
-      "control_mm3": 0.0,
-      "control_shift_mm": 0.7,
+      "control_mm3": 4.0,
+      "control_overdrive_mm": 1.0,
+      "control_pitches": 1.0,
+      "control_shift_mm": 1.2,
       "frame_ok": true,
       "frame_seated_mm3": 0.0,
       "furniture": {
@@ -122,8 +134,10 @@
         "table": 29.6
       },
       "control_gap_mm": 0.0,
-      "control_mm3": 0.0,
-      "control_shift_mm": 2.3,
+      "control_mm3": 39.0,
+      "control_overdrive_mm": 2.0,
+      "control_pitches": 2.0,
+      "control_shift_mm": 3.8,
       "frame_ok": true,
       "frame_seated_mm3": 0.0,
       "furniture": {
@@ -230,8 +244,10 @@
         "table": 5.5
       },
       "control_gap_mm": 0.0,
-      "control_mm3": 15.0,
-      "control_shift_mm": 0.5,
+      "control_mm3": 11.0,
+      "control_overdrive_mm": 1.0,
+      "control_pitches": 1.0,
+      "control_shift_mm": 1.0,
       "frame_ok": true,
       "frame_seated_mm3": 0.0,
       "furniture": {
@@ -346,7 +362,9 @@
       },
       "control_gap_mm": 0.0,
       "control_mm3": 31.0,
-      "control_shift_mm": 0.5,
+      "control_overdrive_mm": 1.0,
+      "control_pitches": 1.0,
+      "control_shift_mm": 1.0,
       "frame_ok": true,
       "frame_seated_mm3": 0.0,
       "furniture": {
@@ -445,10 +463,18 @@
       "worst_hit_span": null
     },
     {
-      "audit": null,
+      "audit": {
+        "axis": "y",
+        "delta": 0.0,
+        "part": 4.6,
+        "parts": "wro_tab_lo",
+        "table": 4.6
+      },
       "control_gap_mm": 0.0,
-      "control_mm3": 6.0,
-      "control_shift_mm": 0.5,
+      "control_mm3": 8.0,
+      "control_overdrive_mm": 1.0,
+      "control_pitches": 1.0,
+      "control_shift_mm": 1.0,
       "frame_ok": true,
       "frame_seated_mm3": 0.0,
       "furniture": {
@@ -556,8 +582,10 @@
     {
       "audit": null,
       "control_gap_mm": 0.0,
-      "control_mm3": 0.0,
-      "control_shift_mm": 2.15,
+      "control_mm3": 14.0,
+      "control_overdrive_mm": 1.0,
+      "control_pitches": 1.0,
+      "control_shift_mm": 2.65,
       "frame_ok": true,
       "frame_seated_mm3": 0.0,
       "furniture": {
@@ -658,8 +686,10 @@
     {
       "audit": null,
       "control_gap_mm": 0.0,
-      "control_mm3": 0.0,
-      "control_shift_mm": 2.204,
+      "control_mm3": 6.0,
+      "control_overdrive_mm": 4.0,
+      "control_pitches": 4.0,
+      "control_shift_mm": 5.704,
       "frame_ok": true,
       "frame_seated_mm3": 0.0,
       "furniture": {

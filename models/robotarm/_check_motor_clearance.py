@@ -69,16 +69,26 @@ other sign", it is "never let a sign be picked at all". So this control does
 not choose a direction: it MEASURES one. measureMinimumDistance returns the
 two WITNESS POINTS of the closest approach - one on the moving body, one on
 the motor hardware - and the control translates the moving part along the
-vector FROM its own witness point TO the servo's, by that same gap plus
-CONTROL_OVERDRIVE_MM. Landing the moving body's nearest point CONTROL_OVERDRIVE
-past the other body's nearest point is contact by construction, not by hope,
-and the direction is derived from the pair in that order, so there is no sign
-left to get wrong. It is then checked three ways and any one of them failing
-fails the gate:
+vector FROM its own witness point TO the servo's, by that same gap plus an
+overdrive. Landing the moving body's nearest point that far past the other
+body's nearest point is contact by construction, not by hope, and the
+direction is derived from the pair in that order, so there is no sign left to
+get wrong. It is then checked three ways and any one of them failing fails the
+gate:
     a the control vector must point at the motor hardware
       (dot(unit, servo_centre - moving_centre) > 0) - things move TOGETHER;
     b the re-measured gap after the shift must be ~0 - they are touching;
     c the sampled control volume must exceed JAM_MM3 - the sampler can see it.
+
+AND THE OVERDRIVE IS COUNTED IN SAMPLE PITCHES, which is the correction the
+first run of this gate forced. A control can be aimed perfectly, land exactly
+on contact, and still be invisible, because the overlap it creates is at most
+as thick as the distance it was driven and the sampler cannot resolve anything
+thinner than STEP. That is not a wrong answer, it is NO answer, and the file
+now says so in its own units: see CONTROL_OVERDRIVE_PITCHES. Every station
+also REPORTS the depth its control needed, in pitches, because that number is
+this gate's resolution at that joint - a clear row at a station whose control
+only fires at 4 pitches is a weaker clear than one that fires at 1.
 
 THE SECOND CONTROL, on the placement table itself. Each station re-derives the
 servo's tab plane from the HOST's own user parameters and compares it with the
@@ -135,7 +145,49 @@ from lib.servo_hub import spline_hub  # noqa: E402
 STEP = 1.0                  # sample pitch, mm
 JAM_MM3 = 0.5               # below this is sampling noise, not a strike
 SWEEP_STEPS = 9             # positions per joint, both limits included
-CONTROL_OVERDRIVE_MM = 0.50  # how far PAST contact the control is driven
+# HOW FAR PAST CONTACT THE CONTROL IS DRIVEN, IN SAMPLE PITCHES RATHER THAN IN
+# MILLIMETRES - AND THAT UNIT IS THE WHOLE FIX. The first run of this gate
+# drove 0.50 mm past contact on a 1.00 mm lattice and read 0.00 mm3 at four of
+# the seven stations, which the assert correctly called BLIND. Read what that
+# run actually reported before blaming the close: "gap 0.000 after a 0.70 mm
+# close". The gap AFTER the shift was zero at all four, so the direction was
+# right, the distance was right, and the two bodies really were touching. The
+# only thing that did not happen is the SAMPLER seeing it.
+#
+# Why it could not. Driving CONTROL_OVERDRIVE past contact leaves a lens of
+# overlap at most that thick, and this sampler puts its grid planes STEP
+# apart. At 0.50 mm into a 1.00 mm lattice the lens is HALF A PITCH thick, so
+# whether a single grid plane lands inside it is settled by where the
+# bounding-box intersection corner happens to fall - a coin toss, not a
+# measurement. The three stations that did fire (J4 31.0, J3 15.0, J5 6.0 mm3)
+# are the ones whose closest approach is broad and flat, where even a half-
+# pitch slab spans enough lattice columns to catch points; the four that did
+# not are edge and corner contacts whose lens holds less than one point. The
+# control was never testing the geometry. It was testing the lattice, and
+# losing.
+#
+# So the depth is a MULTIPLE OF STEP and can never again be set finer than the
+# thing that has to see it. The ladder is climbed in order and stops at the
+# first rung the sampler registers; escalating is not the control giving
+# itself another go at a pass, because every rung is a real interference by
+# construction - a rung that reads 0.00 mm3 has MEASURED this gate's blindness
+# at that depth, which is worth printing. Only running out of ladder is a
+# failure. The top rung is 4.0 mm at STEP 1.0, which is exactly the shift GATE
+# servo_fit fires 7/7 on against a coarser 1.50 mm lattice, so it is a proven
+# depth rather than a hopeful one.
+CONTROL_OVERDRIVE_PITCHES = (1.0, 2.0, 4.0)
+CONTROL_OVERDRIVE_MM = tuple(k * STEP for k in CONTROL_OVERDRIVE_PITCHES)
+# What "they are touching after the shift" is allowed to measure. Solids that
+# INTERPENETRATE measure exactly zero - measureMinimumDistance stops at first
+# contact and never reports depth - so the honest tolerance is a hair off
+# zero. The first version of this check compared the post-close gap against
+# CONTROL_OVERDRIVE_MM itself, which is backwards: it got LOOSER the harder
+# the control drove, and it is the one check in the file that has to get
+# STRICTER. At the old 0.50 mm overdrive it was a 0.50 mm tolerance on the
+# word "touching", and it passed at all four blind stations - correctly, as it
+# happens, but it would have passed a control that missed by 0.49 just as
+# happily.
+CONTROL_TOUCH_TOL_MM = 0.01
 # A gap under this is reported TIGHT rather than clear. It is design_rules'
 # `free` fit, 0.40: two printed parts nominally that far apart are touching
 # once the printer has had its say, and a joint that scrubs is a joint that
@@ -231,7 +283,7 @@ DEPS = {
 #   audit       (index, tokens that SUM to where the host actually BUILDS the
 #               servo's tab plane, on that axis). A token starting with '-'
 #               subtracts. The second control - see the docstring. Only the
-#               four joints whose host states the stack-up in its own
+#               five joints whose host states the stack-up in its own
 #               parameters carry one; a row with audit=None is not a pass,
 #               it is a question this gate cannot ask.
 STATIONS = [
@@ -273,7 +325,16 @@ STATIONS = [
          driven='wrist_rotator', seat_p='wrt_seat_z',
          face_p=('wrt_disc_t', 'wrt_hub_h'), access_p='wrt_access_d',
          washer=True,
-         audit=None),
+         # wrist_roll.py declares wro_tab_lo as, in the parameter's own
+         # comment, "the plane _check_leads MOUNTS should be reading for J5
+         # roll", and prints the disagreement as arithmetic on every build.
+         # That makes this row SOURCED from the host rather than a stack-up
+         # assembled at this file's convenience, which is the bar the other
+         # three audits already meet. It is also the only one of the three
+         # rows corrected on 2026-09-03 that had nothing watching it: J1 and
+         # J4 both carry an audit, J5 did not, so the 5.00 -> 4.60 fix landed
+         # unchecked. It should now read delta 0.00 alongside J2's.
+         audit=(1, ('wro_tab_lo',))),
     dict(tag='gripper', moving='gripper_rack_jaw',
          what='the rack jaw, sliding across the pinion',
          kind='prismatic', travel=None,
@@ -548,7 +609,22 @@ def run(_context: str):
     ORG = adsk.core.Point3D.create(0, 0, 0)
     repo = REPO
 
-    for m in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.')]:
+    # THE PLACEMENT TABLE IS RE-READ FROM DISK, NOT OUT OF PYTHON'S CACHE.
+    # Three MOUNTS rows were corrected on 2026-09-03 - J1 12.60 -> 10.20,
+    # J4 25.40 -> 25.80, J5 5.00 -> 4.60 - and Fusion's interpreter outlives
+    # any number of edits to files it has already imported. A
+    # models.robotarm._check_leads left in sys.modules by an earlier gate, by
+    # the add-in's own load, or by this gate's previous run, hands back the
+    # table as it stood when that import happened. This gate would then place
+    # three servos at the exact stale coordinates those corrections exist to
+    # remove, and it would do it silently: the placement audit reads the same
+    # cached table, so the second control would compare a stale number
+    # against the parts and the delta would come out looking like a PART
+    # problem rather than a stale-import one. `lib` has always been purged
+    # here for precisely this reason; `models` is the half that was missed,
+    # and it is the half that carries the numbers.
+    for m in [m for m in list(sys.modules)
+              if m in ('lib', 'models') or m.startswith(('lib.', 'models.'))]:
         del sys.modules[m]
     from models.robotarm import _check_leads  # noqa
     mounts = {m['tag']: m for m in _check_leads.MOUNTS}
@@ -715,7 +791,9 @@ def run(_context: str):
 
     meta = dict(step_mm=STEP, jam_floor_mm3=JAM_MM3, tight_mm=TIGHT_MM,
                 sweep_steps=SWEEP_STEPS,
-                control_overdrive_mm=CONTROL_OVERDRIVE_MM,
+                control_overdrive_mm=list(CONTROL_OVERDRIVE_MM),
+                control_overdrive_pitches=list(CONTROL_OVERDRIVE_PITCHES),
+                control_touch_tol_mm=CONTROL_TOUCH_TOL_MM,
                 tab_head_d_factor=TAB_HEAD_D_FACTOR,
                 tab_head_h_factor=TAB_HEAD_H_FACTOR,
                 retain_head_d_factor=RETAIN_HEAD_D_FACTOR,
@@ -909,7 +987,6 @@ def run(_context: str):
             '%s: the moving part and the motor share a centre - no closing '
             'direction exists and the control cannot be aimed' % tag)
         u_hat = [c / norm for c in d]
-        shift = g0 + CONTROL_OVERDRIVE_MM
 
         # (a) THINGS MOVE TOGETHER. The one check _check_servo_fit's first
         # control did not have: the closing vector must actually point at the
@@ -922,22 +999,41 @@ def run(_context: str):
             'the motor (%.4f). Every clear result at this station is '
             'meaningless.' % (tag, toward))
 
-        moving_occ.transform2 = mul(
-            trans(u_hat[0] * shift, u_hat[1] * shift, u_hat[2] * shift),
-            at(worst_at))
-        mv = bodies(moving_occ)
-        ctrl_v = 0.0
-        for a in mv:
-            for b in motor:
-                v, _w = _overlap_mm3(a, b)
-                ctrl_v += v
-        # (b) they are TOUCHING after the shift, by measurement not by faith
-        ctrl_gap = min(gap_mm(a, b)[0] for a in mv for b in motor)
+        # THE LADDER, one rung per entry in CONTROL_OVERDRIVE_MM. Each rung
+        # lands the moving body's nearest point that many SAMPLE PITCHES past
+        # the motor's nearest point and asks the sampler what it can see. The
+        # first rung it registers is the answer and the climb stops there.
+        # This is not the control being given repeated goes at a pass: every
+        # rung is a genuine interference by construction, so a rung that reads
+        # 0.00 mm3 has measured how deep this gate is blind at this station,
+        # and the depth that finally fired is kept and printed as the station's
+        # resolution. Running out of ladder is the only failure.
+        ctrl_v, ctrl_gap, shift, depth = 0.0, 1e18, 0.0, CONTROL_OVERDRIVE_MM[0]
+        for over in CONTROL_OVERDRIVE_MM:
+            shift, depth = g0 + over, over
+            moving_occ.transform2 = mul(
+                trans(u_hat[0] * shift, u_hat[1] * shift, u_hat[2] * shift),
+                at(worst_at))
+            mv = bodies(moving_occ)
+            ctrl_v = 0.0
+            for a in mv:
+                for b in motor:
+                    v, _w = _overlap_mm3(a, b)
+                    ctrl_v += v
+            # (b) they are TOUCHING after the shift, by measurement not faith.
+            # Against a FIXED tolerance, not against the overdrive: solids that
+            # interpenetrate measure exactly zero, and a tolerance that grew
+            # with the drive would go slack exactly when the drive got hard.
+            ctrl_gap = min(gap_mm(a, b)[0] for a in mv for b in motor)
+            if ctrl_v > JAM_MM3:
+                break
         moving_occ.transform2 = at(0.0)
 
-        if ctrl_v <= JAM_MM3 or ctrl_gap > CONTROL_OVERDRIVE_MM:
-            blind.append('%s (%.2f mm3, gap %.3f after a %.2f mm close)'
-                         % (tag, ctrl_v, ctrl_gap, shift))
+        if ctrl_v <= JAM_MM3 or ctrl_gap > CONTROL_TOUCH_TOL_MM:
+            blind.append('%s (%.2f mm3, gap %.3f after a %.2f mm close - '
+                         '%.0f of the %d sample pitches on the ladder)'
+                         % (tag, ctrl_v, ctrl_gap, shift, depth / STEP,
+                            CONTROL_OVERDRIVE_PITCHES[-1]))
 
         # ---- the placement audit, the SECOND control ----------------------
         audit = None
@@ -966,6 +1062,12 @@ def run(_context: str):
                    worst_hit_span=hit_span,
                    control_mm3=round(ctrl_v, 2), control_shift_mm=round(shift, 3),
                    control_gap_mm=round(ctrl_gap, 3),
+                   # The depth the control needed before the sampler saw it,
+                   # in mm and in sample pitches. This is the gate's own
+                   # RESOLUTION at this station and it qualifies every clear
+                   # result in the row above it.
+                   control_overdrive_mm=round(depth, 3),
+                   control_pitches=round(depth / STEP, 2),
                    retain_basis=hub_basis, furniture=furn,
                    audit=audit, samples=samples)
         rows.append(row)
@@ -983,9 +1085,9 @@ def run(_context: str):
                                        unit, TIGHT_MM))
 
         print('%-12s %-16s vs %-18s %6.2f %-3s..%6.2f  gap %6.2f mm to %-22s '
-              'hit %8.1f mm3  control %8.1f mm3'
+              'hit %8.1f mm3  control %8.1f mm3 at %.0f pitches'
               % (tag, host, st['moving'], lo, unit, hi, worst_gap, worst_what,
-                 total_hit, ctrl_v))
+                 total_hit, ctrl_v, depth / STEP))
         _dump(rows, meta)
 
     # ---- what the run is worth, before what it found ----------------------
@@ -997,6 +1099,17 @@ def run(_context: str):
     print('positive control fired at all %d stations: each moving part was '
           'driven along its own MEASURED closing vector, past contact, and '
           'the sampler saw it. The check can see.' % len(rows))
+    print('  HOW DEEP EACH ONE HAD TO GO, in sample pitches. This is the '
+          'gate\'s resolution')
+    print('  at that station, and it qualifies the clear rows above: a joint '
+          'whose')
+    print('  control only fires 4 pitches in is a joint where a sliver 3 '
+          'pitches thick')
+    print('  would have gone unseen, so its clear is a weaker clear.')
+    for r in rows:
+        print('    %-12s %.0f pitches (%.2f mm past contact) -> %8.1f mm3'
+              % (r['tag'], r['control_pitches'], r['control_overdrive_mm'],
+                 r['control_mm3']))
 
     j2 = [r for r in rows if r['tag'] == 'J2 shoulder' and r['audit']]
     if j2:
