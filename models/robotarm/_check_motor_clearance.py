@@ -472,6 +472,13 @@ def _overlap_mm3(probe, others):
     pointContainment ONLY. TemporaryBRepManager.booleanOperation returns
     empty in this codebase and reads as "no interference".
     """
+    # ACCEPT ONE BODY OR MANY. Two of the three call sites in this file pass a
+    # single BRepBody and one passes a list, and the single-body form raised
+    # "'BRepBody' object is not iterable" the first time this gate was ever
+    # run. Normalising here is the fix rather than editing three call sites,
+    # because the next call site added will get it wrong the same way.
+    if not isinstance(others, (list, tuple)):
+        others = [others]
     INSIDE = adsk.fusion.PointContainment.PointInsidePointContainment
     P3 = adsk.core.Point3D.create
     pb = probe.boundingBox

@@ -90,7 +90,7 @@ PLATE_OF has always been the one place the grouping is decided. Its values
 are now plate KEYS rather than only plate numbers, and ONLY_PLATES names
 which of those keys to build. So "give me just the wrist plate" is
 
-    ONLY_PLATES = 'wrist'
+    ONLY_PLATES = 'armstack'
 
 and the parts, the grouping, the note and the exported filename all come
 from the same table the full build uses. Nothing is re-listed anywhere.
@@ -134,7 +134,10 @@ MARGIN, GAP = 6.0, 4.0
 # one - so it needs a brim, and a brim is 5-8 mm of extra plastic all round
 # that the packer has to know about or the neighbours land on top of it. The
 # part is placed CENTRED in its padded slot, so the pad is real space.
-BRIM_PAD = {'base_lid': 5.0}
+# forearm_rail stands 24.8 mm tall on ~69 mm2 - the smallest footprint
+# in the project by a wide margin, and the only part here that could
+# actually tip. 5.0 of brim is not optional on it.
+BRIM_PAD = {'base_lid': 5.0, 'forearm_rail': 5.0}
 
 # SETTINGS THAT CANNOT SHARE A PLATE. forearm is the only part that wants
 # supports; turntable_stator is a part they would RUIN - its stub axle bridge
@@ -180,7 +183,7 @@ MIRRORED = {'wrist_roll'}
 #          plate 1; the clamshell split turned wrist_roll into two and the
 #          wrist became a sub-assembly you can print, build and hang off the
 #          forearm on its own. Giving it its own key is what makes
-#          ONLY_PLATES = 'wrist' possible at all, and it also takes 1795 mm2
+#          ONLY_PLATES = 'armstack' possible at all, and it also takes 1795 mm2
 #          of new footprint off plate 1, which had no room for it.
 PLATE_OF = {
     'turntable_stator': 1, 'turntable_ring': 1, 'shoulder_bracket': 1,
@@ -191,14 +194,23 @@ PLATE_OF = {
     # nothing
     'pruner_blade': 2, 'pruner_rack': 2,
     'base_lid': 2, 'upper_arm': 2,
-    'forearm_px': 2, 'forearm_nx': 2, 'forearm_rail': 2,
+    # EVERYTHING FROM THE J2 OUTPUT UP TO THE WRIST, as one build. This is
+    # the assembly Jonathan can add now: the MG995 shoulder is working, so
+    # this plate is shoulder_hub -> upper_arm -> the elbow drive -> the
+    # three forearm pieces. It stops AT the wrist: wrist_hub is the first
+    # part of the next assembly and is not here.
+    'shoulder_hub': 'armstack', 'upper_arm': 'armstack',
+    'j3_gear': 'armstack', 'j3_pinion': 'armstack',
+    'j3_axle': 'armstack', 'j3_servo_cap': 'armstack',
+    'forearm_px': 'armstack', 'forearm_nx': 'armstack',
+    'forearm_rail': 'armstack',
     'wrist_roll': 'wrist', 'wrist_hub': 'wrist', 'wrist_rotator': 'wrist',
 }
 # WHICH PLATES TO BUILD. None is every key in PLATE_OF. Otherwise a key or a
 # sequence of keys from PLATE_OF - 'wrist', 1, (1, 2) - and only those parts
 # are measured, packed and exported. Every name is checked against PLATE_OF,
 # so a mistyped key is an assert and not a silently empty plate.
-ONLY_PLATES = 'wrist'
+ONLY_PLATES = 'armstack'
 # A SUBSET BY PART NAME, when some of a plate is already on the bench. Empty
 # means everything ONLY_PLATES selected. Parts not named in PLATE_OF land in
 # a bucket that opens new plates as it fills, instead of asserting - the
@@ -236,9 +248,27 @@ ORIENT = [
     # This row said "SUPPORTS under +X wall and lobes" - the only row in the
     # file that ever asked for support. Routing it now would export a body
     # nothing builds.
+    # THE ELBOW DRIVE. Orientations are each part's own docstring, quoted:
+    #   j3_gear      "GEAR FACE ON THE BED, built -Z" - its stem runs to
+    #                z -11.70, so this is a flip, not a no-op.
+    #   j3_pinion    "TOOTH FACE ON THE BED, bore vertical" - already z 0 up.
+    #   j3_axle      "HEX FACE ON THE BED, built +Z" - already z 0 up.
+    #   j3_servo_cap "FLAT, seating face on the bed" - already z 0 up.
+    ('j3_gear',          1, ('x', 180),  'gear face down, built -Z'),
+    ('j3_pinion',        1, None,        'tooth face down, bore vertical'),
+    ('j3_axle',          1, None,        'hex face down, built +Z'),
+    ('j3_servo_cap',     1, None,        'flat, seating face down'),
     ('forearm_px',       1, ('y', -90),  'inner face down, no support'),
     ('forearm_nx',       1, ('y',  90),  'inner face down, no support'),
-    ('forearm_rail',     1, None,        'prism along X, no support'),
+    # QTY 2, and NOT in MIRRORED: the second rail is the first turned 180 deg
+    # about Y, which is a rotation - same solid, no handedness - so two
+    # identical copies are correct and there is nothing to tell apart on the
+    # bed. ORIENT is ('y', 90) and not None: the rail is a prism along X with
+    # a CURVED cross-section (it is cut from the link outline), so laid flat
+    # it would rest on a curve. Stood on an end face the whole part is one
+    # extrusion up the build axis - zero overhang, zero bridge - at the cost
+    # of a 24.8 mm tower on ~69 mm2, which is what the brim below is for.
+    ('forearm_rail',     2, ('y',  90),  'end face down, prism, brim'),
     # WAS ('x', 90) - 'back face down, built +Y' - and that was the MONOLITH's
     # orientation, left behind when the part became a clamshell. ('y', 90)
     # puts local +X down, and the outer side face is the +X face at

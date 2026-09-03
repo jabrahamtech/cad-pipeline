@@ -77,11 +77,19 @@ DEPS = {
     'j3_servo_cap': ['forearm'],
     'j3_axle': ['forearm', 'upper_arm'],
     'upper_arm': ['forearm'],
+    # THE SPLIT FOREARM. forearm.py is no longer printed - it is the master
+    # that OWNS the fa_* interface, and the three printed pieces read it the
+    # way j3_servo_cap reads it. Same DEPS workaround, same to-do: the shared
+    # datums belong in lib/forearm_split.py, which already exists and which
+    # these three should be reading instead.
+    'forearm_rail': ['forearm'],
+    'forearm_px': ['forearm'],
+    'forearm_nx': ['forearm'],
 }
 
 # Every non-driver script in models/robotarm/, in an order that satisfies DEPS.
 ALL_PARTS = [
-    'forearm', 'upper_arm', 'j3_gear', 'j3_pinion', 'j3_axle', 'j3_servo_cap',
+    'forearm', 'forearm_rail', 'forearm_px', 'forearm_nx', 'upper_arm', 'j3_gear', 'j3_pinion', 'j3_axle', 'j3_servo_cap',
     'horn_adapter', 'shoulder_hub', 'shoulder_bracket', 'turntable_stator',
     'j1_hub',
     'turntable_ring', 'base_lid', 'wrist_hub', 'wrist_roll', 'wrist_rotator',
