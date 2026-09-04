@@ -1,0 +1,21 @@
+3 x 608ZZ Ø22.0 x 7.0 at r 27.0, axle z 13.1 -> race face z 24.10
+  the rotor rides ON these, not on the stator: race face z 24.10
+posed 24 occurrences
+J1 25  J2 35  J3 -55  J4 15  J5 0  blades 12 deg
+head on the rotator: shell tail y -34.50 -> rotator front z 6.00, offset 40.50 mm
+assembly bbox mm: X -126.5..92.8  Y -92.8..245.7  Z -42.0..167.5
+reach from the yaw axis: 276 mm; height 210 mm
+01_turret             4 lit  subject  185.6 mm  frame  445.5  the turntable you already have - stator, 3 x 608ZZ, ring
+02_shoulder_bracket   5 lit  subject  101.0 mm  frame  242.4  shoulder_bracket bolts to the ring, 3 x M3 through the posts
+03_j2_hubs            7 lit  subject   44.5 mm  frame  106.7  shoulder_hub onto the MG995 spline; a wrist_hub as the idler trunnion
+04_upper_arm          8 lit  subject  135.8 mm  frame  325.8  upper_arm drops onto both hex hubs - L1 125 mm
+05_elbow_servo       10 lit  subject   42.5 mm  frame  102.0  SG90 into j3_servo_cap, j3_pinion onto its spline. 2 x M3 x 16 BUTTON HEAD
+06_elbow_gear        12 lit  subject   60.2 mm  frame  144.6  j3_gear meshes the pinion at 27.20 centre, 2:1; j3_axle runs in the 608ZZ
+07_forearm           13 lit  subject   94.7 mm  frame  227.3  the forearm closes over the elbow - nx + px + 2 rails, 8 x M3 seam
+08_j4_hubs           15 lit  subject   48.2 mm  frame  115.6  two wrist_hub on the J4 SG90 spline and its idler side
+09_wrist_roll        16 lit  subject   38.4 mm  frame   92.0  wrist_roll clamshell keys onto both hexes, 3 x M2 through-bolt
+10_rotator           17 lit  subject   37.6 mm  frame   90.2  wrist_rotator onto the J5 spline, seating face at wro_rot_seat 11.70
+11_effector          24 lit  subject  106.4 mm  frame  255.3  the pruner head, 4 x M3 to the rotator
+12_complete          24 lit  subject  338.5 mm  frame FIT     the arm, posed at J1 25 / J2 35 / J3 -55 / J4 15
+
+wrote 12 images to /Users/jonothanabraham/Documents/GitHub/cad-pipeline/docs/robotarm/assembly
