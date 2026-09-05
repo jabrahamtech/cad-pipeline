@@ -138,7 +138,7 @@ LEDGER = os.path.join(REPO, 'specs', 'robotarm', '_volumes.json')
 # 7, not 6: wrist_roll is a different part than the one v6 was cut from, and
 # wrist_rotator is the other way up. Reusing the version would leave two
 # files with the same name meaning two different things.
-VERSION = 8
+VERSION = 9
 BED_X, BED_Y = 256.0, 256.0
 MARGIN, GAP = 6.0, 4.0
 # A BRIM IS FOOTPRINT. base_lid is 171.75 across, 3 thick, and warps without
@@ -229,6 +229,7 @@ PLATE_OF = {
     'forearm_px': 'armstack', 'forearm_nx': 'armstack',
     'forearm_rail': 'armstack',
     'wrist_roll': 'wrist', 'wrist_hub': 'wrist', 'wrist_rotator': 'wrist',
+    'j4_tab_shim': 'wrist',
 }
 # WHICH PLATES TO BUILD. None is every key in PLATE_OF. Otherwise a key or a
 # sequence of keys from PLATE_OF - 'wrist', 1, (1, 2) - and only those parts
@@ -327,6 +328,7 @@ ORIENT = [
     # built +Z"; the flange is the widest thing on it and the outboard flange
     # face is the minimum in local z, so the identity matrix already does it
     ('wrist_hub',        2, None,        'flange face down, hex up. TWO'),
+    ('j4_tab_shim',      2, None,        'flat, 0.80 thick. TWO - one under each SG90 tab ear'),
     ('shoulder_hub',     1, None,        'collar face down'),
     ('gripper_pinion',   1, None,        'flat'),
     ('gripcut_finger',   2, ('x', 180),  'TOP FACE DOWN - the flexure rule. TWO'),

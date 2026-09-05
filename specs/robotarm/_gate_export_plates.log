@@ -1,28 +1,23 @@
-=== 2 plate(s), 256 x 256 bed, 6 margin / 4 gap ===
+=== 1 plate(s), 256 x 256 bed, 6 margin / 4 gap ===
 SELECTION: plates ['wrist'] | parts ALL
 MASS: solid mm3 x 1.27 g/cm3 x 0.65 packing / 1000. Solid volume is MEASURED off the body;
   the 0.65 is the usual walls-and-infill factor for this project and is ASSUMED.
 
-PLATE wrist_green - 1 pieces, 6.2 g, tallest 14.6 mm, 3% of the bed
-  footprint used: X 6.0..78.6  Y 6.0..33.6  (72.6 x 27.6 mm)
-  
-  supports: NONE - leave them off | brim: none
-  plate_wrist_green_v8.3mf  (110661 bytes)
-    forearm_px                 27.6 x 72.6   h 14.6    6.22 g  at (  6.0,   6.0)  inner face down, no support
-
-PLATE wrist_white - 5 pieces, 20.5 g, tallest 12.0 mm, 7% of the bed
-  footprint used: X 6.0..177.2  Y 6.0..41.4  (171.2 x 35.4 mm)
+PLATE wrist_white - 7 pieces, 20.6 g, tallest 12.0 mm, 7% of the bed
+  footprint used: X 6.0..194.8  Y 6.0..41.4  (188.8 x 35.4 mm)
   
   supports: NONE - leave them off | brim: none
   MIRRORED PAIR: wrist_roll. The two bodies on this plate are NOT interchangeable - one is the mirror image of the other and only one goes on each side.
-  plate_wrist_white_v8.3mf  (174413 bytes)
+  plate_wrist_white_v9.3mf  (184847 bytes)
     wrist_rotator              35.4 x 35.4   h 10.0    4.69 g  at (  6.0,   6.0)  FRONT face down - the Oe36 disc is the first layer
     wrist_roll                 35.9 x 29.7   h 12.0    5.46 g  at ( 45.4,   6.0)  OUTER face (x wro_half_x) on the bed, built -X. TWO, SECOND MIRRORED
     wrist_roll      MIRRORED   35.9 x 29.7   h 12.0    5.46 g  at ( 85.3,   6.0)  
     wrist_hub                  24.0 x 24.0   h 10.8    2.47 g  at (125.2,   6.0)  flange face down, hex up. TWO
     wrist_hub                  24.0 x 24.0   h 10.8    2.47 g  at (153.2,   6.0)  
+    j4_tab_shim                 4.8 x 12.2   h 0.8     0.03 g  at (181.2,   6.0)  flat, 0.80 thick. TWO - one under each SG90 tab ear
+    j4_tab_shim                 4.8 x 12.2   h 0.8     0.03 g  at (190.0,   6.0)  
 
-6 pieces, 26.8 g of PETG total
+7 pieces, 20.6 g of PETG total
 
 SUPPORTS: NONE on these plates. OFF everywhere else - on turntable_stator that is
   not a preference, the axle bridge is load-bearing.

@@ -167,6 +167,7 @@ from lib.design_rules import JOINT_FIT_MM, MIN_WALL_MM  # noqa: E402
 # reported, not fixed here, because lib/ is not this file's to edit.
 import lib.gears  # noqa: E402,F401  - MUST precede lib.servo_hub, see above
 from lib.gears import J3_ENGAGE_FLOOR_MM  # noqa: E402
+from lib.joints import J4_HUB_BORE_SHIFT_MM  # noqa: E402
 from lib.joints import servo_for as _servo_for  # noqa: E402
 from lib.servo_hub import spline_hub  # noqa: E402
 
@@ -320,7 +321,24 @@ def run(_context: str):
     param('boss_bore_d', '%.4f mm' % H.boss_clear_d,
           'lower bore - CLEARS the Oe%.2f output collar at a free fit. Nothing\n'
           '           grips the boss; it only has to pass.' % _SERVO.boss_dia)
-    param('boss_bore_h', '%.4f mm' % H.boss_clear_to,
+    # ---- THE BORE SITS ON THE PRINTED FOREARM, NOT ON forearm.py ---------
+    # Jonathan's forearm predates the SG90 swap and is not being reprinted,
+    # so its J4 lobe is 0.80 short and the servo is packed out by j4_tab_shim
+    # to clear it. That puts the SPLINE 0.80 further outboard than a hub
+    # built to forearm.py would expect, and MEASURED it left 2.30 mm of the
+    # 2.50 engaged. These three stations move outboard by
+    # lib/joints.J4_HUB_BORE_SHIFT_MM to take that back.
+    #
+    # A HUB BUILT THIS WAY BELONGS ON THE PRINTED FOREARM. If forearm_px is
+    # ever reprinted from today's forearm.py, set the shift to 0.0 or the
+    # bore is 0.20 out the other way.
+    _shift = J4_HUB_BORE_SHIFT_MM
+    param('bore_shift', '%.4f mm' % _shift,
+          'lib/joints.J4_HUB_BORE_SHIFT_MM - the printed forearm\'s J4 lobe is\n'
+          '           0.80 short for an SG90 and j4_tab_shim packs it out, which\n'
+          '           moves the spline outboard by the same amount. 0.0 would be\n'
+          '           correct for a forearm rebuilt from forearm.py.')
+    param('boss_bore_h', '%.4f mm' % (H.boss_clear_to - _shift),
           'how far up the bore stays wide - to the top of the boss. %.2f of\n'
           '           the %.2f stack is spent just getting past the output collar,\n'
           '           which is the single reason a 7.00 hub would not have done. The\n'
@@ -333,8 +351,9 @@ def run(_context: str):
           '           printed: 20 teeth on Oe5.0 is 0.79 mm of pitch and ~0.24 mm of\n'
           '           tooth, against a CALIBRATED MIN_FEATURE_MM of 0.8. The\n'
           '           interference is ASSUMED - gauge it before printing a pair.')
-    param('broach_from', '%.4f mm' % H.broach_from, 'derived: the spline starts here')
-    param('broach_to', '%.4f mm' % H.broach_to,
+    param('broach_from', '%.4f mm' % (H.broach_from - _shift),
+          'derived: the spline starts here, less wh_bore_shift')
+    param('broach_to', '%.4f mm' % (H.broach_to - _shift),
           'derived: and ends here, 2.60 mm up inside the hex boss')
     param('engaged', '%.4f mm' % H.engaged,
           'how much spline the bore grips - the WHOLE of it, because the\n'

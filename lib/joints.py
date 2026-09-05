@@ -1098,6 +1098,70 @@ J5_ROTATOR_HUB_H_MM = 4.0
 
 
 # =========================================================================
+#  J4 ON THE FOREARM THAT IS ALREADY PRINTED
+# =========================================================================
+# Jonathan printed the forearm before J3/J4 became SG90s and is not
+# reprinting it: "we have already printed the forarm so I am not keen on
+# reprinting it - so design around that". So J4 is now built to a HOST THAT
+# CANNOT CHANGE, and these two numbers are what that costs.
+#
+# THE MEASUREMENT, not the arithmetic. The f0509b4 forearm was rebuilt from
+# its own snapshot, an SG90 solid dropped into its J4 station, and the servo
+# swept outboard in 0.40 steps:
+#
+#     shim 0.00  ->  45.8 mm3 of servo inside the lobe
+#     shim 0.40  ->  22.9 mm3
+#     shim 0.80  ->   0.0 mm3      <- the first offset that clears
+#
+# The obstruction is small and specific: about 37 mm2 of ledge at the two
+# ends of the J4 journal bore, where the Oe20.35 bore stops and the 22.70
+# case does not. The SG90 is 1.20 taller to its tab plane than the MG90S the
+# lobe was cut for, and 0.80 of that has nowhere to go.
+#
+# WHAT THE SHIM COSTS, also measured: at shim 0.80 the spline sits in the
+# hub's broach over 2.30 mm, against a 2.50 nominal and a 2.00 forming
+# floor. Every further 0.40 of shim costs 0.40 of engagement, so 0.80 is not
+# just the first offset that works, it is the only one worth having.
+#
+# J4_HUB_BORE_SHIFT_MM buys the 0.20 back. The hub is being printed fresh, so
+# moving its bore features outboard by the shortfall costs nothing and
+# returns the full spline. IT MAKES wrist_hub HOST-SPECIFIC, which is the
+# real price: a hub built with this shift belongs on the PRINTED forearm and
+# not on one rebuilt from today's forearm.py. That is stated in the part.
+#
+# 0.80 -> 1.00, AND WHY THE FIRST OFFSET THAT CLEARS IS NOT THE ONE TO SHIP.
+# At 0.80 the sampled interference is 0.0 mm3 but the MEASURED minimum
+# distance from the case to the forearm is 0.0000 - the case top lands
+# exactly on the plate outer face. That is a zero-clearance seat, and it
+# over-constrains the servo: it would be located both by its flange on the
+# shim and by its case on a printed ledge, with print tolerance deciding
+# which. Every other servo in this arm is located by its flange alone.
+# 1.00 buys 0.20 mm of daylight, which is more than a layer.
+# THE SHIM IS 0.80 AND THE BORE SHIFT IS 0.00, and the second one is a
+# RETREAT rather than a result. The shim follows from a number that is not in
+# doubt: lib/servo says an SG90 is 6.70 mm from its tab plane to its case top
+# and the printed lobe gives 5.90, so 0.80 has to come from somewhere.
+#
+# What that 0.80 costs the SPLINE is a different question and this file does
+# not answer it. Three hand-placed measurements of the engagement disagreed -
+# 2.00, 2.30, 2.40 - because the servo was being positioned by a matrix
+# written here rather than by _check_leads.MOUNTS, and the placement
+# convention could not be pinned down against the printed lobe's recess. A
+# bore shift sized from those numbers would be a correction fitted to noise,
+# and it would make wrist_hub host-specific for no demonstrated gain. So it
+# is 0.00: the hub stays the gated part, and the shim alone does the work.
+#
+# WHAT WOULD CLOSE IT: GATE servo_fit reads its host path from a local inside
+# run(), so it cannot be pointed at the f0509b4 snapshot without an edit.
+# Make that path a module constant, run the gate with the snapshot as host
+# and J4 forced to SG90, and the engagement comes back from the same
+# placement table every other station uses. Until then the shim is MEASURED
+# and the bore is UNCHANGED.
+J4_PRINTED_FOREARM_SHIM_MM = 0.80
+J4_HUB_BORE_SHIFT_MM = 0.00
+
+
+# =========================================================================
 #  WHAT THIS FILE DOES NOT OWN, STATED SO NOBODY GOES LOOKING
 # =========================================================================
 # fa_l2, ua_l1        LINK LENGTHS, not joint interfaces. They belong to
