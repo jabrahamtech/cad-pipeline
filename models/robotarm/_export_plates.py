@@ -465,6 +465,7 @@ def run(_context: str):
     ups = design.userParameters
     M3 = adsk.core.Matrix3D.create
     V3 = adsk.core.Vector3D.create
+    _TB = adsk.fusion.TemporaryBRepManager.get()
 
     comps = {}
     for occ in root.occurrences:
@@ -755,6 +756,7 @@ def run(_context: str):
         pocc = root.occurrences.addNewComponent(M3())
         pocc.component.name = '%s_%s' % (STALE, label)
         pc = pocc.component
+        pending = []
         for p in plate:
             # REBUILT, NOT PATCHED. The placement is composed once more from
             # the same three facts - print orientation, mirror, yaw - so the
@@ -781,40 +783,63 @@ def run(_context: str):
                       p['x'] + p['pad'] - lo[0],
                       p['y'] + p['pad'] - lo[1],
                       0.0 - lo[2])
-            pc.occurrences.addExistingComponent(p['comp'], m)
+            # A MIRRORED PIECE CANNOT BE AN OCCURRENCE. This line was
+            # `pc.occurrences.addExistingComponent(p['comp'], m)` and it threw
+            # "3 : invalid argument transform" on the wrist plate, every time,
+            # because wrist_roll's second copy is a MIRROR - determinant -1 -
+            # and Fusion will not hang an occurrence off a matrix that turns
+            # the world inside out. The armstack plates never hit it; the
+            # wrist plate could not be exported at all.
+            #
+            # TemporaryBRepManager DOES take a det -1 matrix, verified against
+            # this part: a 12.00 x 30.70 x 35.90 half at X 0..12 comes back at
+            # X -12..0 with its 6609.201 mm3 intact. So every piece is placed
+            # as a transformed BODY under one BaseFeature instead, which is
+            # one code path for both handednesses rather than a special case
+            # that only the mirrored parts exercise.
+            copy = _TB.copy(p['body'])
+            assert _TB.transform(copy, m), (
+                'plate %s: the transform was refused for %s' % (label, p['name']))
+            pending.append((p['name'], copy))
+        bf = pc.features.baseFeatures.add()
+        bf.startEdit()
+        for nm, tb_body in pending:
+            pc.bRepBodies.add(tb_body, bf).name = nm
+        bf.finishEdit()
+
         # RE-MEASURE what was actually built, do not trust the arithmetic
-        for k in range(pc.occurrences.count):
-            o = pc.occurrences.item(k)
-            for j in range(o.bRepBodies.count):
-                bb = o.bRepBodies.item(j).boundingBox
+        for k in range(pc.bRepBodies.count):
+            o = pc.bRepBodies.item(k)
+            if True:
+                bb = o.boundingBox
                 assert bb.minPoint.z * 10 > -0.01, (
                     'plate %s: %s sits below the bed at z %.3f'
-                    % (label, o.component.name, bb.minPoint.z * 10))
+                    % (label, o.name, bb.minPoint.z * 10))
                 assert bb.minPoint.z * 10 < 0.01, (
                     'plate %s: %s floats %.3f above the bed'
-                    % (label, o.component.name, bb.minPoint.z * 10))
+                    % (label, o.name, bb.minPoint.z * 10))
                 assert (bb.minPoint.x * 10 > -0.01
                         and bb.maxPoint.x * 10 < BED_X + 0.01
                         and bb.minPoint.y * 10 > -0.01
                         and bb.maxPoint.y * 10 < BED_Y + 0.01), (
                     'plate %s: %s lands outside the bed'
-                    % (label, o.component.name))
-        assert pc.occurrences.count == len(plate), (
-            'plate %s: %d pieces were packed and %d occurrences were placed'
-            % (label, len(plate), pc.occurrences.count))
+                    % (label, o.name))
+        assert pc.bRepBodies.count == len(plate), (
+            'plate %s: %d pieces were packed and %d bodies were placed'
+            % (label, len(plate), pc.bRepBodies.count))
         # A HIDDEN OCCURRENCE EXPORTS AS AN EMPTY FILE. Lighting the plate
         # itself is not enough - each child occurrence inside it carries its
         # own state, and it inherits whatever the source occurrence had when
         # it was added. Any earlier script that toggled bulbs for a render
         # leaves them off, and the export comes back as a 1.7 KB header.
         pocc.isLightBulbOn = True
-        for k in range(pc.occurrences.count):
-            pc.occurrences.item(k).isLightBulbOn = True
-        lit = sum(1 for k in range(pc.occurrences.count)
-                  if pc.occurrences.item(k).isLightBulbOn)
-        assert lit == pc.occurrences.count, (
+        for k in range(pc.bRepBodies.count):
+            pc.bRepBodies.item(k).isLightBulbOn = True
+        lit = sum(1 for k in range(pc.bRepBodies.count)
+                  if pc.bRepBodies.item(k).isLightBulbOn)
+        assert lit == pc.bRepBodies.count, (
             'plate %s: only %d of %d parts are visible - the export would be '
-            'short' % (label, lit, pc.occurrences.count))
+            'short' % (label, lit, pc.bRepBodies.count))
         path = os.path.join(OUT_DIR, 'plate_%s_v%d.3mf' % (label, VERSION))
         assert not os.path.exists(path), '%s exists - bump VERSION' % path
         em = design.exportManager
