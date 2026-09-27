@@ -111,6 +111,9 @@ M3 = FASTENER_MM['M3']
 #     wrist_hub.py            the J4 spline stack
 #     _check_leads.py         the MOUNTS servo column
 #
+# 2026-09-27, JONATHAN: J1 base yaw becomes an MG995 360 deg (continuous)
+# and J2 stays the standard MG995. Two MG995-size servos from here.
+#
 # 2026-09-03, JONATHAN: "both the motors will be sg90". J3 and J4 were both
 # MG90S; both are SG90 from here. The hardware is in hand, so this is a
 # statement about the machine, not a proposal about it. What it costs is
@@ -123,7 +126,11 @@ M3 = FASTENER_MM['M3']
 # that a joint naming a servo this project does not own fails HERE, on the
 # assert below, rather than three modules downstream with a KeyError.
 JOINT_SERVO = {
-    'J1': 'SG90',      # base yaw       - turntable_stator
+    'J1': 'MG995',     # base yaw       - turntable_stator. The 360 deg
+                     # CONTINUOUS variant (Jonathan 2026-09-27: "same as
+                     # the other big motor"), so the case, tabs and
+                     # spline are lib/servo.MG995's. Speed-controlled,
+                     # homed on a switch - see specs/robotarm/base_platter.md
     'J2': 'MG995',     # shoulder pitch - shoulder_bracket
     'J3': 'SG90',      # elbow pitch    - j3_servo_cap, through the 2:1
     'J4': 'SG90',      # wrist pitch    - forearm's +X lobe

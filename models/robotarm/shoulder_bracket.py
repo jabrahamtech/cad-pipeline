@@ -1,5 +1,10 @@
 """robotarm/shoulder_bracket - Fusion MCP generating script.
 
+2026-09-27 - J1 (the rotor this part carries) is driven by an MG995 360 deg
+now. The J1 drive contract is lib/j1_drive.py; the only change it makes here
+is the rotor's centre screw bore, O5.40 -> O6.40, for the MG995's M3 horn
+screw. A bracket already printed can be DRILLED to 6.5 instead of reprinted.
+
 Rebuilds `robotarm_shoulder_bracket` (idempotent). Spec: specs/robotarm/_state.md.
 
 J1's rotating half AND J2's fork, in one part. Its underside is the Ø96
@@ -176,19 +181,27 @@ from lib.servo import SERVO_CASE_CLEARANCE_MM  # noqa: E402
 from lib.servo import CATALOG as _SERVOS  # noqa: E402
 from lib.servo import MG995_TAB_HOLE_PITCH_Y as _MG995_PITCH_Y  # noqa: E402
 from lib.servo import MG995_TAB_SLOT_X_MM as _MG995_SLOT_X  # noqa: E402
-from lib.servo import spline_z as _spline_z  # noqa: E402
 from lib.design_rules import FASTENER_MM as _FASTENER  # noqa: E402
-from lib.design_rules import JOINT_FIT_MM as _FIT  # noqa: E402
-from lib.design_rules import MIN_WALL_MM as _MIN_WALL  # noqa: E402
-# IMPORT ORDER IS LOAD-BEARING, NOT COSMETIC. lib/gears.py imports
-# lib/servo_hub.py at its tail and lib/servo_hub.py imports lib/gears.py at
-# its head, so `import lib.servo_hub` on its own dies with a partially
-# initialised module. Importing lib.gears FIRST resolves the cycle. That is a
-# defect in lib/ and it is not this file's to fix - do not tidy these apart.
-import lib.gears  # noqa: F401,E402
-from lib.servo_hub import spline_hub  # noqa: E402
 
-_SG90 = _SERVOS['SG90']
+# THE J1 DRIVE CONTRACT LIVES IN lib/j1_drive.py since 2026-09-27 (J1 -> MG995).
+# It was typed verbatim here, in shoulder_bracket.py and in j1_hub.py; a
+# servo swap is the change that finds every copy, so there is one now.
+from lib.j1_drive import (  # noqa: E402
+    J1_SERVO,
+    J1_HUB_OVERSHOOT_MM,
+    J1_HUB_SCREW,
+    J1_HUB_BOLT_R_MM,
+    J1_HUB_BOLT_AZ_DEG,
+    J1_HUB_FLOAT_MM,
+    J1_HUB_HOLE_D_MM,
+    J1_HUB_CBORE_D_MM,
+    J1_HUB_CBORE_H_MM,
+    J1_HUB_OD_MM,
+    J1_HUB_SCREW_BORE_MM,
+    J1_HUB_FACE_MM,
+    J1_HUB,
+)
+_J1S = J1_SERVO
 _MG995 = _SERVOS['MG995']
 
 # --- THE J1 DRIVE CONTRACT: THE HORN IS OUT OF THE LOAD PATH --------------
@@ -245,37 +258,26 @@ _MG995 = _SERVOS['MG995']
 # spline_hub()'s engage_min is 2.00, so J1 has 0.50 mm of margin and the
 # ring's 0.40 mm of axial float eats most of it - asserted, not assumed,
 # where the servo is placed.
-J1_HUB_OVERSHOOT_MM = 0.5      # ASSUMED - how far the hub bore runs past the
                                # spline top, so the spline stops short of the
                                # rotor face instead of jacking it off its
                                # rollers. This is the number ts_horn_seat was
                                # trying to be, in a stack where it cannot
                                # cancel out.
-J1_HUB_PROBE_FACE_MM = 12.0    # NOT A DIMENSION. spline_hub() needs a face
                                # to solve, and the face is what we are
                                # solving FOR; this probe is any value past
                                # min_height, used only to read broach_to back
                                # out. Nothing is cut to it.
-_J1_PROBE = spline_hub(_SG90, face=J1_HUB_PROBE_FACE_MM)
-J1_HUB_FACE_MM = _J1_PROBE.broach_to + J1_HUB_OVERSHOOT_MM   # DERIVED 6.80
-J1_HUB = spline_hub(_SG90, face=J1_HUB_FACE_MM)
-J1_BOSS_TOP_MM, J1_SPLINE_TOP_MM = _spline_z(_SG90)
-J1_HUB_ENGAGE_MIN_MM = 2.0     # spline_hub()'s own floor, restated here so
                                # the ring-lift check below has something to
                                # measure against.
-J1_HUB_SCREW = 'M3'            # M2 would do the torque (6.5 N a bolt) and
                                # would not survive being taken apart twice.
-J1_HUB_BOLT_R_MM = 8.0         # DERIVED, and boxed in at both ends: a head
                                # counterbore must clear the screw bore
                                # (r 3.33 + wall 1.6 + cbore 2.95 = 7.88) and
                                # the hub's own OD must stay inside the
                                # connector gate at r 12.2. 8.0 is the only
                                # half-millimetre that does both.
-J1_HUB_BOLT_AZ_DEG = (90.0, 210.0, 330.0)   # CHOSEN to miss the connector
                                # gate at az 270 - at r 8.0 a head counterbore
                                # reaches r 10.95 and the gate starts at 12.2,
                                # which is 1.25 mm and not a wall. Asserted.
-J1_HUB_FLOAT_MM = 1.0          # DELIBERATE radial float on top of the M3
                                # clearance, and it is the whole concentricity
                                # strategy. There is NO register between hub
                                # and rotor: the hub is centred by the SPLINE,
@@ -288,13 +290,6 @@ J1_HUB_FLOAT_MM = 1.0          # DELIBERATE radial float on top of the M3
                                # A tight register would have to be a round
                                # bore in a disc that prints on edge, which is
                                # objection 1 above all over again.
-J1_HUB_HOLE_D_MM = _FASTENER[J1_HUB_SCREW]['clearance'] + J1_HUB_FLOAT_MM
-J1_HUB_HEAD_D_MM = 5.5         # DATASHEET - ISO 4762 M3 socket cap head
-J1_HUB_HEAD_H_MM = 3.0         # DATASHEET - the same head, height
-J1_HUB_CBORE_D_MM = J1_HUB_HEAD_D_MM + _FIT['free']
-J1_HUB_CBORE_H_MM = J1_HUB_HEAD_H_MM
-J1_HUB_OD_MM = 2.0 * (J1_HUB_BOLT_R_MM
-                      + _FASTENER[J1_HUB_SCREW]['pilot'] / 2.0 + _MIN_WALL)
 # THE ROTOR'S SCREW BORE IS NOT ON THE CRITICAL PATH, and the first pass at
 # it was wrong in a way worth recording. It was sized to swallow the SG90's
 # retaining WASHER (O6.25) so the washer could clamp the hub's top face -
@@ -314,7 +309,6 @@ J1_HUB_OD_MM = 2.0 * (J1_HUB_BOLT_R_MM
 # This bore therefore only has to pass that screw's head on the way in and
 # stay clear of everything afterwards. Sized by lib/servo_hub.horn_bolt()'s
 # own head convention - twice the screw diameter - plus a free fit.
-J1_HUB_SCREW_BORE_MM = _SG90.horn_screw_dia * 2.0 + _FIT['free']
 TOL = 1e-9                     # comparison epsilon, not a dimension
 # Volume floor for the hub bolt cut, mm3. Three O4.40 through the 9.40 boss
 # is 429 and the three head counterbores add ~109, so ~538 is expected. This
@@ -1269,8 +1263,9 @@ def run(_context: str):
           % (val('gate_w') * 10, val('cable_ir') * 10 - val('gate_ir') * 10,
              val('gate_ir') * 10, val('cable_ir') * 10))
     print('  plugs (~8.7 x 4.5) pass here; the 3.4 window takes only wires.')
-    print('J1 TRAVEL: the full servo 180 deg - the ring hooks over the rim, so '
-          'nothing caps rotation')
+    print('J1 TRAVEL: nothing here caps rotation (the ring hooks over the rim). '
+          'J1 is an MG995 360 deg since 2026-09-27 - the LOOM caps it: +-180 deg '
+          'from the hall home sensor, in firmware (specs/robotarm/base_platter.md)')
     print('filleted %d pad corners at r %.1f' % (
         n_filleted, ups.itemByName(STYLE + 'radius').value * 10))
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f' % (

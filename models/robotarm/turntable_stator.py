@@ -1,5 +1,13 @@
 """robotarm/turntable_stator - Fusion MCP generating script.
 
+2026-09-27 - J1 IS AN MG995 360 deg NOW, NOT AN SG90. Wherever the prose
+below says SG90, read "the J1 servo": the numbers come from lib/j1_drive.py
+and lib/servo.MG995. What changed in THIS part: the rollers moved to az
+30/150/270 so the 40.9 mm case passes between them; the pad is 24 x 55 and
+carries all FOUR tab screws (the one-screw problem below is gone); the lead
+groove is not needed; the loom window moved to az 210 and is plug-sized.
+The platter is no longer the printed legacy one - specs/robotarm/base_platter.md.
+
 Rebuilds `robotarm_turntable_stator` (idempotent). Spec:
 specs/robotarm/base_platter_measured.md.
 
@@ -75,7 +83,6 @@ for _stale in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.'
 import adsk.core
 import adsk.fusion
 
-from lib.servo import CATALOG  # noqa: E402 - MEASURED lead bundle
 
 COMPONENT = 'robotarm_turntable_stator'
 BODY_NAME = 'turntable_stator'
@@ -86,7 +93,8 @@ PH_FORM = 'stator form'
 PH_ROLLERS = 'rollers'
 PH_SERVO = 'yaw servo'
 PH_FIX = 'platter interface'
-PHASES = [PH_FORM, PH_ROLLERS, PH_SERVO, PH_FIX]
+PH_HOME = 'home sensor'
+PHASES = [PH_FORM, PH_ROLLERS, PH_SERVO, PH_FIX, PH_HOME]
 MATERIAL_NAME = 'PET Plastic'
 # _style.md rule 5: two-tone by PART. The base is dark.
 # COLOUR LIVES IN lib/palette.py, not here. It used to be typed in this
@@ -94,20 +102,40 @@ MATERIAL_NAME = 'PET Plastic'
 # and hoping you found them all.
 from lib.palette import hints_for  # noqa: E402
 from lib.servo import SERVO_CASE_CLEARANCE_MM  # noqa: E402
-from lib.servo import CATALOG as _SERVOS  # noqa: E402
-from lib.servo import spline_z as _spline_z  # noqa: E402
-from lib.design_rules import FASTENER_MM as _FASTENER  # noqa: E402
-from lib.design_rules import JOINT_FIT_MM as _FIT  # noqa: E402
-from lib.design_rules import MIN_WALL_MM as _MIN_WALL  # noqa: E402
-# IMPORT ORDER IS LOAD-BEARING, NOT COSMETIC. lib/gears.py imports
-# lib/servo_hub.py at its tail and lib/servo_hub.py imports lib/gears.py at
-# its head, so `import lib.servo_hub` on its own dies with a partially
-# initialised module. Importing lib.gears FIRST resolves the cycle. That is a
-# defect in lib/ and it is not this file's to fix - do not tidy these apart.
-import lib.gears  # noqa: F401,E402
-from lib.servo_hub import spline_hub  # noqa: E402
 
-_SG90 = _SERVOS['SG90']
+# THE J1 DRIVE CONTRACT LIVES IN lib/j1_drive.py since 2026-09-27 (J1 -> MG995).
+# It was typed verbatim here, in shoulder_bracket.py and in j1_hub.py; a
+# servo swap is the change that finds every copy, so there is one now.
+from lib.j1_drive import (  # noqa: E402
+    J1_SERVO,
+    J1_HUB_OVERSHOOT_MM,
+    J1_HUB_ENGAGE_MIN_MM,
+    J1_HUB_BOLT_R_MM,
+    J1_HUB_FLOAT_MM,
+    J1_HUB_HOLE_D_MM,
+    J1_HUB_CBORE_D_MM,
+    J1_HUB_CBORE_H_MM,
+    J1_HUB_OD_MM,
+    J1_HUB_SCREW_BORE_MM,
+    J1_HUB_FACE_MM,
+    J1_HUB,
+    J1_BOSS_TOP_MM,
+    J1_SPLINE_TOP_MM,
+)
+_J1S = J1_SERVO
+from lib.servo import MG995_TAB_HOLE_PITCH_Y as _MG995_PY  # noqa: E402
+from lib.j1_drive import (  # noqa: E402
+    TT_AXLE_Z_MM, TT_ROLLER_OD_MM, J1_DECK_Z_MM,
+    HOME_R_MM, HOME_AZ_DEG, MAGNET_D_MM, MAGNET_H_MM, HALL_GAP_MM,
+    HALL_BODY_W_MM, HALL_BODY_H_MM, HALL_BODY_T_MM, HALL_LEAD_PITCH_MM,
+    HALL_LEAD_N, HALL_SLOT_MM,
+)
+from lib.servo import SERVO_SCREW_PILOT_MM as _MICRO_PILOT  # noqa: E402
+from lib.design_rules import FASTENER_MM as _FASTENER  # noqa: E402
+_TAB_PITCH_Y = _MG995_PY if _J1S.name == 'MG995' else 0.0
+_TAB_PILOT_MM = (_FASTENER['M3']['pilot']
+                 if _J1S.tab_hole_dia >= _FASTENER['M3']['clearance']
+                 else _MICRO_PILOT)
 
 # --- THE J1 DRIVE CONTRACT: THE HORN IS OUT OF THE LOAD PATH --------------
 # Jonathan, 2026-08-31: "we should not [mount] at the horns but rather add
@@ -163,37 +191,26 @@ _SG90 = _SERVOS['SG90']
 # spline_hub()'s engage_min is 2.00, so J1 has 0.50 mm of margin and the
 # ring's 0.40 mm of axial float eats most of it - asserted, not assumed,
 # where the servo is placed.
-J1_HUB_OVERSHOOT_MM = 0.5      # ASSUMED - how far the hub bore runs past the
                                # spline top, so the spline stops short of the
                                # rotor face instead of jacking it off its
                                # rollers. This is the number ts_horn_seat was
                                # trying to be, in a stack where it cannot
                                # cancel out.
-J1_HUB_PROBE_FACE_MM = 12.0    # NOT A DIMENSION. spline_hub() needs a face
                                # to solve, and the face is what we are
                                # solving FOR; this probe is any value past
                                # min_height, used only to read broach_to back
                                # out. Nothing is cut to it.
-_J1_PROBE = spline_hub(_SG90, face=J1_HUB_PROBE_FACE_MM)
-J1_HUB_FACE_MM = _J1_PROBE.broach_to + J1_HUB_OVERSHOOT_MM   # DERIVED 6.80
-J1_HUB = spline_hub(_SG90, face=J1_HUB_FACE_MM)
-J1_BOSS_TOP_MM, J1_SPLINE_TOP_MM = _spline_z(_SG90)
-J1_HUB_ENGAGE_MIN_MM = 2.0     # spline_hub()'s own floor, restated here so
                                # the ring-lift check below has something to
                                # measure against.
-J1_HUB_SCREW = 'M3'            # M2 would do the torque (6.5 N a bolt) and
                                # would not survive being taken apart twice.
-J1_HUB_BOLT_R_MM = 8.0         # DERIVED, and boxed in at both ends: a head
                                # counterbore must clear the screw bore
                                # (r 3.33 + wall 1.6 + cbore 2.95 = 7.88) and
                                # the hub's own OD must stay inside the
                                # connector gate at r 12.2. 8.0 is the only
                                # half-millimetre that does both.
-J1_HUB_BOLT_AZ_DEG = (90.0, 210.0, 330.0)   # CHOSEN to miss the connector
                                # gate at az 270 - at r 8.0 a head counterbore
                                # reaches r 10.95 and the gate starts at 12.2,
                                # which is 1.25 mm and not a wall. Asserted.
-J1_HUB_FLOAT_MM = 1.0          # DELIBERATE radial float on top of the M3
                                # clearance, and it is the whole concentricity
                                # strategy. There is NO register between hub
                                # and rotor: the hub is centred by the SPLINE,
@@ -206,13 +223,6 @@ J1_HUB_FLOAT_MM = 1.0          # DELIBERATE radial float on top of the M3
                                # A tight register would have to be a round
                                # bore in a disc that prints on edge, which is
                                # objection 1 above all over again.
-J1_HUB_HOLE_D_MM = _FASTENER[J1_HUB_SCREW]['clearance'] + J1_HUB_FLOAT_MM
-J1_HUB_HEAD_D_MM = 5.5         # DATASHEET - ISO 4762 M3 socket cap head
-J1_HUB_HEAD_H_MM = 3.0         # DATASHEET - the same head, height
-J1_HUB_CBORE_D_MM = J1_HUB_HEAD_D_MM + _FIT['free']
-J1_HUB_CBORE_H_MM = J1_HUB_HEAD_H_MM
-J1_HUB_OD_MM = 2.0 * (J1_HUB_BOLT_R_MM
-                      + _FASTENER[J1_HUB_SCREW]['pilot'] / 2.0 + _MIN_WALL)
 # THE ROTOR'S SCREW BORE IS NOT ON THE CRITICAL PATH, and the first pass at
 # it was wrong in a way worth recording. It was sized to swallow the SG90's
 # retaining WASHER (O6.25) so the washer could clamp the hub's top face -
@@ -232,8 +242,17 @@ J1_HUB_OD_MM = 2.0 * (J1_HUB_BOLT_R_MM
 # This bore therefore only has to pass that screw's head on the way in and
 # stay clear of everything afterwards. Sized by lib/servo_hub.horn_bolt()'s
 # own head convention - twice the screw diameter - plus a free fit.
-J1_HUB_SCREW_BORE_MM = _SG90.horn_screw_dia * 2.0 + _FIT['free']
 TOL = 1e-9                     # comparison epsilon, not a dimension
+SAMPLE_ALONG = 9               # clearance sampling density - counts, not dimensions
+SAMPLE_AROUND = 24
+# AZIMUTHS, degrees. Module-level so they are one edit point and not literals
+# in run(). POSTS are fixed by turntable_ring's holes. ROLLERS moved 2026-09-27
+# from 90/210/330 so the MG995 case (along +Y, az 90) passes between them -
+# see run(). The lightening windows are GONE: az 210 is the loom window, az
+# 330 carries the J1 HOME SENSOR post (lib/j1_drive.HOME_*), and az 90 is
+# the servo. Nothing is left that carries nothing.
+ROLL_AZ = (30.0, 150.0, 270.0)
+POST_AZ = (120.0, 180.0, 240.0)
 APPEARANCE_HINTS = hints_for('turntable_stator')
 
 
@@ -385,14 +404,24 @@ def run(_context: str):
     style('ef', '0.4 mm', 'elephant-foot chamfer, functional faces - design_rules')
     style('radius', '6.0 mm', 'silhouette corner radius - SHARED, do not retune it here')
 
-    # ---- SG90, DATASHEET (lib/servo.py) -------------------------------------
-    # J1 is an SG90 because both MG90S are spoken for at J3 and J4.
-    param('case_l', '22.7 mm', 'SG90 case length - lies along Y here. TowerPro B')
-    param('case_w', '12.2 mm', 'SG90 case width - lies along X. TowerPro D; was 12.6')
-    param('case_h', '23.7 mm', 'SG90 case height')
-    param('tab_thk', '2.4 mm', 'SG90 tab thickness')
-    param('tab_below_top', '4.3 mm', 'case top to the TOP of the tabs')
-    param('tab_pitch', '27.8 mm', 'SG90 tab hole pitch - drawing SG90_Model_A;\n           the MG90S is the same footprint (27.5 derived), 2026-08-27 audit')
+    # ---- THE J1 SERVO, from lib/servo.py via lib/joints.JOINT_SERVO -----------
+    # 2026-09-27: an MG995 360 deg (continuous) - Jonathan: "same as the other
+    # big motor", so every number is lib/servo.MG995's. These are NOT typed:
+    # the SG90 block that stood here was a hand copy the loop further down
+    # had to police. Written from the library, the loop still runs and now
+    # guards against someone typing over them.
+    param('case_l', '%.2f mm' % _J1S.case_l, '%s case length - lies along Y here' % _J1S.name)
+    param('case_w', '%.2f mm' % _J1S.case_w, '%s case width - lies along X' % _J1S.name)
+    param('case_h', '%.2f mm' % _J1S.case_h, '%s case height' % _J1S.name)
+    param('tab_thk', '%.2f mm' % _J1S.tab_thk, '%s tab thickness' % _J1S.name)
+    param('tab_below_top', '%.2f mm' % _J1S.tab_below_top, 'case top to the TOP of the tabs')
+    param('tab_pitch', '%.2f mm' % _J1S.tab_hole_pitch,
+          '%s tab hole pitch ALONG the case. MG995 vendor drawings disagree\n'
+          '           (47.5 / 47.8 / 49.5); the O4.8 tab hole takes an M3 with 0.9 of\n'
+          '           radial slack either way, which covers all three.' % _J1S.name)
+    param('tab_pitch_y', '%.2f mm' % _TAB_PITCH_Y,
+          'hole pitch ACROSS the case - an MG995 tab carries TWO holes\n'
+          '           (lib/servo.MG995_TAB_HOLE_PITCH_Y); 0 for a one-hole micro tab.')
     # THE OUTPUT SHAFT IS NOT IN THE MIDDLE OF THE CASE, and this part used to
     # assume it was. lib/servo.py has carried shaft_from_end = 6.1 since the
     # library was written and, until 2026-08-26, servo_adapter.py was the ONLY
@@ -404,16 +433,19 @@ def run(_context: str):
     # to an on-axis rotor, and the bolt float would spend itself taking it up.
     # shoulder_bracket got this right for the MG995 (case z -30..10, shaft at
     # 0) and forearm got it right for both MG90S. This part did not.
-    param('shaft_from_end', '6.1 mm',
-          'SG90 shaft axis to the NEAR end of the case - lib/servo.py')
+    param('shaft_from_end', '%.2f mm' % _J1S.shaft_from_end,
+          '%s shaft axis to the NEAR end of the case - lib/servo.py' % _J1S.name)
     param('shaft_off', PREFIX + 'case_l / 2 - ' + PREFIX + 'shaft_from_end',
           'derived: how far the CASE CENTRE must sit from the J1 axis so the\n'
           '           SHAFT lands on it. Everything servo-related below is offset\n'
           '           by this in +Y, which also moves the case away from the cable\n'
           '           window at az 270 rather than into it.')
-    param('tab_span', '32.3 mm', 'SG90 tab tip to tip. TowerPro E')
-    param('boss_h', '4.2 mm', 'SG90 output collar above the case top')
-    param('pilot_d', '1.8 mm', 'SERVO_SCREW_PILOT_MM - self-tapping into PETG')
+    param('tab_span', '%.2f mm' % _J1S.tab_span, '%s tab tip to tip' % _J1S.name)
+    param('boss_h', '%.2f mm' % _J1S.boss_h, '%s output collar above the case top' % _J1S.name)
+    param('pilot_d', '%.2f mm' % _TAB_PILOT_MM,
+          'tab screw pilot, self-tapping into PETG. A micro servo\'s O2.1 tab\n'
+          '           hole takes its own 2 mm screw (SERVO_SCREW_PILOT_MM 1.8); the\n'
+          '           MG995\'s O4.8 hole takes an M3 (FASTENER_MM pilot).')
     param('pilot_depth', '4.0 mm', 'into the servo pad')
 
     # ---- fits and local geometry --------------------------------------------
@@ -427,7 +459,7 @@ def run(_context: str):
           '           costs nothing because the TABS locate the servo, not the case.')
     param('free', '0.4 mm', 'free fit - design_rules')
     param('plate_t', '4.0 mm', 'base plate thickness')
-    param('lead_key_d', '%.2f mm' % (CATALOG['SG90'].lead_bundle_dia + 0.2),
+    param('lead_key_d', '%.2f mm' % (_J1S.lead_bundle_dia + 0.2),
           'lead keyway WIDTH across the case width, centred on the bundle.\n'
           '           The servo cannot be INSERTED without it: the cable crosses the\n'
           '           whole aperture on the way down.')
@@ -457,17 +489,24 @@ def run(_context: str):
     # shoulder_bracket already cuts a matching window in the rotor at
     # sb_cable_ir 18.0, 50 deg, astern at az 270; this is the fixed half of
     # that route and base_lid carries the same slot underneath.
-    param('cable_az', '270.0 deg', 'astern of the arm, matching sb_cable_deg\'s\n'
-                                   '           centre - the loom is never under the reach', 'deg')
-    param('cable_ir', '13.7 mm',
-          'inner radius. 13.0 -> 13.7 on 2026-08-28: the servo well no longer\n'
-          '           ends at the aperture, it ends at the LEAD KEYWAY, which runs\n'
-          '           5.95 further out to y -12.05. At 13.0 that left 0.95 of plate\n'
-          '           between two through-slots. Costs 0.7 mm of window width; the\n'
-          '           loom needs 45 mm2 and this still gives 126.')
-    param('cable_or', '20.0 mm', 'outer radius. The race band starts at r 23.0')
-    param('cable_deg', '70.0 deg', 'arc swept. At a 16.5 mean radius that is 20 mm\n'
-                                   '           of slot, 7 mm wide - 140 mm2 for a loom that needs 45', 'deg')
+    # 2026-09-27: MOVED FROM az 270 TO az 210. The MG995's near tab and its
+    # pad now cover az 270 out to r 21, and the rollers moved to 30/150/270
+    # to let the 40.9 mm case through (see ROLL_AZ). az 210 is the one sector
+    # with no roller, no post and no servo - the old lightening window's
+    # place - and it is BIG: a servo plug (8.7 x 4.5) now passes through it,
+    # which the 7 mm slot at r 13.7-20 never allowed.
+    param('cable_az', '210.0 deg', 'between the az-150 and az-270 rollers, clear of\n'
+                                   '           the servo pad and both posts either side', 'deg')
+    param('cable_ir', '22.0 mm',
+          'inner radius - outside the servo pad\'s near corner (r 21.0 at az\n'
+          '           234) by a wall. Asserted by sampling, not by a radius.')
+    param('cable_or', '29.5 mm',
+          'outer radius. NOT out to the posts: the home magnet sweeps r 31.5..37.5\n'
+          '           under the rotor, and a loom bundled wider than this would be\n'
+          '           brushed by it every revolution. Still 145 mm2, plug-sized.')
+    param('cable_deg', '40.0 deg', 'arc swept, 190..230. Clears the roller reliefs\n'
+                                   '           (to 176 and from 244) and the pad corner.\n'
+                                   '           Chord at r 26 is 17.8 - an 8.7 plug passes flat', 'deg')
     param('post_d', '11.0 mm', 'mounting post diameter - 3.8 of wall round an M3 clearance')
     param('relief_floor', '1.6 mm',
           'what is LEFT of the base plate under each roller - design_rules\n'
@@ -502,16 +541,14 @@ def run(_context: str):
           '           washer - which must land on the race, never on the axle end.')
     param('axle_pilot', '2.5 mm', 'M3 self-tapper up the middle of the stub')
     param('axle_screw_z', '7.0 mm', 'how deep that pilot goes')
-    param('hub_x', '9.0 mm', 'servo pad half width, and the radius its outboard\n'
-                             '           end is rounded to')
-    param('hub_y', '16.4 mm',
-          'servo pad half length. WAS 19.0, which with the +5.20 shaft offset\n'
-          '           put the pad\'s far CORNER at r 25.82 - inside the roller band,\n'
-          '           which starts at r 23.50. The relief under the az-90 roller\n'
-          '           would have undercut the pad it stands on. 16.4 still clears\n'
-          '           both pilots by 2.5, and the outboard end is ROUNDED to hub_x so\n'
-          '           the pad\'s furthest reach is on the axis at r 21.60, not at a\n'
-          '           corner. _check_j1 found the corner 2026-08-26.')
+    param('hub_x', PREFIX + 'case_w / 2 + ' + PREFIX + 'srv_clear / 2 + ' + PREFIX + 'wall',
+          'servo pad half width - the case window plus ONE wall. For the MG995\n'
+          '           that is 12.2, and it is what keeps the az-30/150 roller reliefs\n'
+          '           off the pad (their corners reach x 12.45).')
+    param('hub_y', PREFIX + 'tab_span / 2 + 0.5 mm',
+          'servo pad half length, centred on the CASE (shaft_off): the tabs plus\n'
+          '           0.5. SQUARE ends now - the SG90 pad was rounded because its far\n'
+          '           corner sat under the az-90 roller, and there is no roller there.')
     # DEFINED HERE, not with the other lead params: it reads hub_y, and
     # Fusion rejects an expression naming a parameter that does not exist
     # yet. Order is part of the contract.
@@ -520,14 +557,27 @@ def run(_context: str):
           'keyway length OUT from the shaft-end face. DERIVED to clear the\n'
           '           servo pad plus 1.0 of overshoot - a keyway that stops inside the\n'
           '           pad is a blind pocket and traps the cable. Never hardcode it.')
-    param('window_ir', '22.0 mm', 'lightening windows, inner radius')
-    param('window_or', '37.0 mm',
-          'lightening windows, outer radius. Bounded by the posts: at 40 the\n'
-          '           window ate into the wall around a mounting bolt.')
-    param('window_deg', '50.0 deg',
-          'arc each window sweeps. Placed at 30/150/270 - between the rollers at\n'
-          '           90/210/330 and the posts at 120/180/240, the only azimuths that\n'
-          '           carry nothing.', 'deg')
+    # ---- J1 HOME SENSOR POST - lib/j1_drive.HOME_*, 2026-09-27 ----------------
+    # An A3144 hall sensor lies FLAT in a pocket on top of a post, branded
+    # (sensing) face UP, and a 6x2 magnet glued under the rotor at the same
+    # radius passes over it once a revolution. The leads bend down a slot
+    # through the post and the plate into the base - the sensor's cable route.
+    param('home_r', '%.2f mm' % HOME_R_MM, 'lib/j1_drive.HOME_R_MM - CHOSEN')
+    param('home_az', '%.2f deg' % HOME_AZ_DEG, 'lib/j1_drive.HOME_AZ_DEG - CHOSEN', 'deg')
+    param('magnet_d', '%.2f mm' % MAGNET_D_MM, '6 x 2 N52 disc, glued under the rotor')
+    param('magnet_h', '%.2f mm' % MAGNET_H_MM, 'its thickness - it hangs this far below the race face')
+    param('hall_gap', '%.2f mm' % HALL_GAP_MM, 'magnet face to sensor face - ASSUMED, lib/j1_drive')
+    param('hall_w', '%.2f mm' % HALL_BODY_W_MM, 'A3144 TO-92UA body width - DATASHEET')
+    param('hall_h', '%.2f mm' % HALL_BODY_H_MM, 'body height, leads out of this edge - DATASHEET')
+    param('hall_t', '%.2f mm' % HALL_BODY_T_MM, 'body thickness = pocket depth, face flush - DATASHEET')
+    param('hall_lead_w', '%.2f mm' % ((HALL_LEAD_N - 1) * HALL_LEAD_PITCH_MM + 1.0),
+          'lead fan width - 3 leads on 1.27 plus a wire each side')
+    param('hall_slot', '%.2f mm' % HALL_SLOT_MM, 'lead slot depth, the way the leads fold down - lib, ASSUMED')
+    param('hall_post_d', '12.0 mm',
+          'post diameter: the pocket and the lead slot plus MIN_WALL round both')
+    param('hall_top', TURRET + 'race_z - ' + PREFIX + 'magnet_h - ' + PREFIX + 'hall_gap',
+          'post top = sensor face. DERIVED from the race face, so the gap holds\n'
+          '           if the rollers ever move. NEVER type it.')
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
 
     # ---- idempotent rebuild --------------------------------------------------
@@ -707,7 +757,7 @@ def run(_context: str):
     # twice: deepening the old horn pocket raised this servo 1.0 and the
     # seating gap lowered it 0.4, and dropping the horn altogether has now
     # lowered it 3.0 more. A typed 1.2 would have been wrong every time.
-    _sg0 = CATALOG['SG90']
+    _sg0 = _J1S
     _cb0 = (deck_z * 10) - (_sg0.case_h - _sg0.tab_below_top - _sg0.tab_thk)
     _need_groove = _cb0 + _sg0.lead_bundle_dia * 1.5
     param('lead_groove_d', '%.4f mm' % max(1.2, _need_groove + 0.2),
@@ -726,14 +776,82 @@ def run(_context: str):
     # With the end rounded to hub_x the furthest point is on the axis, so the
     # reach is simply the far edge - but the assertion below is written against
     # the CORNER too, because a future un-rounding must not pass silently.
-    pad_far = val('shaft_off') + val('hub_y')
-    hub_r = pad_far
-    hub_r_square = math.hypot(val('hub_x'), pad_far)
-    ROLL_AZ = (90.0, 210.0, 330.0)
-    POST_AZ = (120.0, 180.0, 240.0)
-    WIN_AZ = (30.0, 150.0, 270.0)
+    # 2026-09-27, J1 -> MG995. ROLLERS 90/210/330 -> 30/150/270. The MG995
+    # case runs 30.9 mm out along +Y (az 90) and its tab to 37.45, straight
+    # through the old az-90 roller. Rotating the servo instead would have
+    # meant rotated rectangles in every servo feature below; rotating three
+    # rollers is one tuple. The POSTS DO NOT MOVE - turntable_ring's screw
+    # holes stay where they are - and every clearance this creates or
+    # destroys is sampled, not argued, in _clear() below.
+    case_top = deck_z + val('tab_thk') + val('tab_below_top')
+
+    # ---- sampled clearance, in cm -------------------------------------------
+    # The SG90 pad was small enough that "the pad reaches r X, the stub starts
+    # at r Y" was an honest check. A 55 x 24 pad next to three rollers is not
+    # a radius, so these sample the real solids against the real boxes.
+    def _box_d(px, py, pz, box):
+        (x0, x1), (y0, y1), (z0, z1) = box
+        dx = max(x0 - px, 0.0, px - x1)
+        dy = max(y0 - py, 0.0, py - y1)
+        dz = max(z0 - pz, 0.0, pz - z1)
+        return math.sqrt(dx * dx + dy * dy + dz * dz)
+
+    _soff0 = val('shaft_off')
+    PAD_BOX = ((-val('hub_x'), val('hub_x')),
+               (_soff0 - val('hub_y'), _soff0 + val('hub_y')),
+               (plate_t, deck_z))
+    CASE_BOX = ((-val('case_w') / 2, val('case_w') / 2),
+                (_soff0 - val('case_l') / 2, _soff0 + val('case_l') / 2),
+                (deck_z - (val('case_h') - val('tab_below_top') - val('tab_thk')),
+                 case_top))
+    TAB_BOX = ((-val('case_w') / 2, val('case_w') / 2),
+               (_soff0 - val('tab_span') / 2, _soff0 + val('tab_span') / 2),
+               (deck_z, deck_z + val('tab_thk')))
+    SERVO_BOXES = (('pad', PAD_BOX), ('case', CASE_BOX), ('tabs', TAB_BOX))
+
+    def _roller_points(az_deg):
+        """Surface samples of one roller station: the 608 and its stub."""
+        a = math.radians(az_deg)
+        c, s_ = math.cos(a), math.sin(a)
+        pts = []
+        spans = ((roll_r - tval('roller_w') / 2, roll_r + tval('roller_w') / 2,
+                  tval('roller_od') / 2),
+                 (stub_ir, cheek_ir, val('collar_d') / 2))
+        for r0, r1, rad in spans:
+            for k in range(SAMPLE_ALONG):
+                rr = r0 + (r1 - r0) * k / (SAMPLE_ALONG - 1)
+                for m in range(SAMPLE_AROUND):
+                    th = 2 * math.pi * m / SAMPLE_AROUND
+                    t, dz = rad * math.cos(th), rad * math.sin(th)
+                    pts.append((rr * c - t * s_, rr * s_ + t * c,
+                                tval('axle_z') + dz))
+        return pts
+
+    def _arc_points(r_in, r_out, mid, half):
+        """XY boundary samples of an annular sector (angles in radians)."""
+        pts = []
+        for k in range(SAMPLE_AROUND + 1):
+            a = mid - half + 2 * half * k / SAMPLE_AROUND
+            for rr in (r_in, r_out):
+                pts.append((rr * math.cos(a), rr * math.sin(a)))
+        for k in range(SAMPLE_ALONG):
+            rr = r_in + (r_out - r_in) * k / (SAMPLE_ALONG - 1)
+            for a in (mid - half, mid + half):
+                pts.append((rr * math.cos(a), rr * math.sin(a)))
+        return pts
+
+    def _xy_gap(pts, box):
+        return min(_box_d(x, y, box[2][0], (box[0], box[1], box[2]))
+                   for x, y in pts)
 
     # ---- sanity, before any geometry ----------------------------------------
+    # lib/j1_drive carries these two for base_platter, which is not built in
+    # this document. Two copies of one number are only safe when checked.
+    assert abs(tval('axle_z') * 10 - TT_AXLE_Z_MM) < TOL * 10 + 1e-6, (
+        'tt_axle_z %.2f disagrees with lib/j1_drive.TT_AXLE_Z_MM %.2f'
+        % (tval('axle_z') * 10, TT_AXLE_Z_MM))
+    assert abs(tval('roller_od') * 10 - TT_ROLLER_OD_MM) < TOL * 10 + 1e-6, (
+        'tt_roller_od disagrees with lib/j1_drive.TT_ROLLER_OD_MM')
     assert abs(race_z - (tval('axle_z') + tval('roller_od') / 2)) < 1e-9, (
         'tt_race_z is meant to be derived from the axle height and the 608 OD')
     # THE BEARING RUNS OVER THIS PART'S OWN BASE PLATE, not over the platter.
@@ -752,9 +870,13 @@ def run(_context: str):
     assert cheek_top < race_z - val('free') - 1e-9, (
         'the roller cheeks reach z %.2f and the rotor rides at %.2f - only the '
         'BEARING may touch it' % (cheek_top * 10, race_z * 10))
-    assert stub_ir > hub_r + val('free'), (
-        'the stub axles reach in to r %.2f and the servo pad corner is at r %.2f'
-        % (stub_ir * 10, hub_r * 10))
+    for _az in ROLL_AZ:
+        _pts = _roller_points(_az)
+        for _nm, _bx in SERVO_BOXES:
+            _g = min(_box_d(x, y, z, _bx) for x, y, z in _pts)
+            assert _g >= val('free') - TOL, (
+                'the az-%.0f roller station comes within %.2f mm of the servo %s '
+                '(free fit %.2f wanted)' % (_az, _g * 10, _nm, val('free') * 10))
     assert cheek_or < tval('post_r') - val('post_d') / 2 - val('wall'), (
         'the roller cheeks reach r %.2f and the posts start at r %.2f'
         % (cheek_or * 10, (tval('post_r') - val('post_d') / 2) * 10))
@@ -778,19 +900,22 @@ def run(_context: str):
     # numbers no other part agrees with, so they are checked rather than
     # trusted. ts_tab_span had no reader at all before this - a parameter
     # nothing reads is an edit point that does nothing.
-    for _name, _lib_mm in (('case_l', _SG90.case_l), ('case_w', _SG90.case_w),
-                           ('case_h', _SG90.case_h), ('tab_thk', _SG90.tab_thk),
-                           ('tab_below_top', _SG90.tab_below_top),
-                           ('tab_pitch', _SG90.tab_hole_pitch),
-                           ('tab_span', _SG90.tab_span),
-                           ('boss_h', _SG90.boss_h),
-                           ('shaft_from_end', _SG90.shaft_from_end)):
+    for _name, _lib_mm in (('case_l', _J1S.case_l), ('case_w', _J1S.case_w),
+                           ('case_h', _J1S.case_h), ('tab_thk', _J1S.tab_thk),
+                           ('tab_below_top', _J1S.tab_below_top),
+                           ('tab_pitch', _J1S.tab_hole_pitch),
+                           ('tab_span', _J1S.tab_span),
+                           ('boss_h', _J1S.boss_h),
+                           ('shaft_from_end', _J1S.shaft_from_end)):
         assert abs(val(_name) * 10 - _lib_mm) < val('tol') * 10, (
             'ts_%s says %.2f and lib/servo.py SG90 says %.2f - this file '
             'retypes the servo, and the hub stack that positions it was '
             'solved from the library copy'
             % (_name, val(_name) * 10, _lib_mm))
 
+    assert abs(deck_z * 10 - J1_DECK_Z_MM) < 1e-6, (
+        'the stator puts the J1 tab underside at z %.3f and lib/j1_drive says '
+        '%.3f - base_platter keeps out of the lib number' % (deck_z * 10, J1_DECK_Z_MM))
     # NOTHING ON THE SERVO MAY TOUCH THE ROTOR, and this is the assertion
     # the horn stack never had. The old one compared the horn top against
     # the POCKET CEILING, which moved with it, so it could only ever be
@@ -830,12 +955,65 @@ def run(_context: str):
         'the stub is shorter than the bearing - the washer would clamp the axle end')
     assert deck_z > plate_t + 1e-9, (
         'the servo deck at z %.2f is inside the base plate' % (deck_z * 10))
-    assert case_bottom > -15.9 + 1e-9, (
-        'the SG90 case bottom reaches z %.2f below the platter rim; the legacy '
-        'column bottoms out around -15.9' % (case_bottom * 10))
-    assert val('window_or') < tval('post_r') - val('post_d') / 2 - val('wall'), (
-        'the lightening windows run into the mounting posts')
-    assert val('window_ir') > hub_r, 'the lightening windows undercut the servo pad'
+    _relief_ir0 = roll_r - tval('roller_w') / 2 - val('relief_margin')
+    _relief_half0 = math.asin((tval('roller_od') / 2 + val('relief_margin')) / roll_r)
+    for _nm, _az, _half, _ir, _or in (
+            [('loom window', val('cable_az') * 180 / math.pi, val('cable_deg') / 2,
+              val('cable_ir'), val('cable_or'))]):
+        _pts = _arc_points(_ir, _or, math.radians(_az), _half)
+        _g = _xy_gap(_pts, PAD_BOX)
+        assert _g >= val('wall') - TOL, (
+            'the %s at az %.0f comes within %.2f mm of the servo pad'
+            % (_nm, _az, _g * 10))
+        for _raz in ROLL_AZ:
+            _d = abs((math.radians(_az) - math.radians(_raz) + math.pi)
+                     % (2 * math.pi) - math.pi)
+            _sep = (_d - _half - _relief_half0) * _relief_ir0
+            assert _sep >= val('wall') - TOL, (
+                'the %s at az %.0f leaves %.2f mm to the az-%.0f roller relief'
+                % (_nm, _az, _sep * 10, _raz))
+        assert _or < tval('post_r') - val('post_d') / 2 - val('wall'), (
+            'the %s runs into the mounting posts' % _nm)
+    # THE HOME MAGNET SWEEPS A FULL CIRCLE under the rotor, so everything
+    # it passes is checked against the annulus, not against one azimuth.
+    _m_in = val('home_r') - val('magnet_d') / 2
+    _m_out = val('home_r') + val('magnet_d') / 2
+    assert _m_in >= roll_r + tval('roller_w') / 2 + val('free') - TOL, (
+        'the home magnet sweeps in to r %.2f over 608s reaching r %.2f'
+        % (_m_in * 10, (roll_r + tval('roller_w') / 2) * 10))
+    assert _m_out <= tval('disc_d') / 2 - TOL, (
+        'the home magnet overhangs the rotor rim (r %.2f > %.2f)'
+        % (_m_out * 10, tval('disc_d') / 2 * 10))
+    assert _m_in >= val('cable_or') + val('wall') - TOL, (
+        'the loom window reaches r %.2f and the magnet sweeps from r %.2f - it '
+        'would brush the loom every revolution' % (val('cable_or') * 10, _m_in * 10))
+    assert val('hall_gap') >= val('free') - TOL, 'the magnet would strike the sensor'
+    _post_half = math.asin(val('hall_post_d') / 2 / val('home_r'))
+    for _raz in ROLL_AZ:
+        _d = abs((val('home_az') - math.radians(_raz) + math.pi) % (2 * math.pi) - math.pi)
+        _cheek_half = math.atan(val('cheek_w') / 2 / cheek_ir)
+        _sep = (_d - _post_half - _cheek_half) * cheek_ir
+        assert _sep >= val('wall') - TOL, (
+            'the home post at az %.0f leaves %.2f mm to the az-%.0f cheek'
+            % (math.degrees(val('home_az')), _sep * 10, _raz))
+    for _paz in POST_AZ:
+        _px = tval('post_r') * math.cos(math.radians(_paz))
+        _py2 = tval('post_r') * math.sin(math.radians(_paz))
+        _hx = val('home_r') * math.cos(val('home_az'))
+        _hy = val('home_r') * math.sin(val('home_az'))
+        assert math.hypot(_px - _hx, _py2 - _hy) >= (
+            (val('post_d') + val('hall_post_d')) / 2 + val('wall') - TOL), (
+            'the home post runs into the az-%.0f mounting post' % _paz)
+    _pts = _arc_points(val('home_r') - val('hall_post_d') / 2,
+                       val('home_r') + val('hall_post_d') / 2, val('home_az'), _post_half)
+    assert _xy_gap(_pts, PAD_BOX) >= val('wall') - TOL, 'the home post hits the servo pad'
+    # THE RELIEFS MAY NOT BITE THE PAD. They cut z relief_floor..plate_t+1,
+    # which overlaps the pad's foot, so they must miss it in XY outright.
+    for _raz in ROLL_AZ:
+        _pts = _arc_points(_relief_ir0, cheek_ir, math.radians(_raz), _relief_half0)
+        _g = _xy_gap(_pts, PAD_BOX)
+        assert _g > TOL, ('the az-%.0f roller relief cuts into the servo pad'
+                          % _raz)
 
     # ---- phase 1: stator form -------------------------------------------------
     t0 = design.timeline.count
@@ -847,12 +1025,9 @@ def run(_context: str):
     # roller band at r 23.50, and the relief cut below would undercut the very
     # pad it stands on. Rounded, the furthest point is on the axis at r 21.60.
     _soff = val('shaft_off')
-    _pad_flat = _soff + val('hub_y') - val('hub_x')
     xy_rect('servo_pad', -val('hub_x'), val('hub_x'),
-            _soff - val('hub_y'), _pad_flat,
+            _soff - val('hub_y'), _soff + val('hub_y'),
             mm(plate_t - 0.1), mm(deck_z - plate_t + 0.1), JOIN)
-    xy_circle('servo_pad_end', 0.0, _pad_flat, val('hub_x') * 2,
-              mm(plate_t - 0.1), mm(deck_z - plate_t + 0.1), JOIN)
     for i, az in enumerate(POST_AZ):
         a = math.radians(az)
         xy_circle('post_%d' % i, tval('post_r') * math.cos(a),
@@ -961,52 +1136,69 @@ def run(_context: str):
     # inner rim starts at r plate_ir, which is inboard of where the keyway
     # ends, so a groove that began at the keyway left 2.15 mm of unrelieved
     # plate over the bundle. The gate read it as 0.98 mm3 still solid.
-    _v_groove = comp.bRepBodies.item(0).volume
-    _g_a = _shaft_y + 0.1
-    _g_b = _g_a - val('lead_key_l') - val('lead_escape')
-    xy_rect('lead_groove',
-            -val('lead_groove_w') / 2, val('lead_groove_w') / 2,
-            min(_g_a, _g_b) - 0.1, max(_g_a, _g_b) + 0.1,
-            # mm() takes CENTIMETRES, so mm(-0.1) is -1.0 mm and the distance
-            # has to carry that back: groove_d + 1.0 lands the roof at
-            # +groove_d. Written as groove_d + 0.1 it stopped at z +0.3 and
-            # left the bundle's top 0.4 mm still buried in the plate.
-            mm(-0.1), PREFIX + 'lead_groove_d + 1.0 mm', CUT)
-    _g_drop = (_v_groove - comp.bRepBodies.item(0).volume) * 1000
-    # ceiling over the cut's FULL span; the plate's inner rim and the cable
-    # window are both void along part of it, so the real drop is well under.
-    _g_full = (val('lead_groove_w') * 10) * (val('lead_groove_d') * 10) \
-        * ((val('lead_key_l') + val('lead_escape') + 0.2) * 10)
-    assert 1.0 < _g_drop < _g_full, (
-        'the lead groove removed %.1f mm3 against a %.1f ceiling - it is not '
-        'cutting where the plate is' % (_g_drop, _g_full))
-    assert val('plate_t') - val('lead_groove_d') >= val('wall'), (
-        'the lead groove leaves less than a wall of plate above it')
-    # deep enough for the bundle's TOP EDGE, not its centre - the distinction
-    # that made this groove necessary in the first place.
-    _sg = CATALOG['SG90']
+    # THE LEAD GROOVE IS CONDITIONAL NOW. The SG90 hung its case bottom 1 mm
+    # below this plate, so its lead left at z -1.0 and its top edge grazed
+    # the plate underside - hence a groove. The MG995 hangs ~21 mm below the
+    # plate; its lead leaves far under it and has no plate to graze. Cutting
+    # the groove anyway would trip the "removed nothing" guard for a cut with
+    # no job. It is kept, gated on the same bundle-top arithmetic, so a
+    # future short servo gets it back automatically.
+    _sg = _J1S
     _case_bot_z = (deck_z * 10) - (_sg.case_h - _sg.tab_below_top - _sg.tab_thk)
     _lead_top = _case_bot_z + _sg.lead_bundle_dia + _sg.lead_bundle_dia / 2
-    assert val('lead_groove_d') * 10 >= _lead_top, (
-        'the bundle\'s top edge reaches z %+.2f and the groove is only %.2f '
-        'deep - the lead is pinched against the plate on its way out'
-        % (_lead_top, val('lead_groove_d') * 10))
+    _need_lead_groove = _lead_top > 0.0
+    if _need_lead_groove:
+        _v_groove = comp.bRepBodies.item(0).volume
+        _g_a = _shaft_y + 0.1
+        _g_b = _g_a - val('lead_key_l') - val('lead_escape')
+        xy_rect('lead_groove',
+                -val('lead_groove_w') / 2, val('lead_groove_w') / 2,
+                min(_g_a, _g_b) - 0.1, max(_g_a, _g_b) + 0.1,
+                mm(-0.1), PREFIX + 'lead_groove_d + 1.0 mm', CUT)
+        _g_drop = (_v_groove - comp.bRepBodies.item(0).volume) * 1000
+        _g_full = (val('lead_groove_w') * 10) * (val('lead_groove_d') * 10) \
+            * ((val('lead_key_l') + val('lead_escape') + 0.2) * 10)
+        assert 1.0 < _g_drop < _g_full, (
+            'the lead groove removed %.1f mm3 against a %.1f ceiling - it is not '
+            'cutting where the plate is' % (_g_drop, _g_full))
+        assert val('plate_t') - val('lead_groove_d') >= val('wall'), (
+            'the lead groove leaves less than a wall of plate above it')
+        assert val('lead_groove_d') * 10 >= _lead_top, (
+            'the bundle\'s top edge reaches z %+.2f and the groove is only %.2f '
+            'deep - the lead is pinched against the plate on its way out'
+            % (_lead_top, val('lead_groove_d') * 10))
     #
-    # ONE pilot, not two - the near one stood where the cable has to travel.
-    # See the keyway note above for why that is unavoidable and what it costs.
-    xy_circle('servo_pilot_far', 0.0, _soff + val('tab_pitch') / 2,
-              val('pilot_d'),
-              mm(deck_z - val('pilot_depth')), PREFIX + 'pilot_depth', CUT)
-    _near_pilot_y = (_soff - val('tab_pitch') / 2) * 10
-    _key_y0 = (_shaft_y - val('lead_key_l')) * 10
-    assert _key_y0 <= _near_pilot_y <= (_shaft_y + val('loc') / 2) * 10, (
-        'the near pilot at y %.2f is NOT inside the keyway span %.2f..%.2f - '
-        'if it has moved clear, restore it rather than leaving the servo on '
-        'one screw' % (_near_pilot_y, _key_y0, (_shaft_y + val('loc') / 2) * 10))
+    # ALL TAB SCREWS ARE BACK. The SG90 lost its near screw because its one
+    # tab hole sat dead on the lead keyway's centreline. An MG995 tab carries
+    # TWO holes, tab_pitch_y apart ACROSS the case, so both near holes land
+    # either side of the keyway - asserted, not assumed. That also retires
+    # the "bridge cap" the old note asked for: four screws take the 9.4
+    # kg.cm reaction, not one screw and a loose pocket.
+    _py = [0.0] if val('tab_pitch_y') < TOL else [-val('tab_pitch_y') / 2,
+                                                    val('tab_pitch_y') / 2]
+    _n_pilot = 0
+    for _end, _sy in (('far', 1.0), ('near', -1.0)):
+        for _k, _px in enumerate(_py):
+            _y = _soff + _sy * val('tab_pitch') / 2
+            if _end == 'near':
+                _gap = abs(_px) - val('pilot_d') / 2 - val('lead_key_d') / 2
+                if _gap < val('wall') - TOL:
+                    continue            # a one-hole micro tab: keyway wins
+            xy_circle('servo_pilot_%s_%d' % (_end, _k), _px, _y, val('pilot_d'),
+                      mm(deck_z - val('pilot_depth')), PREFIX + 'pilot_depth', CUT)
+            _n_pilot += 1
+            # a pilot must stand on pad, beyond the case window, inside the pad
+            assert abs(_y - _soff) - val('pilot_d') / 2 >= (
+                (val('case_l') + val('srv_clear')) / 2 + val('wall') - TOL), (
+                'tab pilot at y %.2f breaks into the case window' % (_y * 10))
+            assert abs(_px) + val('pilot_d') / 2 <= val('hub_x') - val('wall') + TOL, (
+                'tab pilot at x %.2f falls off the pad' % (_px * 10))
+    assert _n_pilot == 2 * len(_py) or len(_py) == 1, (
+        'only %d of %d tab screws were placed' % (_n_pilot, 2 * len(_py)))
     # THE WHOLE POINT: the shaft has to be ON the axis.
     _shaft_y_mm = (_soff - val('case_l') / 2 + val('shaft_from_end')) * 10
     assert abs(_shaft_y_mm) < 1e-6, (
-        'the SG90 output shaft lands at y %.3f mm and J1 turns about y = 0 - '
+        'the J1 output shaft lands at y %.3f mm and J1 turns about y = 0 - '
         'the J1 hub is centred by this spline, so an off-axis spline drives '
         'the rotor as a crank' % _shaft_y_mm)
     assert val('hub_y') * 10 >= val('tab_pitch') / 2 * 10 + 1.6, (
@@ -1022,32 +1214,35 @@ def run(_context: str):
         xy_circle('bolt_%d' % i, tval('post_r') * math.cos(a),
                   tval('post_r') * math.sin(a), tval('bolt_d'),
                   mm(-1.0), mm(post_top + 2.0), CUT)
-    for i, az in enumerate(WIN_AZ):
-        xy_arc('window_%d' % i, val('window_ir'), val('window_or'),
-               math.radians(az), val('window_deg') / 2, mm(-1.0),
-               mm(plate_t + 2.0), CUT)
     # the loom window - cut LAST so it reads as a hole in a finished plate.
     # NOTE val() on an ANGLE parameter returns RADIANS, not degrees. xy_arc
     # wants radians, so they go straight in; only the printout converts.
-    _c_ir = val('cable_ir') * 10
-    _c_or = val('cable_or') * 10
-    # the well now reaches as far as the KEYWAY, not the aperture - deriving
-    # this from the aperture again would leave the guard checking the wrong
-    # number by the length of the keyway.
-    _well_half_y = abs(val('shaft_off') - val('case_l') / 2
-                       - val('lead_key_l')) * 10
-    assert _c_ir >= _well_half_y + 1.6, (
-        'the cable window starts at r %.1f mm and the servo well, keyway '
-        'included, reaches %.1f mm - less than a wall between them'
-        % (_c_ir, _well_half_y))
-    _race_ir_mm = tval('race_ir') * 10 if ups.itemByName(TURRET + 'race_ir') else 23.0
-    assert _c_or + 1.6 <= _race_ir_mm, (
-        'the cable window reaches r %.1f mm and the race band starts at %.1f mm'
-        % (_c_or, _race_ir_mm))
+    # vs the servo pad, the roller reliefs and the posts: sampled up in the
+    # sanity block, before any geometry.
     xy_arc('cable_window', val('cable_ir'), val('cable_or'),
            val('cable_az'), val('cable_deg') / 2.0,
            '-1.0 mm', PREFIX + 'plate_t + 2.0 mm', CUT)
     group(t3, PH_FIX)
+
+    # ---- phase 5: J1 home sensor post ---------------------------------------------
+    t4 = design.timeline.count
+    _hx = val('home_r') * math.cos(val('home_az'))
+    _hy = val('home_r') * math.sin(val('home_az'))
+    hall_top = val('hall_top')
+    xy_circle('home_post', _hx, _hy, val('hall_post_d'),
+              mm(plate_t - val('tol')), mm(hall_top - plate_t + val('tol')), JOIN)
+    # the sensor lies FLAT, branded face up, flush with the post top
+    _pw = val('hall_w') / 2 + val('loc') / 2
+    _ph = val('hall_h') / 2 + val('loc') / 2
+    xy_rect('hall_pocket', _hx - _pw, _hx + _pw, _hy - _ph, _hy + _ph,
+            mm(hall_top - val('hall_t')), PREFIX + 'hall_t + 1.0 mm', CUT)
+    # the leads leave the body's -Y edge and fold straight down this slot,
+    # through the post AND the base plate, into the base below - the
+    # sensor's whole cable route is this one cut.
+    xy_rect('hall_lead_slot', _hx - val('hall_lead_w') / 2, _hx + val('hall_lead_w') / 2,
+            _hy - _ph - val('hall_slot'), _hy - _ph + val('tol'),
+            mm(-1.0), mm(hall_top + 2.0), CUT)
+    group(t4, PH_HOME)
 
     # ---- identity + diagnostics ---------------------------------------------------
     assert comp.bRepBodies.count == 1, (
@@ -1105,28 +1300,23 @@ def run(_context: str):
     print('  hub body z %.2f..%.2f - built by NEITHER of J1\'s two host '
           'parts. specs/robotarm/j1_hub.md.'
           % (hub_bottom_z * 10, race_z * 10))
-    print('SG90: tabs bear at z %.2f, case bottom z %.2f (into the platter column)'
-          % (deck_z * 10, case_bottom * 10))
+    print('J1 SERVO %s (360 deg continuous): tabs bear at z %.2f, case top %.2f, '
+          'case bottom z %.2f - below the platter datum, so base_platter carries it'
+          % (_J1S.name, deck_z * 10, case_top * 10, case_bottom * 10))
     print('  bearing seat: %.1f collar on a %.1f inner race, retained by a %.1f '
           'washer (NOT a standard M3 Ø7 - it falls through the Ø8 bore)'
           % (val('collar_d') * 10, val('race_od') * 10, val('washer_od') * 10))
-    print('  SHAFT ON AXIS: case centre offset %+.2f in Y so the output shaft'
-          % (val('shaft_off') * 10))
-    print('    lands at y 0. The SG90 shaft is %.1f from the near end of a %.1f'
-          % (val('shaft_from_end') * 10, val('case_l') * 10))
-    print('    case, so centring the CASE would put it %.1f mm off the J1 axis.'
-          % (val('shaft_off') * 10))
-    print('  ONE pilot %.1f at y %+.1f (FAR tab). The near tab at y %+.1f has '
-          'no screw:' % (val('pilot_d') * 10,
-                         (val('shaft_off') + val('tab_pitch') / 2) * 10,
-                         (val('shaft_off') - val('tab_pitch') / 2) * 10))
-    print('    the lead keyway runs straight through it and lead_y = 0 means '
-          'it cannot')
-    print('    be moved aside. ONE screw and a 0.5-per-side pocket is all '
-          'that holds')
-    print('    this servo against its own reaction torque - see the keyway '
-          'note: a')
-    print('    bridge cap over the near tab is the outstanding fix.')
+    print('  SHAFT ON AXIS: case centre offset %+.2f in Y (shaft %.1f from the near '
+          'end of a %.1f case)' % (val('shaft_off') * 10, val('shaft_from_end') * 10,
+                                   val('case_l') * 10))
+    print('  %d tab pilots O%.2f x %.1f deep, at y %+.2f / %+.2f, x +-%.2f'
+          % (_n_pilot, val('pilot_d') * 10, val('pilot_depth') * 10,
+             (_soff - val('tab_pitch') / 2) * 10, (_soff + val('tab_pitch') / 2) * 10,
+             val('tab_pitch_y') * 5))
+    print('  lead groove: %s (bundle top edge at z %+.2f)'
+          % ('cut' if _need_lead_groove else 'not needed', _lead_top))
+    print('  rollers at az %s clear the servo pad/case/tabs by >= %.2f (sampled)'
+          % (ROLL_AZ, val('free') * 10))
     print('  LEAD KEYWAY %.1f wide, centred, END wall at y %+.1f, out to y %+.1f'
           % (val('lead_key_d') * 10,
              (val('shaft_off') - val('case_l') / 2) * 10,
@@ -1136,12 +1326,18 @@ def run(_context: str):
     print('CABLE WINDOW: r %.1f..%.1f, %.0f deg at az %.0f - the fixed half of the'
           % (val('cable_ir') * 10, val('cable_or') * 10,
              val('cable_deg') * 180 / math.pi, val('cable_az') * 180 / math.pi))
-    print('  loom route. The servo well is %.2f x %.2f on a %.2f x %.2f case,'
-          % (val('case_w') * 10 + val('loc') * 10, val('case_l') * 10 + val('loc') * 10,
-             val('case_w') * 10, val('case_l') * 10))
-    print('  so NOTHING could pass beside the servo - 15 leads cross J1 here.')
-    print('  base_lid repeats it below; shoulder_bracket\'s window is the moving half.')
+    print('  plug-sized (8.7 x 4.5 passes); base_lid/base_platter take the loom on '
+          'down; shoulder_bracket\'s window is the moving half.')
     print('ONE M3 per post: ring -> post -> platter insert. 3 screws hold the turret.')
+    print('HOME SENSOR: A3144 flat in a %.2f x %.2f pocket on a O%.1f post at r %.1f az '
+          '%.0f, face at z %.2f; a O%.0f x %.0f magnet glued under the rotor at r %.1f '
+          'hangs to z %.2f - gap %.2f. Leads down a %.2f x %.2f slot into the base.'
+          % (val('hall_w') * 10 + val('loc') * 10, val('hall_h') * 10 + val('loc') * 10,
+             val('hall_post_d') * 10, val('home_r') * 10, math.degrees(val('home_az')),
+             hall_top * 10, val('magnet_d') * 10, val('magnet_h') * 10,
+             val('home_r') * 10, (race_z - val('magnet_h')) * 10,
+             (race_z - val('magnet_h') - hall_top) * 10,
+             val('hall_lead_w') * 10, val('hall_slot') * 10))
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f' % (
         bb.minPoint.x * 10, bb.maxPoint.x * 10, bb.minPoint.y * 10,
         bb.maxPoint.y * 10, bb.minPoint.z * 10, bb.maxPoint.z * 10))

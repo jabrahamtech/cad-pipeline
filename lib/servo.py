@@ -323,7 +323,9 @@ MG995_DISC_HORN = {
 CATALOG = {s.name: s for s in (SG90, MG90S, MG995)}
 
 # Jonathan's inventory, 2026-08-25.
-INVENTORY = {"MG995": 1, "MG90S": 2, "SG90": 3}
+INVENTORY = {"MG995": 2, "MG90S": 2, "SG90": 3}  # MG995: 1 standard (J2)
+#   + 1 x 360 deg continuous (J1), Jonathan 2026-09-27. SG90 count is stale:
+#   lib/joints.py records he has the five the arm uses.
 
 # Servo-kit self-tapping screw: pilot per knowledge/fasteners_inserts.md.
 SERVO_SCREW_PILOT_MM = 1.8

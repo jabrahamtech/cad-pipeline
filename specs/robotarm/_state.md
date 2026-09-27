@@ -10,15 +10,19 @@ A 3D-printed 6-DOF desktop arm that **prunes house plants**. It was a gripper
 arm until the effector was changed to a bypass shear; the gripper still
 builds and is kept as a swappable head on the same 4 × M3 pattern.
 
-Inventory, fixed: **1 × MG995, 2 × MG90S, 3 × SG90**, plus 608ZZ bearings.
+Inventory: **2 × MG995 (one 360° continuous, J1)**, SG90s for J3–J6, plus 608ZZ bearings. (Was 1 × MG995, 2 × MG90S, 3 × SG90 — see `_sg90_migration.md` and `base_platter.md`.)
 That one-big-five-small split is the binding constraint on the whole design
 and the reason no donor arm fits (see "Donor arms" below).
+
+## 2026-09-27 — J1 → MG995 360°, new base
+
+Read `specs/robotarm/base_platter.md` first. J1 drive contract moved to `lib/j1_drive.py` (was typed into three scripts). New parts: `base_platter`, rewritten `base_lid`. Changed: `turntable_stator` (rollers rotated, 4-screw MG995 pad, loom window az 210, hall post), `j1_hub` (7.90 tall, MG995 spline), `shoulder_bracket` (centre bore Ø5.4 → Ø6.4 only — drill a printed one). Gate: `_check_base.py` PASS with positive control. The J1 section below describes the SG90 era.
 
 ## Joints
 
 | # | joint | servo | member shape |
 |---|---|---|---|
-| J1 | base yaw | SG90 | turntable on 3 × 608ZZ on the PRINTED platter — stator + ring + rotor all built |
+| J1 | base yaw | **MG995 360° (continuous)** since 2026-09-27 | turntable on 3 × 608ZZ on the NEW `base_platter` — rollers at az 30/150/270, hall home sensor at az 330. Contract: `lib/j1_drive.py`. Spec: `base_platter.md` |
 | J2 | shoulder pitch | MG995 | bracket FORKS, upper arm is a BLOCK — built |
 | J3 | elbow pitch | MG90S | forearm FORKS, upper arm is a BLOCK — built |
 | J4 | wrist pitch | MG90S | forearm FORKS, roll housing is a BLOCK — built |

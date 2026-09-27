@@ -1,5 +1,11 @@
 """robotarm/j1_hub - Fusion MCP generating script.
 
+2026-09-27 - J1 IS AN MG995 360 deg NOW. Prose below that says SG90 means
+"the J1 servo"; every number comes from lib/j1_drive.py. The MG995's O13.0
+boss put the boss bore right under the pilot circle, so the hub grew to 7.90
+(pilots stand on a MIN_WALL floor over the boss bore) rather than moving the
+bolt circle - the rotor's holes did not move.
+
 Rebuilds `robotarm_j1_hub` (idempotent). Spec: specs/robotarm/j1_hub.md.
 
 THE ONE PIECE BETWEEN THE J1 SG90 AND THE ARM. It is broached onto the
@@ -121,19 +127,8 @@ import adsk.fusion
 
 from lib.arm_loads import STALL_KGCM as _STALL  # noqa: E402
 from lib.design_rules import FASTENER_MM as _FASTENER  # noqa: E402
-from lib.design_rules import JOINT_FIT_MM as _FIT  # noqa: E402
 from lib.design_rules import MIN_WALL_MM as _MIN_WALL  # noqa: E402
 from lib.palette import hints_for  # noqa: E402
-from lib.servo import CATALOG as _SERVOS  # noqa: E402
-from lib.servo import spline_z as _spline_z  # noqa: E402
-# IMPORT ORDER IS LOAD-BEARING, NOT COSMETIC. lib/gears.py imports
-# lib/servo_hub.py at its tail and lib/servo_hub.py imports lib/gears.py at
-# its head, so `import lib.servo_hub` on its own dies with a partially
-# initialised module. Importing lib.gears FIRST resolves the cycle. That is
-# a defect in lib/ and it is not this file's to fix - do not tidy these
-# apart. shoulder_bracket.py and turntable_stator.py carry the same note.
-import lib.gears  # noqa: F401,E402
-from lib.servo_hub import spline_hub  # noqa: E402
 
 COMPONENT = 'robotarm_j1_hub'
 BODY_NAME = 'j1_hub'
@@ -148,7 +143,30 @@ PH_BOLTS = 'bolt circle'
 PH_FINISH = 'finish'
 PHASES = [PH_BODY, PH_SPLINE, PH_BOLTS, PH_FINISH]
 
-_SG90 = _SERVOS['SG90']
+# THE J1 DRIVE CONTRACT LIVES IN lib/j1_drive.py since 2026-09-27 (J1 -> MG995).
+# It was typed verbatim here, in shoulder_bracket.py and in j1_hub.py; a
+# servo swap is the change that finds every copy, so there is one now.
+from lib.j1_drive import (  # noqa: E402
+    J1_SERVO,
+    J1_HUB_OVERSHOOT_MM,
+    J1_HUB_ENGAGE_MIN_MM,
+    J1_HUB_SCREW,
+    J1_HUB_SCREW_D_MM,
+    J1_HUB_BOLT_R_MM,
+    J1_HUB_BOLT_AZ_DEG,
+    J1_HUB_FLOAT_MM,
+    J1_HUB_HOLE_D_MM,
+    J1_HUB_HEAD_H_MM,
+    J1_HUB_CBORE_D_MM,
+    J1_HUB_PILOT_H_MM,
+    J1_HUB_OD_MM,
+    J1_HUB_SCREW_BORE_MM,
+    J1_HUB_FACE_MM,
+    J1_HUB,
+    J1_BOSS_TOP_MM,
+    J1_SPLINE_TOP_MM,
+)
+_J1S = J1_SERVO
 
 # --- THE J1 DRIVE CONTRACT ------------------------------------------------
 # EVERY NUMBER IN THIS BLOCK IS COPIED VERBATIM FROM shoulder_bracket.py AND
@@ -159,46 +177,27 @@ _SG90 = _SERVOS['SG90']
 # set of numbers and LOCATED by another, so run() asserts this file's values
 # against the tt_* user parameters whenever a host has already declared them
 # in the same document.
-J1_HUB_OVERSHOOT_MM = 0.5      # ASSUMED - how far the hub bore runs past the
                                # spline top, so the spline stops SHORT of the
                                # rotor face instead of jacking it off its
                                # rollers.
-J1_HUB_PROBE_FACE_MM = 12.0    # NOT A DIMENSION. spline_hub() needs a face
                                # to solve and the face is what we are solving
                                # FOR; this probe is any value past min_height,
                                # used only to read broach_to back out.
-_J1_PROBE = spline_hub(_SG90, face=J1_HUB_PROBE_FACE_MM)
-J1_HUB_FACE_MM = _J1_PROBE.broach_to + J1_HUB_OVERSHOOT_MM   # DERIVED 6.80
-J1_HUB = spline_hub(_SG90, face=J1_HUB_FACE_MM)
-J1_BOSS_TOP_MM, J1_SPLINE_TOP_MM = _spline_z(_SG90)
-J1_HUB_ENGAGE_MIN_MM = 2.0     # spline_hub()'s own floor, restated so the
                                # ring-lift check has something to measure to.
-J1_HUB_SCREW = 'M3'            # M2 would carry the torque (6.5 N a bolt) and
                                # would not survive being taken apart twice.
-J1_HUB_BOLT_R_MM = 8.0         # DERIVED, boxed in at both ends: a head
                                # counterbore in the ROTOR must clear the
                                # rotor's Oe5.40 screw bore (r 2.70 + wall 1.60
                                # + cbore 2.95 = 7.25) and this hub's OD must
                                # stay inside the connector gate at r 12.20.
-J1_HUB_BOLT_AZ_DEG = (90.0, 210.0, 330.0)   # CHOSEN to miss the connector
                                # gate at az 270. Read from the spec, NOT
                                # re-derived here - shoulder_bracket.py cut the
                                # mating holes to these three angles and the
                                # only thing this file may do is agree.
-J1_HUB_FLOAT_MM = 1.0          # DELIBERATE radial float, in the ROTOR's hole
                                # and not in this part. See the docstring.
-J1_HUB_HOLE_D_MM = _FASTENER[J1_HUB_SCREW]['clearance'] + J1_HUB_FLOAT_MM
-J1_HUB_SCREW_D_MM = 3.0        # DATASHEET - M3 nominal. This, NOT the Oe2.60
                                # pilot, is the width the screw bears on once
                                # it has formed its own thread, and it is what
                                # both the spec's and shoulder_bracket.py's
                                # bearing tables are computed at (3.0 x 3.7).
-J1_HUB_HEAD_D_MM = 5.5         # DATASHEET - ISO 4762 M3 socket cap head
-J1_HUB_HEAD_H_MM = 3.0         # DATASHEET - the same head, height
-J1_HUB_CBORE_D_MM = J1_HUB_HEAD_D_MM + _FIT['free']
-J1_HUB_OD_MM = 2.0 * (J1_HUB_BOLT_R_MM
-                      + _FASTENER[J1_HUB_SCREW]['pilot'] / 2.0 + _MIN_WALL)
-J1_HUB_SCREW_BORE_MM = _SG90.horn_screw_dia * 2.0 + _FIT['free']
 # PILOT DEPTH, AND A DISCREPANCY IN THE SPEC WORTH RECORDING. 3.70 is the
 # thread engagement BOTH bearing-pressure tables are computed at - the spec's
 # "3 x (Oe3.0 x 3.7) = 33.3 mm2" and shoulder_bracket.py's "3.0 x 3.7 = 11.1
@@ -209,7 +208,6 @@ J1_HUB_SCREW_BORE_MM = _SG90.horn_screw_dia * 2.0 + _FIT['free']
 # depth. Kept at 3.70 as an explicit choice rather than a derivation that
 # does not hold: it is what the load numbers assume, and it leaves 3.10 mm of
 # floor over the seat face against a 1.60 MIN_WALL. Asserted below.
-J1_HUB_PILOT_H_MM = 3.7        # CHOSEN - see above. Floor asserted in run().
 # INSERTION LEAD-IN ON THE BROACH MOUTH, CAPPED BY THE STEP IT SITS ON.
 # Typed as a flat 0.5 first and Fusion refused it outright:
 #   "3 : Chamfer1 / Compute Failed ... could not be created at the requested
@@ -617,11 +615,16 @@ def run(_context: str):
     # THE TWO WALLS THAT SIZE THE DISC. Inboard: pilot to boss bore.
     # Outboard: pilot to the rim, which is what tt_hub_od was derived from,
     # so this one should land EXACTLY on MIN_WALL.
+    # 2026-09-27, MG995: the O13.40 boss bore reaches r 6.70, exactly where a
+    # O2.60 pilot on r 8.00 starts, so there is NO radial wall. lib/j1_drive
+    # grows the hub instead so the pilots stand ON TOP of the boss bore with
+    # a MIN_WALL floor between them. Either ligament is a wall; one must be.
     _in_wall = (val('bolt_r') - val('pilot_d') / 2 - val('boss_bore_d') / 2) * 10
-    assert _in_wall >= _MIN_WALL - TOL, (
-        'only %.2f mm between the Oe%.2f boss bore and the pilot circle, '
-        'against a %.2f MIN_WALL'
-        % (_in_wall, val('boss_bore_d') * 10, _MIN_WALL))
+    _over_wall = (val('face') - val('pilot_h') - val('boss_bore_h')) * 10
+    assert max(_in_wall, _over_wall) >= _MIN_WALL - TOL, (
+        'only %.2f mm radially and %.2f mm axially between the Oe%.2f boss '
+        'bore and the pilots, against a %.2f MIN_WALL'
+        % (_in_wall, _over_wall, val('boss_bore_d') * 10, _MIN_WALL))
     _out_wall = (val('od') / 2 - val('bolt_r') - val('pilot_d') / 2) * 10
     assert _out_wall >= _MIN_WALL - TOL, (
         'only %.2f mm of rim outside the pilot circle - tt_hub_od %.2f no '
@@ -657,21 +660,21 @@ def run(_context: str):
     _bolt_mpa = _bolt_f / _bolt_area
     _friction_nmm = (len(J1_HUB_BOLT_AZ_DEG) * BOLT_PRELOAD_N
                      * PETG_ON_PETG_MU * val('bolt_r') * 10)
-    _case_top = _SG90.tab_thk + _SG90.tab_below_top
+    _case_top = _J1S.tab_thk + _J1S.tab_below_top
 
     bb = body.boundingBox
     print('body: %r | material: %s | appearance: %s'
           % (body.name, body.material.name, used))
-    print('seats %.2f up the SG90 (%.2f clear of its case top) - '
+    print('seats %.2f up the %s (%.2f clear of its case top) - '
           'turntable_stator.py places the servo from the SAME number'
-          % (val('seat_z') * 10, val('seat_z') * 10 - _case_top))
+          % (val('seat_z') * 10, _J1S.name, val('seat_z') * 10 - _case_top))
     print('spline hub: boss bore Oe%.2f to %.2f, then Oe%.2f BROACHED %.2f..%.2f'
           % (val('boss_bore_d') * 10, val('boss_bore_h') * 10,
              val('broach_d') * 10, val('boss_bore_h') * 10,
              val('broach_to') * 10))
-    print('  %.2f mm of spline engaged (an SG90 has %.2f in total) | '
+    print('  %.2f mm of spline engaged (an %s has %.2f in total) | '
           '%.2f of overshoot above it | NO HORN'
-          % (val('engaged') * 10, _SG90.spline_h,
+          % (val('engaged') * 10, _J1S.name, _J1S.spline_h,
              (val('face') - val('broach_to')) * 10))
     print('  the Oe%.2f washer and the servo screw are an ASSEMBLY AID ONLY - '
           'both come OUT before the rotor goes on' % (val('washer_d') * 10))
@@ -683,10 +686,11 @@ def run(_context: str):
           'shoulder_bracket.py cuts them, this file only agrees with them'
           % (J1_HUB_HOLE_D_MM, J1_HUB_FLOAT_MM, J1_HUB_CBORE_D_MM,
              J1_HUB_HEAD_H_MM))
-    print('walls: %.2f inboard of the pilots to the boss bore, %.2f outboard '
-          'to the rim | pilot floor %.2f' % (_in_wall, _out_wall, _floor))
-    print('LOAD, at SG90 STALL %.1f N.mm (lib/arm_loads.STALL_KGCM):'
-          % _stall_nmm)
+    print('walls: %.2f inboard (radial) / %.2f over the boss bore (axial) to the '
+          'pilots, %.2f outboard to the rim | pilot floor %.2f'
+          % (_in_wall, _over_wall, _out_wall, _floor))
+    print('LOAD, at %s STALL %.1f N.mm (lib/arm_loads.STALL_KGCM):'
+          % (_J1S.name, _stall_nmm))
     print('  broach bore  r %.2f  %.2f MPa  <- THE SPLINE STILL CARRIES ALL '
           'OF IT' % (_bore_r, _bore_mpa))
     print('  bolt circle  r %.2f  %.2f MPa per bolt, and this is where it '
@@ -698,7 +702,7 @@ def run(_context: str):
           'bracket. GAUGE THE BROACH BEFORE PRINTING - the %.2f mm '
           'interference is ASSUMED'
           % (_bore_mpa, body.physicalProperties.mass * 1000,
-             _SG90.spline_dia - val('broach_d') * 10))
+             _J1S.spline_dia - val('broach_d') * 10))
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f'
           % (bb.minPoint.x * 10, bb.maxPoint.x * 10, bb.minPoint.y * 10,
              bb.maxPoint.y * 10, bb.minPoint.z * 10, bb.maxPoint.z * 10))

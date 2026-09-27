@@ -1,5 +1,9 @@
 """robotarm/_check_j1 - the J1 gate.
 
+SUPERSEDED FOR THE MG995 J1, 2026-09-27: this gate is built around the SG90
+(SG90_ENV below) and the legacy platter. The J1 / base stack is now gated by
+models/robotarm/_check_base.py. Kept for history; do not trust a PASS here.
+
 The turntable has never been swept in Fusion the way _check_shoulder sweeps
 J2. Every J1 clearance in this repo is ARITHMETIC: shoulder_bracket asserts
 the MG995 clears the ring, turntable_stator asserts the horn reaches the

@@ -127,6 +127,7 @@ _J4_SEAT_Z = _spline_hub(
     face=_PIVOT.journal + _PIVOT.flange_t + _PIVOT.reach).seat_z
 _J4_TAB_X = _PIVOT.plate_out + _J4_SEAT_Z
 _J3_SERVO = _servo_for('J3')
+from lib.j1_drive import J1_DECK_Z_MM as _J1_DECK_Z_MM  # noqa: E402
 _J3_CAP_T = _J3_SERVO.tab_below_top + _J3_SERVO.tab_thk
 
 MOUNTS = [
@@ -135,8 +136,10 @@ MOUNTS = [
     # out and the bolted j1_hub went in. This row still carried the horn-era
     # 12.60, so every gate reading it has been placing the yaw servo 2.40 mm
     # too high - including GATE servo_fit, which reported J1 clear.
+    # 10.20 -> lib/j1_drive.J1_DECK_Z_MM (6.10), 2026-09-27: J1 is an MG995
+    # now and the deck is DERIVED there, not typed here.
     dict(tag='J1 yaw', host='turntable_stator', servo=_servo_name_for('J1'),
-         shaft=(0.0, 0.0, 10.20),
+         shaft=(0.0, 0.0, _J1_DECK_Z_MM),
          xa=('y', +1), za=('z', +1),
          insert=(0.0, 0.0, -1.0), travel=30.0),
     dict(tag='J2 shoulder', host='shoulder_bracket',
