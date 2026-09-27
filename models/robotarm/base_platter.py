@@ -167,6 +167,12 @@ def run(_context: str):
           'M3 heat-set insert bore - CALIBRATED')
     param('insert_h', '8.0 mm', 'turret post insert depth - legacy MEASURED')
     param('lid_insert_h', '6.0 mm', 'lid column insert depth - one insert length')
+    param('screw_clear_d', '%.2f mm' % _FASTENER['M3']['clearance'], 'M3 clearance - FASTENER_MM')
+    param('runout', '4.0 mm',
+          'screw RUN-OUT below each insert. The turret screw is an M3 x 40 from\n'
+          '           the ring\'s head recess (z 31.1): it ends at z -8.9, and the insert\n'
+          '           bore stops at -8.0 - it would bottom and never clamp. Same for an\n'
+          '           M3 x 8 through the lid into a 6.0 column insert. 4.0 covers both.')
     param('lid_r', '88.0 mm',
           'lid screw circle. At r 88 a O8.8 column reaches r 92.4 against the\n'
           '           inner wall at r 92.0 - it MERGES into the wall, no sliver.')
@@ -368,6 +374,8 @@ def run(_context: str):
                -z_floor + val('tol'), JOIN)
         circle('turret_insert_%d' % i, px, py, val('insert_d'), -val('insert_h'),
                val('insert_h') + val('tol'), CUT)
+        circle('turret_runout_%d' % i, px, py, val('screw_clear_d'),
+               -val('insert_h') - val('runout'), val('runout') + val('tol'), CUT)
     for i, az in enumerate(LID_AZ):
         a = math.radians(az)
         px, py = val('lid_r') * math.cos(a), val('lid_r') * math.sin(a)
@@ -375,6 +383,8 @@ def run(_context: str):
                z_lid - z_floor + val('tol'), JOIN)
         circle('lid_insert_%d' % i, px, py, val('insert_d'), z_lid - val('lid_insert_h'),
                val('lid_insert_h') + val('tol'), CUT)
+        circle('lid_runout_%d' % i, px, py, val('screw_clear_d'),
+               z_lid - val('lid_insert_h') - val('runout'), val('runout') + val('tol'), CUT)
     group(t1, PH_POSTS)
 
     # ---- phase 3: ESP32 bay - four corner ledges inside four L fences ------------------
@@ -497,6 +507,8 @@ def run(_context: str):
           'tt_post_r contract' % (val('post_d') * 10, tval('post_r') * 10, POST_AZ,
                                   val('insert_d') * 10, val('insert_h') * 10,
                                   val('post_fillet') * 10))
+    print('screw run-out: O%.1f x %.1f below every insert - M3 x 40 turret, M3 x 8 lid'
+          % (val('screw_clear_d') * 10, val('runout') * 10))
     print('lid columns O%.1f at r %.1f az %s, insert O%.1f x %.1f, top z %.2f'
           % (val('boss_d') * 10, val('lid_r') * 10, LID_AZ, val('insert_d') * 10,
              val('lid_insert_h') * 10, z_lid * 10))

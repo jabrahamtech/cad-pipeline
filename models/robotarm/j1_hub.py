@@ -140,8 +140,9 @@ APPEARANCE_HINTS = hints_for('j1_hub')
 PH_BODY = 'hub body'
 PH_SPLINE = 'spline bore'
 PH_BOLTS = 'bolt circle'
+PH_CUP = 'cable cup'
 PH_FINISH = 'finish'
-PHASES = [PH_BODY, PH_SPLINE, PH_BOLTS, PH_FINISH]
+PHASES = [PH_BODY, PH_SPLINE, PH_BOLTS, PH_CUP, PH_FINISH]
 
 # THE J1 DRIVE CONTRACT LIVES IN lib/j1_drive.py since 2026-09-27 (J1 -> MG995).
 # It was typed verbatim here, in shoulder_bracket.py and in j1_hub.py; a
@@ -165,6 +166,11 @@ from lib.j1_drive import (  # noqa: E402
     J1_HUB,
     J1_BOSS_TOP_MM,
     J1_SPLINE_TOP_MM,
+    J1_CUP_R_IN_MM,
+    J1_CUP_WALL_MM,
+    J1_CUP_SKIRT_Z_MM,
+    J1_CUP_GATE_HALF_DEG,
+    ROTOR_GATE_AZ_DEG,
 )
 _J1S = J1_SERVO
 
@@ -222,6 +228,7 @@ J1_HUB_LEAD_IN_MARGIN_MM = 0.1   # leave the step some square shoulder
 KGCM_TO_NMM = 98.0665
 # Comparison epsilon and a friction estimate. NOT dimensions.
 TOL = 1e-9
+REL_TOL = 1e-6
 BOLT_PRELOAD_N = 200.0         # ASSUMED - M3 hand-tight in PETG
 PETG_ON_PETG_MU = 0.3          # HANDBOOK
 
@@ -312,6 +319,18 @@ def run(_context: str):
           '           same number, so the two must not drift.')
     param('face', TURRET + 'hub_h', 'hub height - the SHARED tt_hub_h')
     param('od', TURRET + 'hub_od', 'hub outer diameter - the SHARED tt_hub_od')
+    # ---- the CABLE CUP - lib/j1_drive, revision 2026-09-27 -----------------
+    param('cup_r_in', '%.2f mm' % J1_CUP_R_IN_MM, 'skirt inner radius - the loom loop\'s outer wall')
+    param('cup_wall', '%.2f mm' % J1_CUP_WALL_MM, 'skirt wall and top ring - MIN_WALL')
+    param('cup_skirt_z', '%.2f mm' % J1_CUP_SKIRT_Z_MM,
+          'skirt lower edge above this part\'s underside: 0.8 over the MG995 case top')
+    param('cup_gate_az', '%.2f deg' % ROTOR_GATE_AZ_DEG,
+          'the rotor\'s connector gate, SAME frame - the bolt pattern keys it', 'deg')
+    param('cup_gate_half', '%.2f deg' % J1_CUP_GATE_HALF_DEG,
+          'half-width of the cutout under the rotor gate + cable window', 'deg')
+    param('cup_gate_clear', '0.5 mm', 'how far the cutout stands off the hub body')
+    param('cup_lip', '0.8 mm',
+          'chamfer on the skirt\'s inner lower edge - the loom slides under it')
     param('boss_bore_d', '%.4f mm' % J1_HUB.boss_clear_d,
           'lower bore - CLEARS the Oe5.0 output collar at a free fit. Nothing\n'
           '           grips the boss; it only has to pass. It is also the hole the\n'
@@ -394,6 +413,7 @@ def run(_context: str):
     chf = comp.features.chamferFeatures
     NEW = adsk.fusion.FeatureOperations.NewBodyFeatureOperation
     CUT = adsk.fusion.FeatureOperations.CutFeatureOperation
+    JOIN = adsk.fusion.FeatureOperations.JoinFeatureOperation
 
     def sketch(plane, name):
         sk = comp.sketches.add(plane)
@@ -506,6 +526,51 @@ def run(_context: str):
              PREFIX + 'face - ' + PREFIX + 'pilot_h', PREFIX + 'pilot_h', CUT)
     group(t2, PH_BOLTS)
 
+    # ---- phase 4: the cable cup ---------------------------------------------
+    # A flat ring flush with the bolted top face, out to a skirt that hangs
+    # to just above the servo. The J1 loom loop lives INSIDE it, wrapping the
+    # hub as J1 turns +-180 deg, and cannot drift out into the 608/rotor nip.
+    # The cutout under the rotor's gate lets plugs drop straight into it.
+    t_cup = design.timeline.count
+    r_out = val('cup_r_in') + val('cup_wall')
+
+    def annulus(name, r_o, r_i, z0_expr, dz_expr, op):
+        sk = sketch(comp.xYConstructionPlane, 'sk_' + name)
+        for r in (r_o, r_i):
+            sk.sketchCurves.sketchCircles.addByCenterRadius(mpt(sk, 0, 0), r)
+        want = math.pi * (r_o ** 2 - r_i ** 2)
+        c = adsk.core.ObjectCollection.create()
+        for i in range(sk.profiles.count):
+            p = sk.profiles.item(i)
+            if abs(p.areaProperties().area - want) < want * REL_TOL:
+                c.add(p)
+        assert c.count == 1, sk.name + ': annulus profile not found'
+        return extrude(c, op, z0_expr, dz_expr, name)
+
+    annulus('cup_top', r_out, val('od') / 2 - val('tol'),
+            PREFIX + 'face - ' + PREFIX + 'cup_wall', PREFIX + 'cup_wall', JOIN)
+    annulus('cup_skirt', r_out, val('cup_r_in'), PREFIX + 'cup_skirt_z',
+            PREFIX + 'face - ' + PREFIX + 'cup_skirt_z', JOIN)
+    # the gate cutout: an annular sector in the top ring only
+    sk = sketch(comp.xYConstructionPlane, 'sk_cup_gate')
+    arcs, lines = sk.sketchCurves.sketchArcs, sk.sketchCurves.sketchLines
+    _mid, _half = val('cup_gate_az'), val('cup_gate_half')
+    _ri = val('od') / 2 + val('cup_gate_clear')
+    _ro = val('cup_r_in')
+
+    def _p(r, a):
+        return mpt(sk, r * math.cos(a), r * math.sin(a))
+    arcs.addByThreePoints(_p(_ro, _mid - _half), _p(_ro, _mid), _p(_ro, _mid + _half))
+    arcs.addByThreePoints(_p(_ri, _mid - _half), _p(_ri, _mid), _p(_ri, _mid + _half))
+    lines.addByTwoPoints(_p(_ri, _mid - _half), _p(_ro, _mid - _half))
+    lines.addByTwoPoints(_p(_ri, _mid + _half), _p(_ro, _mid + _half))
+    _v = comp.bRepBodies.item(0).volume
+    extrude(profiles(sk, expected=1), CUT,
+            PREFIX + 'face - ' + PREFIX + 'cup_wall - 1.0 mm', PREFIX + 'cup_wall + 2.0 mm',
+            'cup_gate_cutout')
+    assert _v - comp.bRepBodies.item(0).volume > TOL, 'the cup gate cutout cut nothing'
+    group(t_cup, PH_CUP)
+
     # ---- phase 4: finish ---------------------------------------------------
     # The bed face is the TOP face - this prints top down, bore vertical, so
     # the broach bore comes out as a clean vertical hole and the bolt circle
@@ -520,6 +585,10 @@ def run(_context: str):
     c_inp.chamferEdgeSets.addEqualDistanceChamferEdgeSet(
         edges_in_plane_z(val('face')), V(STYLE + 'ef'), False)
     chf.add(c_inp).name = 'bed_face_chamfer'
+    c_inp = chf.createInput2()
+    c_inp.chamferEdgeSets.addEqualDistanceChamferEdgeSet(
+        edges_in_plane_z(val('cup_skirt_z'), val('cup_r_in')), V(PREFIX + 'cup_lip'), False)
+    chf.add(c_inp).name = 'cup_lip'
     group(t3, PH_FINISH)
 
     # ---- identity ----------------------------------------------------------

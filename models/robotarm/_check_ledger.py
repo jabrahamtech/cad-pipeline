@@ -50,7 +50,8 @@ BATCHES = [
      'pruner_shell'],
     ['wrist_hub', 'wrist_rotator', 'wrist_roll', 'forearm'],
     ['upper_arm', 'shoulder_hub', 'shoulder_bracket'],
-    ['turntable_stator', 'turntable_ring', 'base_lid'],
+    # base_platter + j1_hub joined 2026-09-27 with the MG995 J1 / new base.
+    ['turntable_stator', 'turntable_ring', 'base_platter', 'base_lid', 'j1_hub'],
     # The J3 reduction. LAST because j3_gear asserts against fa_plate_t and
     # fa_bore_d, which do not exist until forearm has built in batch 1 - a
     # gear that silently skips its own fit check is worse than no check.

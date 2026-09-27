@@ -125,7 +125,7 @@ from lib.j1_drive import (  # noqa: E402
 _J1S = J1_SERVO
 from lib.servo import MG995_TAB_HOLE_PITCH_Y as _MG995_PY  # noqa: E402
 from lib.j1_drive import (  # noqa: E402
-    TT_AXLE_Z_MM, TT_ROLLER_OD_MM, J1_DECK_Z_MM,
+    TT_AXLE_Z_MM, TT_ROLLER_OD_MM, J1_DECK_Z_MM, J1_CUP_R_OUT_MM,
     HOME_R_MM, HOME_AZ_DEG, MAGNET_D_MM, MAGNET_H_MM, HALL_GAP_MM,
     MAGNET_PROTRUDE_MM, LOOM_AZ_DEG, LOOM_IR_MM, LOOM_OR_MM, LOOM_DEG,
     HALL_BODY_W_MM, HALL_BODY_H_MM, HALL_BODY_T_MM, HALL_LEAD_PITCH_MM,
@@ -982,6 +982,10 @@ def run(_context: str):
                 % (_nm, _az, _sep * 10, _raz))
         assert _or < tval('post_r') - val('post_d') / 2 - val('wall'), (
             'the %s runs into the mounting posts' % _nm)
+    # THE J1 CABLE CUP on j1_hub turns inside the roller stubs' inner ends.
+    assert stub_ir * 10 >= J1_CUP_R_OUT_MM + val('free') * 10 - TOL, (
+        'the roller stubs reach in to r %.2f and j1_hub\'s cable cup turns out to '
+        'r %.2f - the cup would strike them' % (stub_ir * 10, J1_CUP_R_OUT_MM))
     # THE HOME MAGNET SWEEPS A FULL CIRCLE under the rotor, so everything
     # it passes is checked against the annulus, not against one azimuth.
     _m_in = val('home_r') - val('magnet_d') / 2

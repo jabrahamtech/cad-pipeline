@@ -148,3 +148,24 @@ MAGNET_ROTOR_AZ_DEG = (HOME_AZ_DEG - (LOOM_AZ_DEG - ROTOR_GATE_AZ_DEG)) % 360.0
 # three M3; stiffness goes as d^4, so this is ~3.5x. base_lid's holes follow.
 TT_POST_D_MM = 12.0
 TT_POST_LID_CLEAR_MM = 0.7    # legacy MEASURED fit: O9.5 over O8.8
+
+
+# --- THE J1 CABLE CUP ----------------------------------------------------------
+# Revision 2026-09-27, after cable-routing research (igus / LAPP torsion
+# limits): a +-180 deg loom cannot twist straight down a ~20 mm axis, so it
+# WRAPS round the J1 hub in the chamber between the MG995's case top and the
+# rotor. Unguarded, that loose loop can drift outward into the 608s - whose
+# tops ride in contact with the rotor race face, a nip that would crush it.
+# j1_hub therefore grows a CUP: a flat ring flush with its bolted top face
+# out to a skirt that hangs down to just above the servo. It rotates with the
+# rotor, so the loop lives inside it, and the fixed end of the loom leaves
+# under the skirt's lower edge toward the stator's loom window.
+J1_CUP_R_IN_MM = 20.0         # skirt inner radius - the loop's outer wall
+J1_CUP_WALL_MM = 1.6          # skirt wall and top ring thickness - MIN_WALL
+J1_CUP_R_OUT_MM = J1_CUP_R_IN_MM + J1_CUP_WALL_MM   # 21.6, vs roller stubs at r 22.5
+J1_CUP_SKIRT_Z_MM = 0.4       # skirt lower edge above the hub underside, so
+                              # 0.8 above the MG995 case top in all
+J1_CUP_GATE_HALF_DEG = 25.0   # cutout under the rotor's connector gate + window,
+                              # +-25 deg about ROTOR_GATE_AZ_DEG (rotor frame)
+J1_CUP_LOOP_MM = 110.0        # free loom length to leave coiled in the cup:
+                              # +-180 deg x r_mean ~15.5 = 97, + margin (DERIVED)

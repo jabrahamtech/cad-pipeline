@@ -1,7 +1,7 @@
 # base_platter — spec (Fusion rebuild, replaces the printed legacy platter)
 
 Project: `models/robotarm/base_platter.py`
-Status: MODELED — 2026-09-27, revised same day · gate `_check_base.py` PASS · current exports `base_platter_v2`, `base_lid_v8`, `turntable_stator_v8`, `shoulder_bracket_v4`, `j1_hub_v1`
+Status: MODELED — 2026-09-27, revised same day · gate `_check_base.py` PASS · current exports `base_platter_v3`, `base_lid_v8`, `turntable_stator_v8`, `shoulder_bracket_v4`, `j1_hub_v2` (cable cup)
 
 ## Why this exists
 Jonathan, 2026-09-27: J1 base yaw becomes an **MG995 360° (continuous)**; J2
@@ -52,7 +52,7 @@ rotor keep their fixing pattern.
 ## Cable routes
 | Cable | Route |
 |---|---|
-| Arm loom (J2–J6) | rotor gate → stator window az 330 → lid window → tied at the lid's underside bridges → **straight down onto the bay** |
+| Arm loom (J2–J6) | rotor gate → **coiled 110 mm in the j1_hub cable cup** → under the cup's lip at az 330 → stator window → lid window → tied at the lid's underside bridges → **straight down onto the bay**. Harness: `_harness.md` |
 | J1 MG995 lead | case −Y end → stator keyway → lid servo opening → floor → bay |
 | Hall sensor | pocket → post slot → stator plate → lid Ø7 hole at az 210 → along the floor round the servo's −Y end → bay |
 | ESP32 top-face cables | straight up through the lid's loom window, beside the loom |
