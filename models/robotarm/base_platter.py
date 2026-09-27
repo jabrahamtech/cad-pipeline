@@ -88,6 +88,9 @@ POST_AZ = (120.0, 180.0, 240.0)          # tt_ contract - the ring's holes
 LID_AZ = (45.0, 135.0, 225.0, 315.0)
 CORNERS = ((-1, -1), (1, -1), (1, 1), (-1, 1))
 TOL = 1e-9
+FLUTES = 12                   # = turntable_ring's lobe count
+FLUTE_AZ0 = 30.0              # its first lobe
+FULL_TURN = 360.0
 REL_TOL = 1e-6                # profile-area match, relative
 PETG_G_CM3 = 1.27             # printed-mass convention, _HANDOFF.md
 PRINT_FILL = 0.65
@@ -214,7 +217,12 @@ def run(_context: str):
     param('tie_leg', '5.0 mm', 'bridge leg footprint, each side')
     param('tie_r', '76.0 mm', 'where the bridge stands - inside the DC entry')
     # ---- finish ----------------------------------------------------------------------
-    param('ef', '0.4 mm', 'elephant-foot chamfer on the floor edge - design_rules')
+    param('foot_facet', '3.0 mm',
+          'STYLE, 2026-09-27: _style.md rule 1 on the floor rim. It also does the\n'
+          '           elephant-foot chamfer\'s job. 3.0 not 4.0: the wall (3.0) and floor\n'
+          '           (2.4) must keep MIN_WALL across the corner behind it - asserted.')
+    param('flute_r', '4.0 mm', 'STYLE: vertical flutes on the outer wall, cutter radius')
+    param('flute_d', '1.0 mm', 'STYLE: flute depth - the 3.0 wall keeps 2.0')
     param('tol', '0.01 mm', 'overlap so joined solids share volume - not a dimension')
 
     # ---- idempotent rebuild ------------------------------------------------------
@@ -457,8 +465,8 @@ def run(_context: str):
             edges.add(e)
     assert edges.count == 1, 'expected the one floor rim edge, found %d' % edges.count
     ch_in = comp.features.chamferFeatures.createInput2()
-    ch_in.chamferEdgeSets.addEqualDistanceChamferEdgeSet(edges, V(PREFIX + 'ef'), False)
-    comp.features.chamferFeatures.add(ch_in).name = 'elephant_foot'
+    ch_in.chamferEdgeSets.addEqualDistanceChamferEdgeSet(edges, V(PREFIX + 'foot_facet'), False)
+    comp.features.chamferFeatures.add(ch_in).name = 'foot_facet'
     # root fillets on the three turret posts: the circle where each meets the
     # floor top, found by centre and radius, never by index.
     body = comp.bRepBodies.item(0)
@@ -476,6 +484,28 @@ def run(_context: str):
     f_in = comp.features.filletFeatures.createInput()
     f_in.addConstantRadiusEdgeSet(roots, V(PREFIX + 'post_fillet'), False)
     comp.features.filletFeatures.add(f_in).name = 'post_root_fillets'
+    # FLUTES, _style.md rule 4b carried down the base: 12, on the SAME
+    # azimuths as turntable_ring's lobes, so the two read as one design. They
+    # stop under the lid recess, where the wall is only rim_t, and above the
+    # foot facet - a plain band top and bottom frames them.
+    assert (val('wall') + val('floor_t') - val('foot_facet')) / math.sqrt(2) >= val('min_wall') - TOL, (
+        'the foot facet leaves under MIN_WALL across the floor corner')
+    assert val('wall') - val('flute_d') >= val('min_wall') - TOL, 'the flutes thin the wall'
+    _half = math.degrees(math.asin(min(1.0, math.sqrt(
+        val('flute_r') ** 2 - (val('flute_r') - val('flute_d')) ** 2) / ro)))
+    for _nm, _haz, _d in (('toggle', val('toggle_az'), val('toggle_d')),
+                          ('dc', val('dc_az'), val('dc_d'))):
+        _hz = math.degrees(_haz)
+        _hole_half = math.degrees(math.asin(_d / 2 / ro))
+        _gap = min(abs(((_hz - (FLUTE_AZ0 + k * FULL_TURN / FLUTES)) + FULL_TURN / 2) % FULL_TURN - FULL_TURN / 2)
+                   for k in range(FLUTES))
+        assert _gap >= _half + _hole_half + math.degrees(val('min_wall') / ro), (
+            'a flute runs into the %s hole' % _nm)
+    for k in range(FLUTES):
+        a = math.radians(FLUTE_AZ0 + k * FULL_TURN / FLUTES)
+        rc = ro + val('flute_r') - val('flute_d')
+        circle('flute_%02d' % k, rc * math.cos(a), rc * math.sin(a), 2 * val('flute_r'),
+               -H + val('foot_facet'), H - val('foot_facet') - val('lid_t') - val('min_wall'), CUT)
     group(t4, PH_FINISH)
 
     # ---- identity + diagnostics ---------------------------------------------------------------

@@ -28,7 +28,6 @@ The base shell does not exist yet, so the three turntable clips are drawn
 where they will sit and everything above them is yawed about J1 as one body.
 """
 
-import importlib.util
 import math
 import os
 import sys
@@ -41,6 +40,7 @@ if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
 from lib.joints import J5_ROTATOR_ORIGIN_PARTS  # noqa: E402
+import lib.grip as G  # noqa: E402
 
 OUT = os.path.join(REPO, 'docs', 'robotarm')
 W, H = 1800, 1300
@@ -51,7 +51,7 @@ J2_PITCH_DEG = 35.0        # shoulder, up and forward
 J3_PITCH_DEG = -55.0       # elbow, relative to the upper arm
 J4_PITCH_DEG = 15.0        # wrist pitch, relative to the forearm
 J5_ROLL_DEG = 0.0
-J6_BLADE_DEG = 12.0        # part closed, so the mouth reads as a mouth
+J6_OPEN_MM = 12.0          # grip_jaw travel each side - lib/grip.GR_STROKE is full open
 
 VIEWS = {
     'arm_iso': ((1.0, -1.3, 0.65), (0.0, 0.0, 1.0)),
@@ -87,7 +87,8 @@ def run(_context: str):
     design.timeline.moveToEnd()
     need = ['turntable_stator', 'turntable_ring', 'shoulder_bracket', 'shoulder_hub',
             'wrist_hub', 'upper_arm', 'forearm', 'wrist_roll', 'wrist_rotator',
-            'pruner_shell', 'pruner_rack', 'pruner_blade', 'gripper_pinion',
+            'grip_shell', 'grip_jaw', 'grip_finger', 'gripper_pinion',
+            'base_platter', 'base_lid', 'j1_hub', 'roller_cap',
             # The geared elbow. Without these J3 renders as a bare pivot and
             # the picture quietly shows an arm that has no elbow drive - the
             # same way it once showed a turret riding on nothing because the
@@ -161,7 +162,7 @@ def run(_context: str):
     # rather than typed: the shell's tail face is its bbox floor in Y, the
     # rotator's front face is its bbox ceiling in Z, and R_x(90) takes one
     # normal to the other.
-    shell_tail = bbox('pruner_shell').minPoint.y
+    shell_tail = bbox('grip_shell').minPoint.y
     rot_front = bbox('wrist_rotator').maxPoint.z
     m = rotx(90)
     t = m.translation
@@ -169,41 +170,13 @@ def run(_context: str):
     m.translation = t
     M_shell = mul(M_rot, m)
 
-    # ---- the head, verbatim from _check_pruner ------------------------------
-    tail_r = gv('pb_tail_r')
-    pivot_y = tail_r + gv('pr_pin_y')
-    offset, face, r_pitch = gv('gr_offset'), gv('gr_face'), gv('gr_r_pitch')
-    x_a = gv('pr_tooth_lead') - int(round(gv('pr_rack_teeth'))) * gv('pr_pitch')
-    th = math.radians(J6_BLADE_DEG)
-    s = tail_r * math.tan(th)
-
-    def blade_at(theta, turned):
-        mm_ = M3()
-        if turned:
-            mm_.setToRotation(math.pi, VEC(0, 1, 0), ORG)
-        mm_.transformBy(rot(theta, VEC(0, 0, 1)))
-        tt = mm_.translation
-        tt.y = pivot_y
-        mm_.translation = tt
-        return mm_
-
-    def rack_at(dist, turned):
-        mm_ = M3()
-        if turned:
-            mm_.setToRotation(math.pi, VEC(0, 1, 0), ORG)
-        tt = mm_.translation
-        tt.x = -dist if turned else dist
-        tt.z = -offset if turned else offset
-        mm_.translation = tt
-        return mm_
+    # ---- the head, verbatim from _check_grip -------------------------------
+    s = J6_OPEN_MM
 
     def pinion_at(dist):
-        mm_ = rot(-math.pi / 2 + (x_a + dist) / r_pitch, VEC(0, 0, 1))
+        mm_ = rot(G.s_to_phase(dist), VEC(0, 0, 1))
         mm_.transformBy(rot(-math.pi / 2, VEC(1, 0, 0)))
-        tt = mm_.translation
-        tt.y = -face / 2
-        mm_.translation = tt
-        return mm_
+        return mul(trans(0, G.PINION_BACK_Y / 10, 0), mm_)
 
     turned = M3()
     turned.setToRotation(math.pi, VEC(0, 1, 0), ORG)
@@ -293,15 +266,31 @@ def run(_context: str):
     placed.append(('wrist_roll', add(C('wrist_roll'), M_roll)))
     placed.append(('wrist_rotator', add(C('wrist_rotator'), M_rot)))
 
-    placed.append(('pruner_shell_a', add(C('pruner_shell'), M_shell)))
-    placed.append(('pruner_shell_b', add(C('pruner_shell'), mul(M_shell, turned))))
-    placed.append(('gripper_pinion', add(C('gripper_pinion'),
-                                         mul(M_shell, pinion_at(s)))))
-    for flip, tag in ((False, 'a'), (True, 'b')):
-        placed.append(('pruner_rack_' + tag, add(C('pruner_rack'),
-                                                 mul(M_shell, rack_at(s, flip)))))
-        placed.append(('pruner_blade_' + tag, add(C('pruner_blade'),
-                                                  mul(M_shell, blade_at(th, flip)))))
+    placed.append(('grip_shell_a', add(C('grip_shell'), M_shell)))
+    placed.append(('grip_shell_b', add(C('grip_shell'), mul(M_shell, turned))))
+    placed.append(('gripper_pinion', add(C('gripper_pinion'), mul(M_shell, pinion_at(s)))))
+    for sgn, tag in ((1, 'a'), (-1, 'b')):
+        base = turned if sgn < 0 else M3()
+        placed.append(('grip_jaw_' + tag, add(C('grip_jaw'),
+                                              mul(M_shell, mul(trans(sgn * s / 10, 0, 0), base)))))
+        placed.append(('grip_finger_' + tag, add(C('grip_finger'), mul(M_shell, mul(
+            trans(sgn * (s - G.FINGER_LEAD) / 10, G.FINGER_Y0 / 10, 0), base)))))
+
+    # ---- the base: platter, lid, J1 hub, roller caps - all in the stator frame
+    placed.append(('base_platter', add(C('base_platter'), M3())))
+    placed.append(('base_lid', add(C('base_lid'), M3())))
+    from lib.j1_drive import J1_DECK_Z_MM, J1_HUB  # noqa: E402
+    placed.append(('j1_hub', add(C('j1_hub'), mul(yaw, trans(0, 0, (J1_DECK_Z_MM + J1_HUB.seat_z) / 10)))))
+    import ast  # noqa: E402
+    _src = open(os.path.join(REPO, 'models', 'robotarm', 'turntable_stator.py')).read()
+    ROLL_AZ = [ast.literal_eval(n.value) for n in ast.parse(_src).body
+               if isinstance(n, ast.Assign) and getattr(n.targets[0], 'id', '') == 'ROLL_AZ'][0]
+    _seat = gv('tt_roller_r') - gv('tt_roller_w') / 2 - gv('rc_t')
+    for i, az in enumerate(ROLL_AZ):
+        a = math.radians(az)
+        c_, s_ = math.cos(a), math.sin(a)
+        placed.append(('roller_cap_%d' % i, add(C('roller_cap'), frame(
+            (_seat * c_, _seat * s_, gv('tt_axle_z')), (-s_, c_, 0), (0, 0, 1), (c_, s_, 0)))))
 
     # The unposed originals have to go dark, but ONLY after the posed copies
     # exist and have been switched on explicitly. Hiding an occurrence first
@@ -356,7 +345,7 @@ def run(_context: str):
         'Fusion handed back %s - a stale roller component reserves the name'
         % roll_occ.component.name)
     rc = roll_occ.component
-    for i, az in enumerate((90.0, 210.0, 330.0)):
+    for i, az in enumerate(ROLL_AZ):
         a = math.radians(az)
         cx, cy = roller_r * math.cos(a), roller_r * math.sin(a)
         # RADIAL axle. The roller has to ROLL, and the rotor above it moves
@@ -375,7 +364,14 @@ def run(_context: str):
         pl.setByAngle(rc.zConstructionAxis, adsk.core.ValueInput.createByReal(a),
                       rc.yZConstructionPlane)
         plane = rc.constructionPlanes.add(pl)
+        # THAT PLANE CONTAINS THE J1 AXIS, so a circle drawn on it sits at
+        # radius 0 - every roller rendered ON the axis. Offset it out to the
+        # roller radius along its own (radial) normal first.
+        pl2 = rc.constructionPlanes.createInput()
+        pl2.setByOffset(plane, adsk.core.ValueInput.createByReal(roller_r / 10.0))
+        plane = rc.constructionPlanes.add(pl2)
         sk = rc.sketches.add(plane)
+        sk.isVisible = False
         sk.sketchCurves.sketchCircles.addByCenterRadius(
             sk.modelToSketchSpace(P3(cx / 10.0, cy / 10.0, axle_z / 10.0)),
             b608.od / 20.0)
@@ -399,42 +395,24 @@ def run(_context: str):
                 n = f.geometry.normal
                 flats.append((n.x, n.y, n.z))
         assert flats, 'roller %d has no flat face to take an axis from' % i
+        _c = body.boundingBox
+        _rc = math.hypot((_c.minPoint.x + _c.maxPoint.x) / 2, (_c.minPoint.y + _c.maxPoint.y) / 2) * 10
+        assert abs(_rc - roller_r) < 0.5, 'roller %d sits at r %.2f, not %.2f' % (i, _rc, roller_r)
         nx, ny, nz = flats[0]
         dot = abs(nx * math.cos(a) + ny * math.sin(a))
         assert dot > 0.999 and abs(nz) < 0.001, (
             'roller %d at az %.0f has its axle %.1f deg off radial - it would '
             'scrub across the race instead of rolling along it'
             % (i, az, math.degrees(math.acos(min(1.0, dot)))))
+    # construction planes render as orange glass in the middle of the turret
+    for k in range(rc.constructionPlanes.count):
+        rc.constructionPlanes.item(k).isLightBulbOn = False
     placed.append(('608ZZ_rollers', roll_occ))
     roll_occ.isLightBulbOn = True
     print('3 x 608ZZ Ø%.1f x %.1f at r %.1f, axle z %.1f -> race face z %.2f'
           % (b608.od, b608.width, roller_r, axle_z, race_z))
-    _rotor_z = C('shoulder_bracket').bRepBodies.item(0).boundingBox.maxPoint.z * 10
     print('  the rotor rides ON these, not on the stator: race face z %.2f'
           % race_z)
-
-    # ---- the printed platter, for scale --------------------------------------
-    # Imported, not modelled. If the STEP is missing the render still works and
-    # just looks like the arm is floating, which is what it did before.
-    step = os.path.join(REPO, 'legacy', 'exports', 'robotarm', 'base_platter_v1.step')
-    PLATTER = 'legacy_base_platter'
-    for i in range(design.allComponents.count):
-        c = design.allComponents.item(i)
-        if c.name.startswith(PLATTER):
-            c.name = PLATTER + '_stale_' + str(i)
-    for o in list(root.occurrences):
-        if o.component.name.startswith(PLATTER + '_stale_'):
-            o.deleteMe()
-    if os.path.exists(step):
-        imp = app.importManager
-        before = set(o.component.name for o in root.occurrences)
-        imp.importToTarget(imp.createSTEPImportOptions(step), root)
-        for o in list(root.occurrences):
-            if o.component.name not in before and o.component.bRepBodies.count:
-                o.component.name = PLATTER
-                o.transform = trans(0, 0, -4.2)   # its rim top -> z 0
-                placed.append((PLATTER, o))
-                break
 
     # ---- the picture ---------------------------------------------------------
     vp = app.activeViewport
@@ -480,10 +458,46 @@ def run(_context: str):
         if vp.saveAsImageFile(path, W, H):
             written.append(path)
 
+    # CLOSE-UPS of the two things this revision changed most: the head and the
+    # base. Framed on the visible bodies of each, like the whole-arm views.
+    def frame_on(pred):
+        lo_, hi_ = [1e18] * 3, [-1e18] * 3
+        for nm_, o in placed:
+            if not pred(nm_):
+                continue
+            b = o.component.bRepBodies.item(0).createForAssemblyContext(o).boundingBox
+            for i, (a_, c_) in enumerate(((b.minPoint.x, b.maxPoint.x), (b.minPoint.y, b.maxPoint.y),
+                                          (b.minPoint.z, b.maxPoint.z))):
+                lo_[i], hi_[i] = min(lo_[i], a_), max(hi_[i], c_)
+        return lo_, hi_
+    CLOSE = {'head_close': (lambda n: n.startswith('grip') or n == 'wrist_rotator', (1.0, 0.9, 0.7)),
+             'base_close': (lambda n: n in ('base_platter', 'base_lid', 'turntable_stator',
+                                            'turntable_ring', 'j1_hub', '608ZZ_rollers')
+                            or n.startswith('roller_cap'), (1.0, -1.2, 0.8))}
+    for name, (pred, d) in CLOSE.items():
+        lo_, hi_ = frame_on(pred)
+        c = [(lo_[i] + hi_[i]) / 2 for i in range(3)]
+        sp = max(hi_[i] - lo_[i] for i in range(3))
+        norm = math.sqrt(sum(x * x for x in d))
+        cam = vp.camera
+        cam.target = adsk.core.Point3D.create(*c)
+        cam.eye = adsk.core.Point3D.create(*[c[i] + d[i] / norm * sp * 3 for i in range(3)])
+        cam.upVector = adsk.core.Vector3D.create(0, 0, 1)
+        cam.isFitView = False
+        vp.camera = cam
+        cam = vp.camera
+        cam.viewExtents = sp * 1.3
+        vp.camera = cam
+        vp.refresh()
+        adsk.doEvents()
+        path = os.path.join(OUT, name + '.png')
+        if vp.saveAsImageFile(path, W, H):
+            written.append(path)
+
     print('posed %d occurrences' % len(placed))
-    print('J1 %.0f  J2 %.0f  J3 %.0f  J4 %.0f  J5 %.0f  blades %.0f deg' % (
+    print('J1 %.0f  J2 %.0f  J3 %.0f  J4 %.0f  J5 %.0f  jaws %.0f mm open each' % (
         J1_YAW_DEG, J2_PITCH_DEG, J3_PITCH_DEG, J4_PITCH_DEG,
-        J5_ROLL_DEG, J6_BLADE_DEG))
+        J5_ROLL_DEG, J6_OPEN_MM))
     print('head on the rotator: shell tail y %.2f -> rotator front z %.2f, '
           'offset %.2f mm' % (shell_tail * 10, rot_front * 10,
                               (rot_front - shell_tail) * 10))

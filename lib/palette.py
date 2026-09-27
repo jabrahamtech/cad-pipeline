@@ -35,7 +35,7 @@ is filament - so this drives renders and the assembly diagrams only.
 # reference body renders in the right colour in the assembly.
 GREEN = ('forearm', 'forearm_px', 'forearm_nx', 'forearm_rail',
          'upper_arm', 'gripper_shell', 'gripper_rack_jaw',
-         'pruner_shell')
+         'pruner_shell', 'grip_shell')
 
 # forest green #228B22, white #F5F5F5 - the exact values, for a tinted
 # appearance. HINTS is the fallback that finds a stock Fusion appearance by

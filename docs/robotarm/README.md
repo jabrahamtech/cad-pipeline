@@ -1,62 +1,70 @@
-# robotarm — what to buy, what to print (current as of 2026-09-27)
+# robotarm — what to print, what to buy (current as of 2026-09-28)
 
-J1 = MG995 360° (continuous) · J2 = MG995 · J3–J6 = SG90 · ESP32 on a carrier
-PCB in the base. Specs: `specs/robotarm/base_platter.md`, `_harness.md`,
-`_build.md` (arm assembly), `_state.md`. The previous version of this file
-(the SG90-J1 turret print set) is in git history.
+J1 = MG995 360° · J2 = MG995 · J3–J6 = SG90 · ESP32 carrier PCB in the base ·
+**new gripper head** (fin ray fingers, no cutter). Specs: `specs/robotarm/grip.md`,
+`base_platter.md`, `_harness.md`, `_build.md`. Renders: `docs/robotarm/arm_*.png`,
+`head_close.png`, `base_close.png`.
 
-## Print — new or changed on 2026-09-27
+## Print — in this order
 
-| # | file (`exports/robotarm/`) | qty | orientation · notes |
-|---|---|---|---|
-| 0 | `gauge_broach_v1.3mf` | 1 | FIRST. Its G row (MG995 spline) settles the press-fit j1_hub is cut to |
-| 1 | `base_platter_v3.3mf` | 1 | floor down, no support · Ø190 · ~133 g |
-| 2 | `base_lid_v8.3mf` | 1 | TOP FACE DOWN (tie bridges grow up), brim · ~63 g |
-| 3 | `turntable_stator_v8.3mf` | 1 | base down, supports OFF (stub axles bridge) · ~36 g |
-| 4 | `j1_hub_v2.3mf` | 1 | top face down, 5 walls, 40 % infill · cable cup |
-| 5 | `shoulder_bracket_v4.3mf` | 1 | −X face down · **or** keep the printed one: drill the centre bore to Ø6.5 and glue the magnet flat |
+Everything PETG, 0.2 layers, 3 walls, 15–20 % infill, **supports off**, unless noted.
+Files are in `exports/robotarm/`.
 
-## Print — unchanged arm parts (skip any already printed)
+**1. Gauge first**
+- `gauge_broach_v1.3mf` — its G row settles the MG995 spline press the J1 hub is cut to.
 
-| part | qty | notes |
-|---|---|---|
-| turntable_ring | 1 | bore is the J1 journal — do not sand |
-| shoulder_hub | 1 | the FLANGELESS one |
-| wrist_hub | 3 | J2 idler + J4 both sides |
-| upper_arm | 1 | Ø3.4 elbow bolt bore (drill a printed one) |
-| forearm | 1 set | printed MG90S forearm + `j4_tab_shim` ×2, or new `forearm_px`, `forearm_nx`, `forearm_rail` ×2 |
-| j3_gear, j3_pinion, j3_axle, j3_servo_cap | 1 each | elbow 2:1 |
-| wrist_roll | 2 | one design, second MIRRORED |
-| wrist_rotator | 1 | front face down; takes 4 heat-set inserts |
-| pruner_shell / pruner_blade / pruner_rack | 2 each | |
-| gripper_pinion | 1 | |
-| gripcut_finger | 2 | TOP FACE DOWN or the flexure fails |
+**2. Base + turret (white)**
+- `base_platter_v4.3mf` ×1 — floor down, no brim needed (3 mm foot facet) · ~130 g
+- `base_lid_v8.3mf` ×1 — top face down, brim
+- `turntable_stator_v9.3mf` ×1 — base down, supports OFF
+- `turntable_ring_v6.3mf` ×1 — don't sand the bore
+- `j1_hub_v3.3mf` ×1 — top face down, 5 walls, 40 % infill
 
-Arm plates: `exports/robotarm/plates/plate_armstack_{green,white}_v8`,
-`plate_wrist_green_v8`, `plate_wrist_white_v9`.
+**3. Shoulder + small base bits (white)**
+- `shoulder_bracket_v4.3mf` ×1 — −X face down
+- `plates/plate_bits_white_v1.3mf` — 3 roller caps + 4 PCB keepers (tiny: slow first layer)
+
+**4. Arm**
+- `plates/plate_armstack_green_v9.3mf` — upper arm (open duct), forearm halves, 2 rails (brim), J3 servo cap, 2 duct grommets
+- `plates/plate_armstack_white_v9.3mf` — J3 gear, J3 pinion, J3 axle, shoulder hub
+- `plates/plate_wrist_green_v8.3mf` + `plates/plate_wrist_white_v9.3mf` — wrist roll pair (mirrored), rotator, hubs
+
+**5. Gripper head (new)**
+- `plates/plate_grip_green_v1.3mf` — 2 shell halves
+- `plates/plate_grip_white_v1.3mf` — 2 jaws + pinion
+- `grip_finger_v1.3mf` ×2 — **TPU 95A**, flat, 20–25 mm/s
+
+Retired — don't print: the pruner (`pruner_*`, `gripcut_finger`), the old `gripper_*` shells/jaws, `j4_tab_shim` (only for a pre-SG90 printed forearm).
 
 ## Buy
 
 **Motion + sensing**
 - MG995 360° ×1, MG995 ×1, SG90 ×4 (in hand)
-- 608ZZ ×4: 3 turntable, 1 elbow (in hand)
-- A3144 hall sensor (TO-92) ×1 (pack of 5–10)
-- **5 × 2 mm** N52 disc magnets ×1 (pack), not 6 × 2
+- 608ZZ ×4 — 3 turntable, 1 elbow
+- A3144 hall sensor ×1 (pack), 5 × 2 mm N52 disc magnets (pack)
+
+**Filament**
+- PETG white, PETG green
+- **TPU 95A** — ~10 g for the two fingers (skip if you have it)
 
 **Wiring** (`_harness.md`)
-- Silicone wire 20 AWG red + black, 2 m each; 22 AWG red + black, 1 m each
-- Silicone wire 26 AWG, 5 colours, 2 m each
-- Dupont crimp kit (M/F pins, 1–4 pin housings) + crimper; heat-shrink assortment
-- Braided PET sleeving 6 mm (1 m) and 3 mm (2 m); 2.5 mm zip ties; 10 × 10 mm stick-on tie mounts (pack)
+- Silicone wire: 20 AWG red/black 2 m each; 22 AWG red/black 1 m each; 26 AWG 5 colours 2 m each
+- Dupont crimp kit + crimper; heat-shrink assortment
+- Braided PET sleeving 6 mm (1 m) + 3 mm (2 m); 2.5 mm zip ties; 10 × 10 mm stick-on tie mounts
 
 **Power**
-- 5 V 10 A supply with bare leads (through the rim pass-through, zip-tied)
-- Toggle switch rated ≥ 10 A DC, 12–13 mm thread, panel ≤ 3 mm
-- Electrolytic caps: 1000 µF ≥ 10 V ×1, 100 µF ≥ 10 V ×2
+- 5 V 10 A supply, bare leads
+- Toggle switch ≥ 10 A DC, 12–13 mm thread, panel ≤ 3 mm
+- Caps: 1000 µF ≥ 10 V ×1, 100 µF ≥ 10 V ×2
 
-**Fasteners**
-- M3 heat-set inserts Ø4.0 hole: 11 (7 base, 4 wrist_rotator) + spares
-- M3 socket: ×40 ×4 (3 turret, 1 elbow); ×16 ×2 (j3 cap); ×12 ×3 (roller axles); ×10 ×3 (hub to rotor); ×8 ×8 (4 lid, 4 head to rotator); ×6 ×4 (J1 MG995 tabs)
-- M3 × 35 + nyloc ×2 (pruner shells); M3 × 8 ×4 (J2 MG995 tabs)
-- M2 × 20 + nut ×3 (wrist_roll clamshell); servo screws as supplied
-- Printed roller caps ×3 (Ø11) retain the 608s. They're the `roller_cap` body in `gauge_fits_v4.3mf`; print 3. A standard M3 washer falls through.
+**Fasteners** (all socket cap unless noted)
+- M3 heat-set inserts, Ø4.0 hole: 11 (7 base, 4 rotator) + spares
+- M3 × 40 ×4 — 3 turret, 1 elbow
+- M3 × 30 ×2 — gripper clamshell
+- M3 × 16 ×6 — 2 J3 cap, 4 fingers
+- M3 × 10 ×3 — J1 hub to rotor
+- M3 × 8 ×15 — 3 roller caps, 4 lid, 4 head to rotator, 4 J2 MG995 tabs
+- M3 × 6 ×4 — J1 MG995 tabs
+- M3 nuts ×6 — 4 fingers, 2 clamshell
+- M2 × 20 + nut ×3 — wrist roll clamshell
+- Long 2.5 mm hex key (≥ 60 mm reach) — the head's rotator screws go in through the front
