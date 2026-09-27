@@ -315,8 +315,17 @@ def run(_context: str):
 
     # ---- phase 4: cable route ------------------------------------------------------
     t3 = design.timeline.count
+    # OUT THROUGH BOTH DRUMS. Until 2026-09-27 this ran axis to axis, y -l1..0,
+    # and both drums were SOLID past their axes: a closed tunnel with no way
+    # in or out, while specs/robotarm/_harness.md routed the loom through it
+    # and tied off at its "mouths". _check_bits found it - duct_grommet sat in
+    # solid. Now it breaks out of each drum's end, so the J2 and J3 service
+    # loops leave the link along its own axis. The side walls beside it are
+    # unchanged (the socket_wall assert above), and at J3 the elbow bolt
+    # still crosses it on the axis.
     xz_rect('duct', -val('duct_x'), val('duct_x'), -val('duct_z'), val('duct_z'),
-            '-' + PREFIX + 'l1', PREFIX + 'l1', CUT)
+            '-' + PREFIX + 'l1 - ' + PREFIX + 'drum_r - 1 mm',
+            PREFIX + 'l1 + 2 * ' + PREFIX + 'drum_r + 2 mm', CUT)
     group(t3, PHASES[3])
 
     # ---- phase 5: finish -------------------------------------------------------------
@@ -470,7 +479,7 @@ def run(_context: str):
     print('POLYGONAL: %.1f mm facet on %d silhouette arcs, %.1f on %d socket flats;'
           ' %.2f mm of wall left at the duct corner'
           % (sval('facet') * 10, n_arc, sval('ef') * 10, n_line, duct_wall_mm))
-    print('duct %.1f x %.1f runs the full length, hollowing both drums, %.1f rails' % (
+    print('duct %.1f x %.1f runs the full length and OUT through both drum ends, %.1f rails' % (
         val('duct_x') * 20, val('duct_z') * 20, rail * 10))
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f' % (
         bb.minPoint.x * 10, bb.maxPoint.x * 10, bb.minPoint.y * 10,

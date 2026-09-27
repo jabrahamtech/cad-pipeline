@@ -323,7 +323,9 @@ def run(_context: str):
     param('cup_r_in', '%.2f mm' % J1_CUP_R_IN_MM, 'skirt inner radius - the loom loop\'s outer wall')
     param('cup_wall', '%.2f mm' % J1_CUP_WALL_MM, 'skirt wall and top ring - MIN_WALL')
     param('cup_skirt_z', '%.2f mm' % J1_CUP_SKIRT_Z_MM,
-          'skirt lower edge above this part\'s underside: 0.8 over the MG995 case top')
+          'skirt lower edge above this part\'s underside - DERIVED in lib/j1_drive to\n'
+          '           clear the 608 roller caps (top z 18.6) by a free fit. The nip it\n'
+          '           guards is where the 608 tops meet the rotor, at z 24.1.')
     param('cup_gate_az', '%.2f deg' % ROTOR_GATE_AZ_DEG,
           'the rotor\'s connector gate, SAME frame - the bolt pattern keys it', 'deg')
     param('cup_gate_half', '%.2f deg' % J1_CUP_GATE_HALF_DEG,

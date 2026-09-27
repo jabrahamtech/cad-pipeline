@@ -6,20 +6,27 @@ at J1 in the stator frame (z 0 = platter rim top, J1 axis):
     base_platter, base_lid, turntable_stator, turntable_ring   as built
     j1_hub          moved up to its seat: deck_z + seat_z
     shoulder_bracket  moved so its race face lands on tt_race_z
+    roller_cap x3   on each 608's stub, over the proud stub end
+    pcb_keeper x4   pushed down over each ESP32 corner fence
     DUMMIES (COTS envelopes, not printed): the MG995 case + tabs + boss,
     the ESP32 board and its above/below cable envelopes, the hall sensor,
-    the home magnet
+    the home magnet, the three 608ZZ and the three M3 x 8 cap-screw heads
 
 and runs Design.analyzeInterference over all of it, WITH A POSITIVE
 CONTROL - a block buried in the platter floor that MUST be reported. A gate
 that has never found anything proves nothing (_HANDOFF.md section 2).
 
-Run THREE times: STAGE = 1 (fresh document, first three parts), STAGE = 2
-(the other three + the dummies), STAGE = 0 (place + analyse). One call for
-all of it overran the 60 s MCP limit on 2026-09-27.
+Run FOUR times: STAGE = 1 (fresh document, first three parts), STAGE = 2
+(the other three + the dummies), STAGE = 3 (the printed bits + roller
+dummies), STAGE = 0 (place + analyse). One call for all of it overran the
+60 s MCP limit on 2026-09-27.
 
-EXPECTED contacts are listed in EXPECTED and must be ZERO-VOLUME or absent:
-touching faces are not interference (areCoincidentFacesIncluded = False).
+Touching faces are not interference (areCoincidentFacesIncluded = False).
+The ONE designed overlap is the pcb_keeper: a 0.15 press on its fence and
+a 0.2 preload onto the board, plus its tongue sitting inside the board's
+above-envelope at each corner. Those three pairs are computed here from the
+keeper's own parameters and must land within KEEPER_BAND of the analytic
+volume - which also proves every keeper really is ON its fence.
 """
 
 import io
@@ -36,6 +43,9 @@ PARTS = ('base_platter', 'base_lid', 'turntable_stator', 'turntable_ring',
 DUMMY = 'robotarm_dummy_'
 CONTROL = DUMMY + 'positive_control'
 LIMIT_MM3 = 0.001                  # a volume below this is a touching face
+BITS = ('roller_cap', 'pcb_keeper')
+KEEPER_BAND = (0.85, 1.15)         # measured / analytic, for the designed overlaps
+HEAD = 'dummy_m3_head_'
 
 
 def _exec(part):
@@ -67,8 +77,8 @@ def _box(root, name, x0, x1, y0, y1, z0, z1):
     return occ
 
 
-def _cyl(root, name, x, y, d, z0, z1, d_in=0.0):
-    occ = root.occurrences.addNewComponent(adsk.core.Matrix3D.create())
+def _cyl(root, name, x, y, d, z0, z1, d_in=0.0, m=None):
+    occ = root.occurrences.addNewComponent(m or adsk.core.Matrix3D.create())
     comp = occ.component
     comp.name = DUMMY + name
     sk = comp.sketches.add(comp.xYConstructionPlane)
@@ -88,6 +98,74 @@ def _cyl(root, name, x, y, d, z0, z1, d_in=0.0):
     inp.setDistanceExtent(False, adsk.core.ValueInput.createByString('%.4f mm' % (z1 - z0)))
     comp.features.extrudeFeatures.add(inp)
     return occ
+
+
+def _frame(origin_mm, xa, ya, za):
+    m = adsk.core.Matrix3D.create()
+    V3 = adsk.core.Vector3D.create
+    m.setWithCoordinateSystem(
+        adsk.core.Point3D.create(*[c / 10 for c in origin_mm]),
+        V3(*[float(c) for c in xa]), V3(*[float(c) for c in ya]),
+        V3(*[float(c) for c in za]))
+    return m
+
+
+def _radial(az_deg, r_mm, z_mm):
+    """Local +z radially OUT at az, local +y up, origin at (r, z)."""
+    import math
+    a = math.radians(az_deg)
+    c, s_ = math.cos(a), math.sin(a)
+    return _frame((r_mm * c, r_mm * s_, z_mm), (-s_, c, 0.0), (0.0, 0.0, 1.0), (c, s_, 0.0))
+
+
+def _local_cyl(root, name, m, d, z0, z1, d_in=0.0):
+    """_cyl at the origin of its own frame m."""
+    return _cyl(root, name, 0.0, 0.0, d, z0, z1, d_in, m)
+
+
+def _roll_az():
+    import ast
+    src = io.open(os.path.join(REPO, 'models', 'robotarm', 'turntable_stator.py'),
+                  encoding='utf-8').read()
+    for n in ast.parse(src).body:
+        if isinstance(n, ast.Assign) and getattr(n.targets[0], 'id', '') == 'ROLL_AZ':
+            return ast.literal_eval(n.value)
+    raise AssertionError('turntable_stator has no ROLL_AZ')
+
+
+def _keeper_frames(ups):
+    """(origin, x, y, z) for each board corner, board-top z. The keeper is
+    symmetric about its corner diagonal, so a mirror corner is a rotation."""
+    def bp(n):
+        return ups.itemByName('bp_' + n).value * 10
+    zf = -bp('height') + bp('floor_t')
+    ztop = zf + bp('esp_below') + bp('pcb_t')
+    x0, x1, yh = bp('esp_x0'), bp('esp_x0') + bp('pcb_w'), bp('pcb_l') / 2
+    out = []
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            o = (x0 if sx < 0 else x1, -yh if sy < 0 else yh, ztop)
+            if sx * sy > 0:
+                out.append(_frame(o, (-sx, 0, 0), (0, -sy, 0), (0, 0, 1)))
+            else:
+                out.append(_frame(o, (0, -sy, 0), (-sx, 0, 0), (0, 0, 1)))
+    return out
+
+
+def _keeper_expected(ups):
+    """Analytic mm3, per keeper, of its three designed overlaps."""
+    def pk(n):
+        return ups.itemByName('pk_' + n).value * 10
+    f_in = -pk('play')
+    f_out = f_in - pk('fence_t')
+    half = pk('press') / 2
+    reach, tongue = pk('reach'), pk('tongue')
+    film = (half * pk('grip') * 2 * (reach - f_out)
+            + half * (pk('fence_over') + pk('preload')) * 2 * (reach - f_in))
+    lap = 2 * tongue * reach - tongue ** 2
+    return {'base_platter': film,
+            'dummy_esp_pcb': pk('preload') * lap,
+            'dummy_esp_above': (pk('fence_over') + pk('plate_t')) * lap}
 
 
 def _move(root, comp_name, dz_mm):
@@ -112,11 +190,33 @@ def build(app, stage):
         print('stage 1: %s built - now STAGE = 2' % ', '.join(PARTS[:3]))
         return
     doc = app.activeDocument
-    assert doc.name.startswith('gate_base'), 'stage 2 runs in the gate_base document'
-    for p in PARTS[3:]:
-        _exec(p)
+    assert doc.name.startswith('gate_base'), 'stage %d runs in the gate_base document' % stage
     design = adsk.fusion.Design.cast(app.activeProduct)
     root = design.rootComponent
+    if stage == 3:
+        for p in BITS:
+            _exec(p)
+        ups = design.userParameters
+
+        def tt(n):
+            return ups.itemByName('tt_' + n).value * 10
+        seat = tt('roller_r') - tt('roller_w') / 2        # the race face the cap sits on
+        cap_t = ups.itemByName('rc_t').value * 10
+        for m in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.')]:
+            del sys.modules[m]
+        from lib.j1_drive import J1_HUB_HEAD_D_MM, J1_HUB_HEAD_H_MM
+        for az in _roll_az():
+            _local_cyl(root, '608_%d' % az, _radial(az, seat, tt('axle_z')),
+                       tt('roller_od'), 0.0, tt('roller_w'), d_in=tt('axle_d') + 0.1)
+            _local_cyl(root, 'm3_head_%d' % az,
+                       _radial(az, seat - cap_t - J1_HUB_HEAD_H_MM, tt('axle_z')),
+                       J1_HUB_HEAD_D_MM, 0.0, J1_HUB_HEAD_H_MM)
+        if design.snapshots.hasPendingSnapshot:
+            design.snapshots.add()
+        print('stage 3: %s + 608/head dummies built - now STAGE = 0' % ', '.join(BITS))
+        return
+    for p in PARTS[3:]:
+        _exec(p)
     for m in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.')]:
         del sys.modules[m]
     from lib.j1_drive import (J1_SERVO, J1_DECK_Z_MM, TT_RACE_Z_MM,
@@ -152,7 +252,7 @@ def build(app, stage):
          TT_RACE_Z_MM - MAGNET_PROTRUDE_MM, TT_RACE_Z_MM, d_in=2 * HOME_R_MM - MAGNET_D_MM)
     # POSITIVE CONTROL - buried in the floor under the bay
     _box(root, 'positive_control', x0 + 10, x0 + 20, -5, 5, zf - 1.5, zf + 0.5)
-    print('built %d occurrences into %s - now STAGE = 0'
+    print('built %d occurrences into %s - now STAGE = 3'
           % (root.occurrences.count, doc.name))
 
 
@@ -173,6 +273,26 @@ def place(design):
     sb.transform2 = adsk.core.Matrix3D.create()
     sb_race = sb.component.bRepBodies.item(0).boundingBox.minPoint.z * 10
     _move(root, 'robotarm_shoulder_bracket', TT_RACE_Z_MM - sb_race)
+    # the printed bits: one occurrence each was built at the origin; put it
+    # at its first station and add the rest. Extra copies from an earlier
+    # run are removed first, so this is re-runnable.
+    ups = design.userParameters
+    seat = (ups.itemByName('tt_roller_r').value - ups.itemByName('tt_roller_w').value / 2) * 10
+    cap_t = ups.itemByName('rc_t').value * 10
+    z_ax = ups.itemByName('tt_axle_z').value * 10
+    stations = {'robotarm_roller_cap': [_radial(az, seat - cap_t, z_ax) for az in _roll_az()],
+                'robotarm_pcb_keeper': _keeper_frames(ups)}
+    for cname, frames in stations.items():
+        occs = [o for o in root.occurrences if o.component.name == cname]
+        assert occs, 'no %s in the document - run STAGE 3' % cname
+        for o in occs[1:]:
+            o.deleteMe()
+        occs = occs[:1] + [root.occurrences.addExistingComponent(
+            occs[0].component, adsk.core.Matrix3D.create()) for _ in frames[1:]]
+        # SET EACH ONE AFTER ALL EXIST: addExistingComponent(comp, m) came back
+        # with m composed onto the first occurrence's transform (2026-09-27).
+        for o, m in zip(occs, frames):
+            o.transform2 = m
     if design.snapshots.hasPendingSnapshot:
         design.snapshots.add()
     for o in root.occurrences:
@@ -200,6 +320,9 @@ def analyse(app):
     inp.areCoincidentFacesIncluded = False
     res = design.analyzeInterference(inp)
     hits, control = [], 0.0
+    expect = _keeper_expected(design.userParameters)
+    n_keep = sum(1 for o in root.occurrences if o.component.name == 'robotarm_pcb_keeper')
+    got = dict((k, 0.0) for k in expect)
     for i in range(res.count):
         r = res.item(i)
         v = r.interferenceBody.volume * 1000
@@ -212,12 +335,25 @@ def analyse(app):
             continue
         if n1.startswith('dummy_') and n2.startswith('dummy_'):
             continue            # envelopes of one COTS item overlap by design
+        if 'pcb_keeper' in (n1, n2):
+            other = n2 if n1 == 'pcb_keeper' else n1
+            if other in got:
+                got[other] += v
+                continue
         hits.append((v, n1, n2))
     print('=== GATE base: %d occurrences ===' % col.count)
     print('positive control: %.2f mm3 found (must be > 0)' % control)
     for v, n1, n2 in sorted(hits, reverse=True):
         print('  INTERFERENCE %-26s ^ %-26s %9.3f mm3' % (n1, n2, v))
-    ok = control > 0 and not hits
+    keep_ok = True
+    for k, per in sorted(expect.items()):
+        want = per * n_keep
+        ratio = got[k] / want if want else 0.0
+        good = KEEPER_BAND[0] <= ratio <= KEEPER_BAND[1]
+        keep_ok = keep_ok and good
+        print('  keeper ^ %-18s %8.2f mm3, analytic %8.2f (x%d)  %s'
+              % (k, got[k], want, n_keep, 'ok' if good else 'OUT OF BAND'))
+    ok = control > 0 and not hits and keep_ok and n_keep == 4
     print('GATE base_interference: %s' % ('PASS' if ok else 'FAIL'))
 
 

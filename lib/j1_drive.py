@@ -163,9 +163,27 @@ TT_POST_LID_CLEAR_MM = 0.7    # legacy MEASURED fit: O9.5 over O8.8
 J1_CUP_R_IN_MM = 20.0         # skirt inner radius - the loop's outer wall
 J1_CUP_WALL_MM = 1.6          # skirt wall and top ring thickness - MIN_WALL
 J1_CUP_R_OUT_MM = J1_CUP_R_IN_MM + J1_CUP_WALL_MM   # 21.6, vs roller stubs at r 22.5
-J1_CUP_SKIRT_Z_MM = 0.4       # skirt lower edge above the hub underside, so
-                              # 0.8 above the MG995 case top in all
+# THE SKIRT STOPS ABOVE THE ROLLER CAPS. Each 608 is held on its stub by a
+# printed cap and an M3 screw at the stub's INNER end (r 23.5 -> 21.1), and a
+# O11 cap reaches z 18.6. A skirt down to the servo would have run through all
+# three. So the skirt guards z 19.0 up - which is where the danger is: the
+# nip is where each 608's TOP meets the rotor, at z 24.1.
+ROLLER_CAP_D_MM = 11.0        # spans the 608 inner race face (O8..O12)
+ROLLER_CAP_T_MM = 3.0        # 1.7 floor over the recess - MIN_WALL + 0.1
+ROLLER_CAP_RECESS_D_MM = 8.3  # clears the O7.9 stub, which stands 1.0 proud
+ROLLER_CAP_RECESS_H_MM = 1.3  # of the bearing face (+0.3)
+ROLLER_SCREW_L_MM = 8.0       # M3 x 8 socket cap, cap -> stub pilot. The stator
+                              # asserts it bites >= 2 d and stops short of the pilot.
+ROLLER_CAP_TOP_Z_MM = TT_AXLE_Z_MM + ROLLER_CAP_D_MM / 2.0       # stator frame, 18.6
+J1_CUP_SKIRT_Z_MM = (ROLLER_CAP_TOP_Z_MM + 0.4                  # free fit
+                     - (J1_DECK_Z_MM + J1_HUB.seat_z))          # hub-frame: 2.8
 J1_CUP_GATE_HALF_DEG = 25.0   # cutout under the rotor's connector gate + window,
                               # +-25 deg about ROTOR_GATE_AZ_DEG (rotor frame)
 J1_CUP_LOOP_MM = 110.0        # free loom length to leave coiled in the cup:
                               # +-180 deg x r_mean ~15.5 = 97, + margin (DERIVED)
+
+
+# --- the rotor's connector gate, as shoulder_bracket cuts it (it asserts) ----
+ROTOR_GATE_W_MM = 9.8
+ROTOR_GATE_IR_MM = 12.2
+ROTOR_GATE_OR_MM = 18.0

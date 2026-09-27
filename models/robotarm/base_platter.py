@@ -66,6 +66,10 @@ from lib.j1_drive import (  # noqa: E402
     J1_SERVO, J1_DECK_Z_MM, LOOM_AZ_DEG, LOOM_IR_MM, LOOM_OR_MM, LOOM_DEG, TT_POST_D_MM,
 )
 from lib.design_rules import MIN_FILLET_LOADED_MM  # noqa: E402
+from lib.esp_bay import (  # noqa: E402
+    PCB_W_MM, PCB_L_MM, PCB_T_MM, ESP_H_MM, ESP_CLEAR_MM,
+    FENCE_T_MM, FENCE_LEG_MM, LEDGE_MM, FENCE_OVER_MM,
+)
 
 COMPONENT = 'robotarm_base_platter'
 BODY_NAME = 'base_platter'
@@ -177,26 +181,26 @@ def run(_context: str):
           'lid screw circle. At r 88 a O8.8 column reaches r 92.4 against the\n'
           '           inner wall at r 92.0 - it MERGES into the wall, no sliver.')
     # ---- ESP32 bay - MEASURED by Jonathan 2026-09-27 ---------------------------
-    param('pcb_w', '50.0 mm', 'carrier PCB, along X - MEASURED')
-    param('pcb_l', '70.0 mm', 'carrier PCB, along Y - MEASURED')
-    param('pcb_t', '1.3 mm', 'carrier PCB thickness - MEASURED ("probably")')
-    param('esp_h', '30.0 mm',
+    param('pcb_w', '%.2f mm' % PCB_W_MM, 'carrier PCB, along X - MEASURED')
+    param('pcb_l', '%.2f mm' % PCB_L_MM, 'carrier PCB, along Y - MEASURED')
+    param('pcb_t', '%.2f mm' % PCB_T_MM, 'carrier PCB thickness - MEASURED ("probably")')
+    param('esp_h', '%.2f mm' % ESP_H_MM,
           'PCB + ESP32 + cables, BOTH faces, all-in height - MEASURED ("about")')
     param('esp_below', PREFIX + 'esp_h / 2 - ' + PREFIX + 'pcb_t / 2',
           'how much of the 30 hangs UNDER the board. ASSUMED mid-height -\n'
           '           Jonathan has not given the split. Edit this one number.')
     param('esp_keep', '1.5 mm', 'keep-out round the envelope - enclosures_electronics.md')
-    param('esp_clear', '1.0 mm',
+    param('esp_clear', '%.2f mm' % ESP_CLEAR_MM,
           'INSERTION PLAY, total, board to fences. Jonathan: "leave tolerance to\n'
           '           put it in". 0.5 a side - a PCB with cables hanging off both\n'
           '           faces goes in by hand, not by a locational fit.')
     param('esp_x0', '16.0 mm',
           'inner (servo-side) edge of the board. The MG995 window reaches x 10.60;\n'
           '           a 3.0 fence plus 2.4 of air puts the board here. Asserted.')
-    param('fence_t', '3.0 mm', 'corner fence wall, both legs of the L')
-    param('fence_leg', '8.0 mm', 'how far each leg of the L runs along the board edge')
-    param('ledge', '2.5 mm', 'how far the ledge runs in under the board corner')
-    param('fence_over', '3.0 mm', 'fence height above the board top face')
+    param('fence_t', '%.2f mm' % FENCE_T_MM, 'corner fence wall, both legs of the L')
+    param('fence_leg', '%.2f mm' % FENCE_LEG_MM, 'how far each leg of the L runs along the board edge')
+    param('ledge', '%.2f mm' % LEDGE_MM, 'how far the ledge runs in under the board corner')
+    param('fence_over', '%.2f mm' % FENCE_OVER_MM, 'fence height above the board top face')
     param('finger', '12.0 mm', 'finger gap past each short end of the board')
     # ---- rim -----------------------------------------------------------------------
     param('toggle_d', '13.35 mm', 'toggle switch thread O13.1 + clearance - MEASURED (legacy)')

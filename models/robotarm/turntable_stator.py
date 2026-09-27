@@ -126,6 +126,9 @@ _J1S = J1_SERVO
 from lib.servo import MG995_TAB_HOLE_PITCH_Y as _MG995_PY  # noqa: E402
 from lib.j1_drive import (  # noqa: E402
     TT_AXLE_Z_MM, TT_ROLLER_OD_MM, J1_DECK_Z_MM, J1_CUP_R_OUT_MM,
+    ROLLER_CAP_D_MM, ROLLER_CAP_TOP_Z_MM, J1_CUP_SKIRT_Z_MM,
+    ROLLER_CAP_T_MM, ROLLER_CAP_RECESS_D_MM, ROLLER_CAP_RECESS_H_MM,
+    ROLLER_SCREW_L_MM, J1_HUB_SCREW_D_MM,
     HOME_R_MM, HOME_AZ_DEG, MAGNET_D_MM, MAGNET_H_MM, HALL_GAP_MM,
     MAGNET_PROTRUDE_MM, LOOM_AZ_DEG, LOOM_IR_MM, LOOM_OR_MM, LOOM_DEG,
     HALL_BODY_W_MM, HALL_BODY_H_MM, HALL_BODY_T_MM, HALL_LEAD_PITCH_MM,
@@ -535,7 +538,7 @@ def run(_context: str):
           '           which is fixed to the OUTER race; touch that and the roller\n'
           '           drags instead of rolling. 11.0 leaves 1.5 mm of contact and\n'
           '           1.0 mm of margin. It was 12.5, which overhung the race.')
-    param('washer_od', '11.0 mm',
+    param('washer_od', '%.2f mm' % ROLLER_CAP_D_MM,
           'the retainer, and it is a PRINTED part - see roller_cap on the gauge.\n'
           '           A standard M3 washer is Ø7 and falls straight THROUGH the\n'
           '           608\'s Ø8 bore, clamping nothing. The alternatives are all\n'
@@ -961,6 +964,23 @@ def run(_context: str):
         'mounting deck at %.2f' % (boss_top_z * 10, deck_z * 10))
     assert val('axle_len') > tval('roller_w'), (
         'the stub is shorter than the bearing - the washer would clamp the axle end')
+    # THE ROLLER CAP (models/robotarm/roller_cap.py) sits over the stub's proud
+    # end in a recess, so it clamps the RACE and never the stub - and its M3
+    # has to bite without bottoming. Both are this part's numbers against lib's.
+    _proud = (val('axle_len') - tval('roller_w')) * 10
+    assert ROLLER_CAP_RECESS_H_MM >= _proud + val('free') * 10 / 2 - TOL, (
+        'the cap recess is %.2f deep and the stub stands %.2f proud - the cap '
+        'would clamp the stub, not the race' % (ROLLER_CAP_RECESS_H_MM, _proud))
+    assert ROLLER_CAP_RECESS_D_MM >= tval('axle_d') * 10 + val('loc') * 10 * 2 - TOL, (
+        'the cap recess %.2f does not clear the %.2f stub'
+        % (ROLLER_CAP_RECESS_D_MM, tval('axle_d') * 10))
+    _bite = ROLLER_SCREW_L_MM - ROLLER_CAP_T_MM + _proud
+    assert _bite >= 2 * J1_HUB_SCREW_D_MM - TOL, (
+        'an M3 x %.0f through the cap bites only %.2f into the stub - want 2 d'
+        % (ROLLER_SCREW_L_MM, _bite))
+    assert _bite <= val('axle_screw_z') * 10 - val('free') * 10 - TOL, (
+        'an M3 x %.0f bites %.2f and the stub pilot is only %.2f deep - it '
+        'bottoms before it clamps' % (ROLLER_SCREW_L_MM, _bite, val('axle_screw_z') * 10))
     assert deck_z > plate_t + 1e-9, (
         'the servo deck at z %.2f is inside the base plate' % (deck_z * 10))
     _relief_ir0 = roll_r - tval('roller_w') / 2 - val('relief_margin')
@@ -986,6 +1006,13 @@ def run(_context: str):
     assert stub_ir * 10 >= J1_CUP_R_OUT_MM + val('free') * 10 - TOL, (
         'the roller stubs reach in to r %.2f and j1_hub\'s cable cup turns out to '
         'r %.2f - the cup would strike them' % (stub_ir * 10, J1_CUP_R_OUT_MM))
+    # ...and its SKIRT turns above the roller caps, which reach in to r 21.1.
+    _skirt_bottom = race_z * 10 - J1_HUB_FACE_MM + J1_CUP_SKIRT_Z_MM
+    _cap_top = (tval('axle_z') + val('washer_od') / 2) * 10
+    assert abs(_cap_top - ROLLER_CAP_TOP_Z_MM) < 1e-6, 'roller cap height disagrees with lib'
+    assert _skirt_bottom >= _cap_top + val('free') * 10 - TOL, (
+        'the cable cup skirt comes down to z %.2f and the roller caps reach z %.2f'
+        % (_skirt_bottom, _cap_top))
     # THE HOME MAGNET SWEEPS A FULL CIRCLE under the rotor, so everything
     # it passes is checked against the annulus, not against one azimuth.
     _m_in = val('home_r') - val('magnet_d') / 2
@@ -1084,6 +1111,32 @@ def run(_context: str):
         xy_arc('roller_relief_%d' % i, relief_ir, cheek_ir, math.radians(az),
                relief_half, mm(val('relief_floor')),
                mm(plate_t - val('relief_floor') + 1.0), CUT)
+    # THE FACE RELIEF. The arc above ends on the CIRCLE r = cheek_ir, but the
+    # cheek's inner face - and the 608's outer end face, 0.5 in from it - is a
+    # PLANE. Between circle and plane a sliver of plate stood 4.0 tall, and
+    # the outer race's end corner ran 0.4 into it at |t| 5.5..6.2: found by
+    # _check_base's 608 dummies on 2026-09-27 (0.010 mm3 per roller - small,
+    # and a roller that drags). This squares the relief off at the plane,
+    # across the cheek's own width, so the cheeks keep their whole footing.
+    _chord = math.sqrt(max((tval('roller_od') / 2) ** 2
+                           - (tval('axle_z') - plate_t) ** 2, 0.0))
+    assert _chord + val('relief_clear') <= val('cheek_w') / 2 + TOL, (
+        'the 608 crosses the plate top %.2f either side of its axis and the '
+        'face relief is only %.2f wide' % (_chord * 10, val('cheek_w') / 2 * 10))
+    for i, az in enumerate(ROLL_AZ):
+        a = math.radians(az)
+        sk = sketch(comp.xYConstructionPlane, 'relief_face_%d' % i)
+        pts = []
+        for rr, tt in ((roll_r, -val('cheek_w') / 2), (cheek_ir, -val('cheek_w') / 2),
+                       (cheek_ir, val('cheek_w') / 2), (roll_r, val('cheek_w') / 2)):
+            pts.append((rr * math.cos(a) - tt * math.sin(a),
+                        rr * math.sin(a) + tt * math.cos(a)))
+        lines = sk.sketchCurves.sketchLines
+        for k in range(4):
+            lines.addByTwoPoints(mxy(sk, pts[k][0], pts[k][1]),
+                                 mxy(sk, pts[(k + 1) % 4][0], pts[(k + 1) % 4][1]))
+        extrude(one(sk), CUT, mm(val('relief_floor')),
+                mm(plate_t - val('relief_floor') + 1.0), 'relief_face_%d' % i)
     # PLAYBOOK: when a CUT changes nothing, the cut is in the wrong place.
     _vol_after = comp.bRepBodies.item(0).volume
     assert _vol_before - _vol_after > 1e-4, (
@@ -1322,7 +1375,7 @@ def run(_context: str):
           'case bottom z %.2f - below the platter datum, so base_platter carries it'
           % (_J1S.name, deck_z * 10, case_top * 10, case_bottom * 10))
     print('  bearing seat: %.1f collar on a %.1f inner race, retained by a %.1f '
-          'washer (NOT a standard M3 Ø7 - it falls through the Ø8 bore)'
+          'printed roller_cap + M3 x 8 (NOT a standard M3 washer - it falls through the Ø8 bore)'
           % (val('collar_d') * 10, val('race_od') * 10, val('washer_od') * 10))
     print('  SHAFT ON AXIS: case centre offset %+.2f in Y (shaft %.1f from the near '
           'end of a %.1f case)' % (val('shaft_off') * 10, val('shaft_from_end') * 10,

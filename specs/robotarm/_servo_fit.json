@@ -5,11 +5,11 @@
     {
       "case_at": null,
       "case_mm3": 0.0,
-      "control_mm3": 118.12,
+      "control_mm3": 405.0,
       "horn_at": null,
       "horn_mm3": 0.0,
       "host": "turntable_stator",
-      "servo": "SG90",
+      "servo": "MG995",
       "tag": "J1 yaw"
     },
     {

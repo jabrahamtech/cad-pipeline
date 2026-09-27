@@ -228,8 +228,12 @@ PLATE_OF = {
     'j3_axle': 'armstack', 'j3_servo_cap': 'armstack',
     'forearm_px': 'armstack', 'forearm_nx': 'armstack',
     'forearm_rail': 'armstack',
+    # the upper arm's duct grommets print with it, in its colour
+    'duct_grommet': 'armstack',
     'wrist_roll': 'wrist', 'wrist_hub': 'wrist', 'wrist_rotator': 'wrist',
     'j4_tab_shim': 'wrist',
+    # the base's small printed bits, 2026-09-27 - all white, one profile
+    'roller_cap': 'bits', 'pcb_keeper': 'bits',
 }
 # WHICH PLATES TO BUILD. None is every key in PLATE_OF. Otherwise a key or a
 # sequence of keys from PLATE_OF - 'wrist', 1, (1, 2) - and only those parts
@@ -262,6 +266,8 @@ PLATE_NOTE = {
               'OFF, no brim, one profile. The two wrist_roll bodies are A '
               'MIRRORED PAIR: see specs/robotarm/_wrist_plate.md before you '
               'pick them off the bed.'),
+    'bits': ('The base\'s small bits: 3 roller caps, 4 PCB keepers. Supports OFF, '
+             'no brim. Tiny parts - slow the first layer.'),
     99: 'Whatever was left over - no deliberate grouping applies.',
 }
 
@@ -305,6 +311,9 @@ ORIENT = [
     # extrusion up the build axis - zero overhang, zero bridge - at the cost
     # of a 24.8 mm tower on ~69 mm2, which is what the brim below is for.
     ('forearm_rail',     2, ('y',  90),  'end face down, prism, brim'),
+    ('duct_grommet',     2, None,        'mouth end down, tie bar on the bed. TWO - one per duct end'),
+    ('roller_cap',       3, None,        'head face down, pocket up. THREE - one per 608'),
+    ('pcb_keeper',       4, ('x', 180),  'plate DOWN, sleeve and boss up. FOUR - one per board corner'),
     # WAS ('x', 90) - 'back face down, built +Y' - and that was the MONOLITH's
     # orientation, left behind when the part became a clamshell. ('y', 90)
     # puts local +X down, and the outer side face is the +X face at

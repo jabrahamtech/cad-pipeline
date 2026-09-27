@@ -23,7 +23,7 @@ this one:
   _check_shoulder does J2 sweep without touching
 Each rebuilds only the parts IT needs, so each is blind to everything else.
 
-RUN IT IN BATCHES: `mod.BATCH = 0`, then 1, 2, 3, 4. Eighteen parts is over
+RUN IT IN BATCHES: `mod.BATCH = 0`, then 1, 2, 3, 4, 5. Eighteen parts is over
 the 60 s MCP call limit in one go. Batch 0 opens the fresh document; the LAST
 batch does the comparison. Running them out of order is caught, not guessed at.
 
@@ -59,6 +59,9 @@ BATCHES = [
     # forearm's fa_* parameters and asserts they are present rather than
     # defaulting, so it cannot build before batch 1 has run.
     ['j3_pinion', 'j3_gear', 'j3_axle', 'j3_servo_cap'],
+    # The small printed bits, 2026-09-27. duct_grommet asserts against the
+    # ua_* duct it presses into, so it must follow upper_arm (batch 2).
+    ['roller_cap', 'pcb_keeper', 'duct_grommet'],
 ]
 # The superseded gripper head still builds but is not in the arm, so it is not
 # in the ledger. Add gripper_shell and gripper_rack_jaw here if it comes back.

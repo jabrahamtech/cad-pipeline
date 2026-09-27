@@ -205,6 +205,9 @@ from lib.j1_drive import (  # noqa: E402
     MAGNET_POCKET_MM,
     MAGNET_ROTOR_AZ_DEG,
     ROTOR_GATE_AZ_DEG,
+    ROTOR_GATE_W_MM,
+    ROTOR_GATE_IR_MM,
+    ROTOR_GATE_OR_MM,
 )
 from lib.design_rules import JOINT_FIT_MM as _FIT_J  # noqa: E402
 _J1S = J1_SERVO
@@ -977,6 +980,14 @@ def run(_context: str):
     _gate_ir_mm = val('gate_ir') * 10
     _gate_span_mm = val('cable_ir') * 10 - _gate_ir_mm
     PLUG_W_MM, PLUG_T_MM = 8.7, 4.5     # standard JR/Futaba servo plug
+    # The magnet jig keys into this gate, so its size is a contract too.
+    for _nm, _mine, _lib in (('gate_w', _gate_w_mm, ROTOR_GATE_W_MM),
+                             ('gate_ir', _gate_ir_mm, ROTOR_GATE_IR_MM),
+                             ('cable_ir', val('cable_ir') * 10,
+                              ROTOR_GATE_OR_MM)):
+        assert abs(_mine - _lib) < TOL * 10, (
+            '%s is %.2f here and %.2f in lib/j1_drive - the magnet jig keys '
+            'on the lib value' % (_nm, _mine, _lib))
     assert _gate_w_mm >= PLUG_W_MM + 1.0, (
         'the gate is %.1f wide and a servo plug is %.1f - it would need '
         'forcing' % (_gate_w_mm, PLUG_W_MM))

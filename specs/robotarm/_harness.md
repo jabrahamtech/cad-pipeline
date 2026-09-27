@@ -40,15 +40,20 @@ The loom crosses each pitch joint at its drum end, ≈ r 13 from the axis.
 - **Bend radius:** ≥ 10 × OD. That is 14 mm for 1.4 mm silicone wire (LAPP, rule of thumb).
 - **Tie at both ends of every loop, and nowhere in it.** Over-binding makes the
   cable corkscrew and fail (igus).
-- **Anchors on printed links that have no tie point:** stick-on 10 × 10 mm
-  zip-tie mounts at each duct mouth. Clean the PETG with IPA first.
+- **Anchors:** the upper-arm duct mouths have a printed `duct_grommet` each
+  (rounded lip + tie bar) — tie the loom to the bar. Stick-on 10 × 10 mm
+  zip-tie mounts only where no printed anchor exists: the rotor boss beside
+  the connector gate, and the bracket column. Clean the PETG with IPA first.
+- **The upper arm's duct is open at both drum ends since v3.** Older prints
+  are a sealed tunnel with no exit (see `duct_grommet.md`).
 
 ## J1 — why a cup (modelled, `j1_hub_v2`)
 Industrial torsion-rated cable allows only ±180–360° per metre (LAPP, igus).
 J1's ±180° over ~20 mm of axis is ~10× that. So the loom **wraps** round the
 hub instead of twisting. Unguarded, that loop could drift into the 608s,
 whose tops are in contact with the rotor: a nip. The hub's cup (skirt at
-r 20–21.6, 0.8 above the MG995) keeps the loop in. The fixed end leaves under
+r 20–21.6, bottom edge z 19.0 — 0.4 above the printed roller caps, which is
+what sets it) keeps the loop in; the nip it guards is at z 24.1. The fixed end leaves under
 the skirt's chamfered lip at az 330, straight down the stator and lid loom
 windows onto the ESP32 bay. **No slip ring:** ±180° doesn't need one, and a
 capsule ring would have to sit on the axis the MG995 shaft occupies.
