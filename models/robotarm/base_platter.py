@@ -62,7 +62,10 @@ from lib.design_rules import FASTENER_MM as _FASTENER  # noqa: E402
 from lib.design_rules import MIN_WALL_MM as _MIN_WALL  # noqa: E402
 from lib.design_rules import JOINT_FIT_MM as _FIT  # noqa: E402
 from lib.servo import SERVO_CASE_CLEARANCE_MM  # noqa: E402
-from lib.j1_drive import J1_SERVO, J1_DECK_Z_MM, HOME_R_MM, HOME_AZ_DEG  # noqa: E402
+from lib.j1_drive import (  # noqa: E402
+    J1_SERVO, J1_DECK_Z_MM, LOOM_AZ_DEG, LOOM_IR_MM, LOOM_OR_MM, LOOM_DEG, TT_POST_D_MM,
+)
+from lib.design_rules import MIN_FILLET_LOADED_MM  # noqa: E402
 
 COMPONENT = 'robotarm_base_platter'
 BODY_NAME = 'base_platter'
@@ -154,6 +157,12 @@ def run(_context: str):
     # ---- posts and columns -------------------------------------------------------
     param('boss_d', '%.2f mm' % _FASTENER['M3']['boss_od'],
           'M3 insert boss - FASTENER_MM (O4.0 insert + 2.4 wall)')
+    param('post_d', '%.2f mm' % TT_POST_D_MM,
+          'TURRET post diameter - lib/j1_drive.TT_POST_D_MM. O8.8 -> O12.0 in the\n'
+          '           2026-09-27 revision: 40 mm columns carrying the arm\'s tipping\n'
+          '           moment; stiffness ~ d^4, so ~3.5x for 3.2 mm of diameter.')
+    param('post_fillet', '%.2f mm' % MIN_FILLET_LOADED_MM,
+          'root fillet where each turret post meets the floor - MIN_FILLET_LOADED')
     param('insert_d', '%.2f mm' % _FASTENER['M3']['insert'],
           'M3 heat-set insert bore - CALIBRATED')
     param('insert_h', '8.0 mm', 'turret post insert depth - legacy MEASURED')
@@ -323,17 +332,25 @@ def run(_context: str):
         % (sz0 * 10, z_floor * 10))
     for az in POST_AZ + LID_AZ:
         rr = tval('post_r') if az in POST_AZ else val('lid_r')
+        pd = val('post_d') if az in POST_AZ else val('boss_d')
         px, py = rr * math.cos(math.radians(az)), rr * math.sin(math.radians(az))
         dx = max(x0 - c_half - val('fence_t') - px, 0.0, px - (x1 + c_half + val('fence_t')))
         dy = max(-yh - val('finger') - py, 0.0, py - (yh + val('finger')))
-        assert math.hypot(dx, dy) >= val('boss_d') / 2 + val('free') - TOL, (
+        assert math.hypot(dx, dy) >= pd / 2 + val('free') - TOL, (
             'the post/column at az %.0f r %.1f lands in the ESP32 bay' % (az, rr * 10))
         dx = max(sx0 - px, 0.0, px - sx1)
         dy = max(sy0 - py, 0.0, py - sy1)
-        assert math.hypot(dx, dy) >= val('boss_d') / 2 + val('free') - TOL, (
+        assert math.hypot(dx, dy) >= pd / 2 + val('free') - TOL, (
             'the post/column at az %.0f is in the MG995\'s way' % az)
-    _hx = HOME_R_MM / 10 * math.cos(math.radians(HOME_AZ_DEG))
-    assert _hx > x0 - TOL, 'the hall sensor leads should drop over the bay'
+    # THE LOOM DROPS ONTO THE BOARD. lib/j1_drive.LOOM_AZ_DEG put the stator's
+    # loom window over this bay; if either moves, this says so.
+    for _r in (LOOM_IR_MM / 10, LOOM_OR_MM / 10):
+        for _a in (LOOM_AZ_DEG - LOOM_DEG / 2, LOOM_AZ_DEG + LOOM_DEG / 2):
+            _lx = _r * math.cos(math.radians(_a))
+            _ly = _r * math.sin(math.radians(_a))
+            assert x0 - val('fence_t') - TOL < _lx < x1 + TOL and abs(_ly) < yh + val('finger'), (
+                'the loom window (az %.0f) no longer lands over the ESP32 bay - corner '
+                '(%.1f, %.1f)' % (LOOM_AZ_DEG, _lx * 10, _ly * 10))
 
     # ---- phase 1: shell --------------------------------------------------------------
     t0 = design.timeline.count
@@ -347,7 +364,7 @@ def run(_context: str):
     for i, az in enumerate(POST_AZ):
         a = math.radians(az)
         px, py = tval('post_r') * math.cos(a), tval('post_r') * math.sin(a)
-        circle('turret_post_%d' % i, px, py, val('boss_d'), z_floor - val('tol'),
+        circle('turret_post_%d' % i, px, py, val('post_d'), z_floor - val('tol'),
                -z_floor + val('tol'), JOIN)
         circle('turret_insert_%d' % i, px, py, val('insert_d'), -val('insert_h'),
                val('insert_h') + val('tol'), CUT)
@@ -428,6 +445,23 @@ def run(_context: str):
     ch_in = comp.features.chamferFeatures.createInput2()
     ch_in.chamferEdgeSets.addEqualDistanceChamferEdgeSet(edges, V(PREFIX + 'ef'), False)
     comp.features.chamferFeatures.add(ch_in).name = 'elephant_foot'
+    # root fillets on the three turret posts: the circle where each meets the
+    # floor top, found by centre and radius, never by index.
+    body = comp.bRepBodies.item(0)
+    roots = adsk.core.ObjectCollection.create()
+    for e in body.edges:
+        g = e.geometry
+        if not isinstance(g, adsk.core.Circle3D):
+            continue
+        if abs(g.center.z - z_floor) > val('tol') or abs(g.radius - val('post_d') / 2) > val('tol'):
+            continue
+        if abs(math.hypot(g.center.x, g.center.y) - tval('post_r')) < val('tol'):
+            roots.add(e)
+    assert roots.count == len(POST_AZ), (
+        'expected %d post root edges, found %d' % (len(POST_AZ), roots.count))
+    f_in = comp.features.filletFeatures.createInput()
+    f_in.addConstantRadiusEdgeSet(roots, V(PREFIX + 'post_fillet'), False)
+    comp.features.filletFeatures.add(f_in).name = 'post_root_fillets'
     group(t4, PH_FINISH)
 
     # ---- identity + diagnostics ---------------------------------------------------------------
@@ -459,9 +493,10 @@ def run(_context: str):
     print('shell O%.1f x %.1f, wall %.1f, floor %.1f; lid recess O%.2f x %.1f (shelf z %.2f)'
           % (ro * 2 * 10, H * 10, val('wall') * 10, val('floor_t') * 10, r_recess * 2 * 10,
              val('lid_t') * 10, z_lid * 10))
-    print('turret posts O%.1f at r %.1f az %s, insert O%.1f x %.1f - tt_post_r contract'
-          % (val('boss_d') * 10, tval('post_r') * 10, POST_AZ, val('insert_d') * 10,
-             val('insert_h') * 10))
+    print('turret posts O%.1f at r %.1f az %s, insert O%.1f x %.1f, root fillet %.1f - '
+          'tt_post_r contract' % (val('post_d') * 10, tval('post_r') * 10, POST_AZ,
+                                  val('insert_d') * 10, val('insert_h') * 10,
+                                  val('post_fillet') * 10))
     print('lid columns O%.1f at r %.1f az %s, insert O%.1f x %.1f, top z %.2f'
           % (val('boss_d') * 10, val('lid_r') * 10, LID_AZ, val('insert_d') * 10,
              val('lid_insert_h') * 10, z_lid * 10))

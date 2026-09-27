@@ -14,8 +14,9 @@ and runs Design.analyzeInterference over all of it, WITH A POSITIVE
 CONTROL - a block buried in the platter floor that MUST be reported. A gate
 that has never found anything proves nothing (_HANDOFF.md section 2).
 
-Run TWICE: REBUILD = True (build + place, ~40 s), then REBUILD = False
-(analyse the active document). The 60 s MCP limit will not take both.
+Run THREE times: STAGE = 1 (fresh document, first three parts), STAGE = 2
+(the other three + the dummies), STAGE = 0 (place + analyse). One call for
+all of it overran the 60 s MCP limit on 2026-09-27.
 
 EXPECTED contacts are listed in EXPECTED and must be ZERO-VOLUME or absent:
 touching faces are not interference (areCoincidentFacesIncluded = False).
@@ -28,7 +29,7 @@ import sys
 import adsk.core
 import adsk.fusion
 
-REBUILD = True
+STAGE = 1
 REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
 PARTS = ('base_platter', 'base_lid', 'turntable_stator', 'turntable_ring',
          'j1_hub', 'shoulder_bracket')
@@ -99,20 +100,27 @@ def _move(root, comp_name, dz_mm):
     raise AssertionError('no occurrence of %s to move' % comp_name)
 
 
-def build(app):
+def build(app, stage):
     import math
-    doc = app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)
-    doc.name = 'gate_base'
     if REPO not in sys.path:
         sys.path.insert(0, REPO)
-    for p in PARTS:
+    if stage == 1:
+        doc = app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)
+        doc.name = 'gate_base'
+        for p in PARTS[:3]:
+            _exec(p)
+        print('stage 1: %s built - now STAGE = 2' % ', '.join(PARTS[:3]))
+        return
+    doc = app.activeDocument
+    assert doc.name.startswith('gate_base'), 'stage 2 runs in the gate_base document'
+    for p in PARTS[3:]:
         _exec(p)
     design = adsk.fusion.Design.cast(app.activeProduct)
     root = design.rootComponent
     for m in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.')]:
         del sys.modules[m]
     from lib.j1_drive import (J1_SERVO, J1_DECK_Z_MM, TT_RACE_Z_MM,
-                              HOME_R_MM, HOME_AZ_DEG, MAGNET_D_MM, MAGNET_H_MM,
+                              HOME_R_MM, HOME_AZ_DEG, MAGNET_D_MM, MAGNET_PROTRUDE_MM,
                               HALL_BODY_W_MM, HALL_BODY_H_MM, HALL_BODY_T_MM)
     ups = design.userParameters
     # the MG995: case, tabs, boss (spline left out - it is a PRESS into the hub)
@@ -141,10 +149,10 @@ def build(app):
     _box(root, 'hall_a3144', hx - HALL_BODY_W_MM / 2, hx + HALL_BODY_W_MM / 2,
          hy - HALL_BODY_H_MM / 2, hy + HALL_BODY_H_MM / 2, top - HALL_BODY_T_MM, top)
     _cyl(root, 'home_magnet_sweep', 0.0, 0.0, 2 * HOME_R_MM + MAGNET_D_MM,
-         TT_RACE_Z_MM - MAGNET_H_MM, TT_RACE_Z_MM, d_in=2 * HOME_R_MM - MAGNET_D_MM)
+         TT_RACE_Z_MM - MAGNET_PROTRUDE_MM, TT_RACE_Z_MM, d_in=2 * HOME_R_MM - MAGNET_D_MM)
     # POSITIVE CONTROL - buried in the floor under the bay
     _box(root, 'positive_control', x0 + 10, x0 + 20, -5, 5, zf - 1.5, zf + 0.5)
-    print('built %d occurrences into %s - now run with REBUILD = False'
+    print('built %d occurrences into %s - now STAGE = 0'
           % (root.occurrences.count, doc.name))
 
 
@@ -215,7 +223,7 @@ def analyse(app):
 
 def run(_context: str):
     app = adsk.core.Application.get()
-    if REBUILD:
-        build(app)
+    if STAGE:
+        build(app, STAGE)
     else:
         analyse(app)

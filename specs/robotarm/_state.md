@@ -16,13 +16,13 @@ and the reason no donor arm fits (see "Donor arms" below).
 
 ## 2026-09-27 — J1 → MG995 360°, new base
 
-Read `specs/robotarm/base_platter.md` first. J1 drive contract moved to `lib/j1_drive.py` (was typed into three scripts). New parts: `base_platter`, rewritten `base_lid`. Changed: `turntable_stator` (rollers rotated, 4-screw MG995 pad, loom window az 210, hall post), `j1_hub` (7.90 tall, MG995 spline), `shoulder_bracket` (centre bore Ø5.4 → Ø6.4 only — drill a printed one). Gate: `_check_base.py` PASS with positive control. The J1 section below describes the SG90 era.
+Read `specs/robotarm/base_platter.md` first. J1 drive contract moved to `lib/j1_drive.py` (was typed into three scripts). New parts: `base_platter`, rewritten `base_lid`. Changed: `turntable_stator` (rollers rotated, 4-screw MG995 pad, loom window az 210, hall post), `j1_hub` (7.90 tall, MG995 spline), `shoulder_bracket` (centre bore Ø5.4 → Ø6.4 and a Ø5.2 × 1.0 magnet pocket — a printed one can be drilled and the magnet glued flat). Gate: `_check_base.py` PASS with positive control. The J1 section below describes the SG90 era.
 
 ## Joints
 
 | # | joint | servo | member shape |
 |---|---|---|---|
-| J1 | base yaw | **MG995 360° (continuous)** since 2026-09-27 | turntable on 3 × 608ZZ on the NEW `base_platter` — rollers at az 30/150/270, hall home sensor at az 330. Contract: `lib/j1_drive.py`. Spec: `base_platter.md` |
+| J1 | base yaw | **MG995 360° (continuous)** since 2026-09-27 | turntable on 3 × 608ZZ on the NEW `base_platter` — rollers at az 30/150/270, loom window az 330 (over the ESP32 bay), hall home sensor at az 210, magnet pocket in the rotor. Contract: `lib/j1_drive.py`. Spec: `base_platter.md` |
 | J2 | shoulder pitch | MG995 | bracket FORKS, upper arm is a BLOCK — built |
 | J3 | elbow pitch | MG90S | forearm FORKS, upper arm is a BLOCK — built |
 | J4 | wrist pitch | MG90S | forearm FORKS, roll housing is a BLOCK — built |

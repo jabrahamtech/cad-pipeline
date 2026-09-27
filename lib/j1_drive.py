@@ -82,18 +82,28 @@ assert J1_HUB.engaged >= J1_HUB_ENGAGE_MIN_MM, (
 # presses it and the rotor is 24.1 above the stator plate, so the switch
 # would have had to be sunk through two parts and hand-adjusted. Chosen
 # instead: an A3144 unipolar hall sensor standing on a post on the STATOR,
-# and a neodymium disc GLUED under the ROTOR (shoulder_bracket) - no
+# and a neodymium disc GLUED into a pocket under the ROTOR (shoulder_bracket) - no
 # contact, no adjustment, nothing for the loom to snag. Frames: stator
 # frame (z 0 = platter rim top, J1 axis, az from +X).
-HOME_R_MM = 34.5          # CHOSEN - the rotor underside is flat and free
-                          # between the race band (r 23..31) and the rim
-                          # edge (r 38); r 34.5 centres a O6 magnet in it.
-HOME_AZ_DEG = 330.0       # CHOSEN - between the az-270 and az-30 roller
-                          # cheeks, clear of the posts and the loom window.
-MAGNET_D_MM = 6.0         # DATASHEET-class - 6 x 2 N52 disc, bought
+HOME_R_MM = 33.7          # CHOSEN - the rotor underside is flat and free
+                          # between the roller track (to r 31.0) and the rim
+                          # edge (r 38). A O5.2 pocket centred here leaves
+                          # 0.1 to the track and MIN_WALL + 0.1 to the edge.
+                          # Revision 2026-09-27: 34.5 -> 33.7 with the magnet
+                          # O6 -> O5, because a O6.2 pocket cannot keep a
+                          # MIN_WALL to the rim anywhere in that band.
+HOME_AZ_DEG = 210.0       # CHOSEN - between the az-150 and az-270 roller
+                          # cheeks, clear of the posts. 330 -> 210 in the
+                          # 2026-09-27 revision: az 330 went to the LOOM,
+                          # which is right over the ESP32 bay.
+MAGNET_D_MM = 5.0         # DATASHEET-class - 5 x 2 N52 disc, bought
+                          # (was 6 x 2; see HOME_R_MM)
 MAGNET_H_MM = 2.0
+MAGNET_POCKET_MM = 1.0    # CHOSEN - locating pocket in the rotor underside
+                          # (shoulder_bracket). Half the magnet sits in it.
+MAGNET_PROTRUDE_MM = MAGNET_H_MM - MAGNET_POCKET_MM
 HALL_GAP_MM = 2.5         # ASSUMED - magnet face to sensor face. An A3144
-                          # operates at ~9-17 mT; a 6x2 N52 gives that well
+                          # operates at ~9-17 mT; a 5x2 N52 gives that well
                           # past 3 mm. Gauge on the bench if it misses.
 # A3144 in TO-92UA (Allegro 'UA' package) - DATASHEET
 HALL_BODY_W_MM = 4.06     # across the leads' plane
@@ -113,3 +123,28 @@ TT_AXLE_Z_MM = 13.1
 TT_ROLLER_OD_MM = 22.0
 TT_RACE_Z_MM = TT_AXLE_Z_MM + TT_ROLLER_OD_MM / 2.0
 J1_DECK_Z_MM = TT_RACE_Z_MM - J1_HUB_FACE_MM - J1_HUB.seat_z   # tab underside
+
+
+# --- WHERE THE LOOM CROSSES J1, AND WHAT "HOME" MEANS ------------------------
+# Stator frame. The loom leaves the rotating half through shoulder_bracket's
+# connector gate (rotor frame az 270) and enters the fixed half through the
+# stator's loom window. 2026-09-27 revision: the window moved 210 -> 330 so
+# it sits DIRECTLY OVER the ESP32 bay - the loom and the board's top-face
+# cables drop straight onto the board instead of crossing under the MG995.
+LOOM_AZ_DEG = 330.0
+LOOM_IR_MM = 22.0             # outside the servo pad corner by a wall
+LOOM_OR_MM = 29.5             # inside the home magnet's sweep (r 31.5) by a wall
+LOOM_DEG = 40.0               # arc; chord at the mean radius passes an 8.7 plug
+ROTOR_GATE_AZ_DEG = 270.0     # shoulder_bracket's connector gate - it asserts this
+# HOME IS WHERE THE LOOM IS UNTWISTED. J1 is continuous and firmware limits
+# it to +-180 deg from home, so home should be the angle at which the gate is
+# right over the window - then the twist is symmetric. At that angle the
+# rotor has turned (LOOM - GATE); the magnet must then sit over the sensor,
+# so in the ROTOR's own frame it goes at HOME - (LOOM - GATE).
+MAGNET_ROTOR_AZ_DEG = (HOME_AZ_DEG - (LOOM_AZ_DEG - ROTOR_GATE_AZ_DEG)) % 360.0
+
+# The platter's three turret posts. Revision 2026-09-27: O8.8 -> O12.0. They
+# are 40 mm free-standing columns carrying the whole arm's tipping moment into
+# three M3; stiffness goes as d^4, so this is ~3.5x. base_lid's holes follow.
+TT_POST_D_MM = 12.0
+TT_POST_LID_CLEAR_MM = 0.7    # legacy MEASURED fit: O9.5 over O8.8

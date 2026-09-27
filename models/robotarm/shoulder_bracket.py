@@ -200,7 +200,13 @@ from lib.j1_drive import (  # noqa: E402
     J1_HUB_SCREW_BORE_MM,
     J1_HUB_FACE_MM,
     J1_HUB,
+    HOME_R_MM,
+    MAGNET_D_MM,
+    MAGNET_POCKET_MM,
+    MAGNET_ROTOR_AZ_DEG,
+    ROTOR_GATE_AZ_DEG,
 )
+from lib.design_rules import JOINT_FIT_MM as _FIT_J  # noqa: E402
 _J1S = J1_SERVO
 _MG995 = _SERVOS['MG995']
 
@@ -309,6 +315,8 @@ _MG995 = _SERVOS['MG995']
 # This bore therefore only has to pass that screw's head on the way in and
 # stay clear of everything afterwards. Sized by lib/servo_hub.horn_bolt()'s
 # own head convention - twice the screw diameter - plus a free fit.
+FULL_TURN_DEG = 360.0
+GATE_AZ_CUT_DEG = 270.0        # the connector gate is cut at -pi/2 below
 TOL = 1e-9                     # comparison epsilon, not a dimension
 # Volume floor for the hub bolt cut, mm3. Three O4.40 through the 9.40 boss
 # is 429 and the three head counterbores add ~109, so ~538 is expected. This
@@ -527,6 +535,19 @@ def run(_context: str):
           'arc the cable window sweeps, centred astern at 270 - one of the two\n'
           '           azimuths a fork leg does not occupy (a leg spans -48..+48 about\n'
           '           its own side).', 'deg')
+
+    # ---- J1 HOME MAGNET POCKET - lib/j1_drive, revision 2026-09-27 ----------
+    # A 6 x 2 magnet sits half-deep in the race face, outside the roller
+    # track. Its AZIMUTH is not free: it is where the magnet must be for the
+    # connector gate to sit right over the stator's loom window when the hall
+    # sensor fires - so "home" is the loom's untwisted angle and the firmware's
+    # +-180 limit is symmetric about it. lib/j1_drive derives it.
+    param('magnet_r', '%.2f mm' % HOME_R_MM, 'lib/j1_drive.HOME_R_MM - over the stator hall post')
+    param('magnet_az', '%.2f deg' % MAGNET_ROTOR_AZ_DEG,
+          'lib/j1_drive.MAGNET_ROTOR_AZ_DEG - rotor frame; home = loom untwisted', 'deg')
+    param('magnet_pocket_d', '%.2f mm' % (MAGNET_D_MM + _FIT_J['locational']),
+          'magnet + locational - it is GLUED, the pocket only places it')
+    param('magnet_pocket_h', '%.2f mm' % MAGNET_POCKET_MM, 'half the magnet - lib/j1_drive')
 
     # ---- MG995, DATASHEET (lib/servo.py) ------------------------------------
     param('case_l', '40.9 mm', 'MG995 case length - runs DOWN along Z, see the\n           docstring. 40.0 -> 40.9 on TowerPro B, 2026-08-27 flange audit')
@@ -1146,6 +1167,27 @@ def run(_context: str):
     assert _gate_drop > 100.0, (
         'the connector gate removed %.1f mm3 - a 9.8 x 5.8 through-cut '
         'should take ~500; wrong place or wrong scale' % _gate_drop)
+    # THE HOME MAGNET POCKET, in the race face outside the roller track.
+    # The gate this is placed relative to is the one cut just above at -pi/2;
+    # lib/j1_drive states it as ROTOR_GATE_AZ_DEG, so the two must agree.
+    assert abs((ROTOR_GATE_AZ_DEG % FULL_TURN_DEG) - GATE_AZ_CUT_DEG) < TOL, (
+        'lib/j1_drive.ROTOR_GATE_AZ_DEG is %.1f and this part cuts its gate at '
+        '270 - the home magnet would be placed against the wrong gate'
+        % ROTOR_GATE_AZ_DEG)
+    _m_in = val('magnet_r') - val('magnet_pocket_d') / 2
+    _m_out = val('magnet_r') + val('magnet_pocket_d') / 2
+    assert _m_in >= race_out - TOL, (
+        'the magnet pocket at r %.2f reaches into the roller track (to r %.2f)'
+        % (_m_in * 10, race_out * 10))
+    assert _m_out <= disc_r - val('wall') + TOL, (
+        'the magnet pocket at r %.2f leaves less than a wall to the rim edge'
+        % (_m_out * 10))
+    _vol_before_mag = comp.bRepBodies.item(0).volume
+    xy_circle('home_magnet_pocket', val('magnet_r') * math.cos(val('magnet_az')),
+              val('magnet_r') * math.sin(val('magnet_az')), val('magnet_pocket_d'),
+              mm(race_z), PREFIX + 'magnet_pocket_h', CUT)
+    assert _vol_before_mag - comp.bRepBodies.item(0).volume > TOL, (
+        'the magnet pocket cut nothing - wrong place or wrong scale')
     group(t3, PH_BASE)
 
     # ---- phase 5: finish -------------------------------------------------------------
@@ -1263,6 +1305,10 @@ def run(_context: str):
           % (val('gate_w') * 10, val('cable_ir') * 10 - val('gate_ir') * 10,
              val('gate_ir') * 10, val('cable_ir') * 10))
     print('  plugs (~8.7 x 4.5) pass here; the 3.4 window takes only wires.')
+    print('HOME MAGNET POCKET: O%.2f x %.2f at r %.1f, az %.0f (rotor frame) - with '
+          'the hall sensor firing, the connector gate sits over the stator loom window'
+          % (val('magnet_pocket_d') * 10, val('magnet_pocket_h') * 10,
+             val('magnet_r') * 10, math.degrees(val('magnet_az'))))
     print('J1 TRAVEL: nothing here caps rotation (the ring hooks over the rim). '
           'J1 is an MG995 360 deg since 2026-09-27 - the LOOM caps it: +-180 deg '
           'from the hall home sensor, in firmware (specs/robotarm/base_platter.md)')

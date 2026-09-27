@@ -127,6 +127,7 @@ from lib.servo import MG995_TAB_HOLE_PITCH_Y as _MG995_PY  # noqa: E402
 from lib.j1_drive import (  # noqa: E402
     TT_AXLE_Z_MM, TT_ROLLER_OD_MM, J1_DECK_Z_MM,
     HOME_R_MM, HOME_AZ_DEG, MAGNET_D_MM, MAGNET_H_MM, HALL_GAP_MM,
+    MAGNET_PROTRUDE_MM, LOOM_AZ_DEG, LOOM_IR_MM, LOOM_OR_MM, LOOM_DEG,
     HALL_BODY_W_MM, HALL_BODY_H_MM, HALL_BODY_T_MM, HALL_LEAD_PITCH_MM,
     HALL_LEAD_N, HALL_SLOT_MM,
 )
@@ -495,16 +496,20 @@ def run(_context: str):
     # with no roller, no post and no servo - the old lightening window's
     # place - and it is BIG: a servo plug (8.7 x 4.5) now passes through it,
     # which the 7 mm slot at r 13.7-20 never allowed.
-    param('cable_az', '210.0 deg', 'between the az-150 and az-270 rollers, clear of\n'
-                                   '           the servo pad and both posts either side', 'deg')
-    param('cable_ir', '22.0 mm',
+    # REVISION 2026-09-27: 210 -> 330 (lib/j1_drive.LOOM_AZ_DEG). az 330 is
+    # the same kind of sector - no roller, post or servo - but it sits right
+    # over the ESP32 bay in base_platter, so the loom drops onto the board
+    # instead of crossing under the MG995. The home post took az 210.
+    param('cable_az', '%.2f deg' % LOOM_AZ_DEG, 'lib/j1_drive.LOOM_AZ_DEG - over the ESP32\n'
+                                   '           bay, between the az-270 and az-30 rollers', 'deg')
+    param('cable_ir', '%.2f mm' % LOOM_IR_MM,
           'inner radius - outside the servo pad\'s near corner (r 21.0 at az\n'
           '           234) by a wall. Asserted by sampling, not by a radius.')
-    param('cable_or', '29.5 mm',
+    param('cable_or', '%.2f mm' % LOOM_OR_MM,
           'outer radius. NOT out to the posts: the home magnet sweeps r 31.5..37.5\n'
           '           under the rotor, and a loom bundled wider than this would be\n'
           '           brushed by it every revolution. Still 145 mm2, plug-sized.')
-    param('cable_deg', '40.0 deg', 'arc swept, 190..230. Clears the roller reliefs\n'
+    param('cable_deg', '%.2f deg' % LOOM_DEG, 'arc swept, 190..230. Clears the roller reliefs\n'
                                    '           (to 176 and from 244) and the pad corner.\n'
                                    '           Chord at r 26 is 17.8 - an 8.7 plug passes flat', 'deg')
     param('post_d', '11.0 mm', 'mounting post diameter - 3.8 of wall round an M3 clearance')
@@ -559,13 +564,16 @@ def run(_context: str):
           '           pad is a blind pocket and traps the cable. Never hardcode it.')
     # ---- J1 HOME SENSOR POST - lib/j1_drive.HOME_*, 2026-09-27 ----------------
     # An A3144 hall sensor lies FLAT in a pocket on top of a post, branded
-    # (sensing) face UP, and a 6x2 magnet glued under the rotor at the same
+    # (sensing) face UP, and a 5x2 magnet in a pocket under the rotor at the same
     # radius passes over it once a revolution. The leads bend down a slot
     # through the post and the plate into the base - the sensor's cable route.
     param('home_r', '%.2f mm' % HOME_R_MM, 'lib/j1_drive.HOME_R_MM - CHOSEN')
     param('home_az', '%.2f deg' % HOME_AZ_DEG, 'lib/j1_drive.HOME_AZ_DEG - CHOSEN', 'deg')
-    param('magnet_d', '%.2f mm' % MAGNET_D_MM, '6 x 2 N52 disc, glued under the rotor')
-    param('magnet_h', '%.2f mm' % MAGNET_H_MM, 'its thickness - it hangs this far below the race face')
+    param('magnet_d', '%.2f mm' % MAGNET_D_MM, '5 x 2 N52 disc, in shoulder_bracket\'s pocket')
+    param('magnet_h', '%.2f mm' % MAGNET_H_MM, 'its thickness')
+    param('magnet_protrude', '%.2f mm' % MAGNET_PROTRUDE_MM,
+          'how far it hangs below the race face: thickness minus the locating\n'
+          '           pocket shoulder_bracket cuts for it (lib/j1_drive)')
     param('hall_gap', '%.2f mm' % HALL_GAP_MM, 'magnet face to sensor face - ASSUMED, lib/j1_drive')
     param('hall_w', '%.2f mm' % HALL_BODY_W_MM, 'A3144 TO-92UA body width - DATASHEET')
     param('hall_h', '%.2f mm' % HALL_BODY_H_MM, 'body height, leads out of this edge - DATASHEET')
@@ -575,7 +583,7 @@ def run(_context: str):
     param('hall_slot', '%.2f mm' % HALL_SLOT_MM, 'lead slot depth, the way the leads fold down - lib, ASSUMED')
     param('hall_post_d', '12.0 mm',
           'post diameter: the pocket and the lead slot plus MIN_WALL round both')
-    param('hall_top', TURRET + 'race_z - ' + PREFIX + 'magnet_h - ' + PREFIX + 'hall_gap',
+    param('hall_top', TURRET + 'race_z - ' + PREFIX + 'magnet_protrude - ' + PREFIX + 'hall_gap',
           'post top = sensor face. DERIVED from the race face, so the gap holds\n'
           '           if the rollers ever move. NEVER type it.')
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
@@ -988,6 +996,12 @@ def run(_context: str):
         'the loom window reaches r %.2f and the magnet sweeps from r %.2f - it '
         'would brush the loom every revolution' % (val('cable_or') * 10, _m_in * 10))
     assert val('hall_gap') >= val('free') - TOL, 'the magnet would strike the sensor'
+    # A BRACKET PRINTED BEFORE THE POCKET EXISTED takes the magnet glued
+    # FLAT, so it hangs the full thickness. The gap must survive that too.
+    _flat_gap = val('hall_gap') - (val('magnet_h') - val('magnet_protrude'))
+    assert _flat_gap >= val('free') - TOL, (
+        'glued flat on an un-pocketed rotor the magnet clears the sensor by '
+        'only %.2f' % (_flat_gap * 10))
     _post_half = math.asin(val('hall_post_d') / 2 / val('home_r'))
     for _raz in ROLL_AZ:
         _d = abs((val('home_az') - math.radians(_raz) + math.pi) % (2 * math.pi) - math.pi)
@@ -1330,12 +1344,14 @@ def run(_context: str):
           'down; shoulder_bracket\'s window is the moving half.')
     print('ONE M3 per post: ring -> post -> platter insert. 3 screws hold the turret.')
     print('HOME SENSOR: A3144 flat in a %.2f x %.2f pocket on a O%.1f post at r %.1f az '
-          '%.0f, face at z %.2f; a O%.0f x %.0f magnet glued under the rotor at r %.1f '
-          'hangs to z %.2f - gap %.2f. Leads down a %.2f x %.2f slot into the base.'
+          '%.0f, face at z %.2f; a O%.0f x %.0f magnet in the rotor\'s pocket at r %.1f '
+          'hangs to z %.2f - gap %.2f (%.2f if glued flat to an un-pocketed rotor). '
+          'Leads down a %.2f x %.2f slot into the base.'
           % (val('hall_w') * 10 + val('loc') * 10, val('hall_h') * 10 + val('loc') * 10,
              val('hall_post_d') * 10, val('home_r') * 10, math.degrees(val('home_az')),
              hall_top * 10, val('magnet_d') * 10, val('magnet_h') * 10,
-             val('home_r') * 10, (race_z - val('magnet_h')) * 10,
+             val('home_r') * 10, (race_z - val('magnet_protrude')) * 10,
+             (race_z - val('magnet_protrude') - hall_top) * 10,
              (race_z - val('magnet_h') - hall_top) * 10,
              val('hall_lead_w') * 10, val('hall_slot') * 10))
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f' % (

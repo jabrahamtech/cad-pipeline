@@ -48,6 +48,7 @@ from lib.design_rules import MIN_WALL_MM as _MIN_WALL  # noqa: E402
 from lib.servo import SERVO_CASE_CLEARANCE_MM  # noqa: E402
 from lib.j1_drive import (  # noqa: E402
     J1_SERVO, HOME_R_MM, HOME_AZ_DEG, HALL_BODY_H_MM, HALL_SLOT_MM,
+    LOOM_AZ_DEG, LOOM_IR_MM, LOOM_OR_MM, LOOM_DEG, TT_POST_D_MM, TT_POST_LID_CLEAR_MM,
 )
 
 COMPONENT = 'robotarm_base_lid'
@@ -119,7 +120,8 @@ def run(_context: str):
     param('min_wall', '%.2f mm' % _MIN_WALL, 'MIN_WALL_MM - design_rules')
     param('dia', PREFIX + 'recess_d - ' + PREFIX + 'loc', 'lid disc - locational in the recess')
     param('t', '3.0 mm', 'thickness - base_platter lid_t, shelf to flush')
-    param('post_clear_d', '9.5 mm', 'over the O8.8 turret posts - legacy MEASURED fit')
+    param('post_clear_d', '%.2f mm' % (TT_POST_D_MM + TT_POST_LID_CLEAR_MM),
+          'over the O%.1f turret posts - lib/j1_drive, legacy MEASURED 0.7 fit' % TT_POST_D_MM)
     param('screw_r', '88.0 mm', 'base_platter lid_r')
     param('screw_d', '%.2f mm' % _FASTENER['M3']['clearance'], 'M3 clearance - FASTENER_MM')
     param('head_d', '6.5 mm', 'M3 cap head 5.5 + clearance')
@@ -135,10 +137,10 @@ def run(_context: str):
     param('key_y0', '-18.05 mm',
           'the stator lead keyway runs out to here (ts_lead_key_l). The J1 lead\n'
           '           follows the case down through it, so the lid passes it too.')
-    param('loom_ir', '22.0 mm', 'ts_cable_ir')
-    param('loom_or', '29.5 mm', 'ts_cable_or')
-    param('loom_az', '210.0 deg', 'ts_cable_az', 'deg')
-    param('loom_deg', '40.0 deg', 'ts_cable_deg', 'deg')
+    param('loom_ir', '%.2f mm' % LOOM_IR_MM, 'lib/j1_drive = ts_cable_ir')
+    param('loom_or', '%.2f mm' % LOOM_OR_MM, 'lib/j1_drive = ts_cable_or')
+    param('loom_az', '%.2f deg' % LOOM_AZ_DEG, 'lib/j1_drive.LOOM_AZ_DEG = ts_cable_az - over the bay', 'deg')
+    param('loom_deg', '%.2f deg' % LOOM_DEG, 'lib/j1_drive = ts_cable_deg', 'deg')
     param('home_r', '%.2f mm' % HOME_R_MM, 'lib/j1_drive.HOME_R_MM')
     param('home_az', '%.2f deg' % HOME_AZ_DEG, 'lib/j1_drive.HOME_AZ_DEG', 'deg')
     param('hall_off', '%.3f mm' % HALL_OFF_MM,
@@ -149,7 +151,8 @@ def run(_context: str):
     # --- loom tie bridges, on the underside ------------------------------------------
     param('tie_w', '4.0 mm', 'zip-tie slot width')
     param('tie_h', '3.0 mm', 'tunnel height under the bar')
-    param('tie_bar', '2.0 mm', 'bar thickness')
+    param('tie_bar', '1.6 mm', 'bar thickness - MIN_WALL. The bridges hang over the ESP32\n'
+          '           bay now; at 2.0 they reached into its 1.5 keep-out')
     param('tie_leg', '3.0 mm', 'each leg')
     param('tie_gap', '7.0 mm', 'tunnel length between the legs')
     param('tie_r', '(' + PREFIX + 'loom_ir + ' + PREFIX + 'loom_or) / 2', 'on the window\'s mean radius')
