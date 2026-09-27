@@ -34,7 +34,7 @@ Files are in `exports/robotarm/`.
 - `plates/plate_grip_white_v1.3mf` — 2 jaws + pinion
 - `grip_finger_v1.3mf` ×2 — **TPU 95A**, flat, 20–25 mm/s
 
-Retired — don't print: the pruner (`pruner_*`, `gripcut_finger`), the old `gripper_*` shells/jaws, `j4_tab_shim` (only for a pre-SG90 printed forearm).
+Retired — don't print: the pruner (`pruner_*`, `gripcut_finger`) and the old `gripper_shell` / `gripper_rack_jaw`. The 2 `j4_tab_shim`s on the wrist white plate are only for the old MG90S-cut forearm — delete them in the slicer otherwise.
 
 ## Buy
 

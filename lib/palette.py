@@ -37,6 +37,13 @@ GREEN = ('forearm', 'forearm_px', 'forearm_nx', 'forearm_rail',
          'upper_arm', 'gripper_shell', 'gripper_rack_jaw',
          'pruner_shell', 'grip_shell')
 
+# DARK, 2026-09-28: the base and the turret. A plain white O190 puck was the
+# first thing anyone saw in the renders and it read as a cake tin. Dark plinth,
+# green links, white joints and gears - the industrial-robot convention, and
+# the heaviest, widest part stops competing with the arm for attention.
+DARK = ('base_platter', 'base_lid', 'turntable_ring', 'turntable_stator',
+        'turret_shroud', 'j1_hub')
+
 # forest green #228B22, white #F5F5F5 - the exact values, for a tinted
 # appearance. HINTS is the fallback that finds a stock Fusion appearance by
 # substring, which is how every part file already looks one up.
@@ -44,19 +51,24 @@ GREEN = ('forearm', 'forearm_px', 'forearm_nx', 'forearm_rail',
 # mid green and Jonathan's filament is much deeper, so the stock appearance
 # is only the STARTING POINT - tint() below copies it and overwrites its
 # albedo with these values. Change them here and nothing else needs touching.
-RGB = {'green': (18, 77, 40), 'white': (242, 242, 242)}
-TINT_NAME = {'green': 'robotarm_deep_green', 'white': 'robotarm_white'}
+RGB = {'green': (18, 77, 40), 'white': (242, 242, 242), 'dark': (36, 38, 42)}
+TINT_NAME = {'green': 'robotarm_deep_green', 'white': 'robotarm_white',
+             'dark': 'robotarm_charcoal'}
 HINTS = {
     'green': [('plastic', 'green'), ('paint', 'green'), ('green',),
               ('plastic',)],
     'white': [('plastic', 'white'), ('paint', 'white'), ('white',),
               ('plastic',)],
+    'dark': [('plastic', 'black'), ('paint', 'black'), ('black',),
+             ('plastic',)],
 }
 
 
 def colour_of(part_name):
-    """green for what was yellow, white for everything else."""
-    return 'green' if part_name in GREEN else 'white'
+    """green for the links, dark for the base and turret, white for the rest."""
+    if part_name in GREEN:
+        return 'green'
+    return 'dark' if part_name in DARK else 'white'
 
 
 def hints_for(part_name):

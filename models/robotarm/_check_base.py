@@ -30,6 +30,7 @@ volume - which also proves every keeper really is ON its fence.
 """
 
 import io
+import math
 import os
 import sys
 
@@ -43,7 +44,8 @@ PARTS = ('base_platter', 'base_lid', 'turntable_stator', 'turntable_ring',
 DUMMY = 'robotarm_dummy_'
 CONTROL = DUMMY + 'positive_control'
 LIMIT_MM3 = 0.001                  # a volume below this is a touching face
-BITS = ('roller_cap', 'pcb_keeper')
+BITS = ('roller_cap', 'pcb_keeper', 'turret_shroud')
+SHROUD_BAND = (0.7, 1.3)          # measured / analytic press film on the posts
 KEEPER_BAND = (0.85, 1.15)         # measured / analytic, for the designed overlaps
 HEAD = 'dummy_m3_head_'
 
@@ -323,6 +325,14 @@ def analyse(app):
     expect = _keeper_expected(design.userParameters)
     n_keep = sum(1 for o in root.occurrences if o.component.name == 'robotarm_pcb_keeper')
     got = dict((k, 0.0) for k in expect)
+    # the shroud's three saddles press 0.15 on the turret posts' outer faces
+    def tp(n):
+        return design.userParameters.itemByName(n).value * 10
+    _post_rr, _post_hr = tp('tt_post_r'), tp('ts_post_d') / 2
+    _theta = math.acos(min(1.0, (tp('tsh_saddle_in') - _post_rr) / _post_hr))
+    shroud_want = (3 * 2 * _theta * _post_hr * tp('tsh_press') / 2
+                   * (tp('tsh_h') - tp('tsh_saddle_z0') - tp('tsh_saddle_gap') - tp('tsh_saddle_chamfer')))
+    shroud_got = 0.0
     for i in range(res.count):
         r = res.item(i)
         v = r.interferenceBody.volume * 1000
@@ -335,6 +345,9 @@ def analyse(app):
             continue
         if n1.startswith('dummy_') and n2.startswith('dummy_'):
             continue            # envelopes of one COTS item overlap by design
+        if {n1, n2} == {'turret_shroud', 'turntable_stator'}:
+            shroud_got += v
+            continue
         if 'pcb_keeper' in (n1, n2):
             other = n2 if n1 == 'pcb_keeper' else n1
             if other in got:
@@ -353,7 +366,11 @@ def analyse(app):
         keep_ok = keep_ok and good
         print('  keeper ^ %-18s %8.2f mm3, analytic %8.2f (x%d)  %s'
               % (k, got[k], want, n_keep, 'ok' if good else 'OUT OF BAND'))
-    ok = control > 0 and not hits and keep_ok and n_keep == 4
+    s_ratio = shroud_got / shroud_want if shroud_want else 0.0
+    shroud_ok = SHROUD_BAND[0] <= s_ratio <= SHROUD_BAND[1]
+    print('  shroud ^ turret posts  %8.2f mm3, analytic %8.2f  %s'
+          % (shroud_got, shroud_want, 'ok' if shroud_ok else 'OUT OF BAND'))
+    ok = control > 0 and not hits and keep_ok and n_keep == 4 and shroud_ok
     print('GATE base_interference: %s' % ('PASS' if ok else 'FAIL'))
 
 

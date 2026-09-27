@@ -49,7 +49,7 @@ PREFIX = 'ua_'
 WRIST = 'wr_'
 STYLE = 'sty_'
 PHASES = ['link form', 'elbow sockets + bolt', 'shoulder sockets',
-          'cable route', 'finish']
+          'cable route', 'finish', 'side panels']
 MATERIAL_NAME = 'PET Plastic'
 # _style.md rule 5: two-tone by PART. A link is light.
 # COLOUR LIVES IN lib/palette.py, not here. It used to be typed in this
@@ -146,6 +146,14 @@ def run(_context: str):
           'M3 clearance - lib/design_rules.py FASTENER_MM. The elbow retention\n'
           '           bolt runs the full width down the J3 axis, through the duct,\n'
           '           from j3_gear into j3_axle.')
+    # SIDE PANELS, 2026-09-28. The flanks were two 125 mm blank walls - the
+    # largest plain faces on the arm. A shallow stadium pocket with a crisp
+    # rim reads as machined, takes a little mass out, and prints fine: on the
+    # bed face it is a 11 mm bridge, on the top face a plain pocket.
+    param('panel_d', '1.2 mm', 'side panel depth - the 5.0 side wall keeps 3.8')
+    param('panel_end', '4.0 mm', 'panel ends this far clear of each drum')
+    param('panel_border', '2.5 mm', 'land between the panel and the silhouette facet')
+    param('panel_rim', '0.6 mm', 'chamfer on the panel rim')
     param('tol', '0.001 mm', 'geometric edge-selection tolerance, not a dimension')
 
     # ---- idempotent rebuild ---------------------------------------------------
@@ -386,6 +394,40 @@ def run(_context: str):
         arcs, V(STYLE + 'facet'), False)
     chf.add(c_inp).name = 'silhouette_facet'
     group(t4, PHASES[4])
+
+    # ---- phase 6: side panels ---------------------------------------------------------
+    t5 = design.timeline.count
+    p_r = val('waist_z') - sval('facet') - val('panel_border')      # stadium half height
+    p_y0 = -L1 + val('drum_r') + val('panel_end') + p_r
+    p_y1 = -val('drum_r') - val('panel_end') - p_r
+    assert p_y1 > p_y0, 'no room for a side panel between the drums'
+    tol = val('tol')
+    assert val('half_x') - val('duct_x') - val('panel_d') >= val('wall') - tol, (
+        'the side panel thins the duct wall under MIN_WALL')
+    for sign in (1, -1):
+        sk = sketch(comp.yZConstructionPlane, 'sk_side_panel_%d' % (sign + 1))
+        sk.sketchCurves.sketchLines.addTwoPointRectangle(
+            mpt(sk, 0, p_y0, -p_r), mpt(sk, 0, p_y1, p_r))
+        for yc in (p_y0, p_y1):
+            sk.sketchCurves.sketchCircles.addByCenterRadius(mpt(sk, 0, yc, 0), p_r)
+        if sign > 0:
+            extrude(profiles(sk), CUT, PREFIX + 'half_x', '-' + PREFIX + 'panel_d',
+                    'side_panel_%d' % (sign + 1))
+        else:
+            extrude(profiles(sk), CUT, '-' + PREFIX + 'half_x', PREFIX + 'panel_d',
+                    'side_panel_%d' % (sign + 1))
+    rim = adsk.core.ObjectCollection.create()
+    for e in comp.bRepBodies.item(0).edges:
+        eb = e.boundingBox
+        if abs(abs(eb.minPoint.x) - val('half_x')) < tol and abs(abs(eb.maxPoint.x) - val('half_x')) < tol \
+                and eb.minPoint.y > p_y0 - p_r - tol and eb.maxPoint.y < p_y1 + p_r + tol \
+                and eb.minPoint.z > -p_r - tol and eb.maxPoint.z < p_r + tol:
+            rim.add(e)
+    assert rim.count > 0, 'no side panel rim edges found'
+    c_inp = chf.createInput2()
+    c_inp.chamferEdgeSets.addEqualDistanceChamferEdgeSet(rim, V(PREFIX + 'panel_rim'), False)
+    chf.add(c_inp).name = 'side_panel_rim'
+    group(t5, PHASES[PHASES.index('side panels')])
 
     # ---- identity + diagnostics --------------------------------------------------------
     assert comp.bRepBodies.count == 1, 'expected 1 body, got %d' % comp.bRepBodies.count

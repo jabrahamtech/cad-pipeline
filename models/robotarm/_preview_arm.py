@@ -88,7 +88,7 @@ def run(_context: str):
     need = ['turntable_stator', 'turntable_ring', 'shoulder_bracket', 'shoulder_hub',
             'wrist_hub', 'upper_arm', 'forearm', 'wrist_roll', 'wrist_rotator',
             'grip_shell', 'grip_jaw', 'grip_finger', 'gripper_pinion',
-            'base_platter', 'base_lid', 'j1_hub', 'roller_cap',
+            'base_platter', 'base_lid', 'j1_hub', 'roller_cap', 'turret_shroud',
             # The geared elbow. Without these J3 renders as a bare pivot and
             # the picture quietly shows an arm that has no elbow drive - the
             # same way it once showed a turret riding on nothing because the
@@ -279,6 +279,7 @@ def run(_context: str):
     # ---- the base: platter, lid, J1 hub, roller caps - all in the stator frame
     placed.append(('base_platter', add(C('base_platter'), M3())))
     placed.append(('base_lid', add(C('base_lid'), M3())))
+    placed.append(('turret_shroud', add(C('turret_shroud'), M3())))
     from lib.j1_drive import J1_DECK_Z_MM, J1_HUB  # noqa: E402
     placed.append(('j1_hub', add(C('j1_hub'), mul(yaw, trans(0, 0, (J1_DECK_Z_MM + J1_HUB.seat_z) / 10)))))
     import ast  # noqa: E402
@@ -419,6 +420,20 @@ def run(_context: str):
     # PET Plastic renders translucent, which turns a 23-piece assembly into
     # wireframe soup. Shaded-with-edges is what makes it readable.
     vp.visualStyle = adsk.core.VisualStyles.ShadedWithVisibleEdgesOnlyVisualStyle
+    # The layout grid sits at z 0 and everything below it - the whole base -
+    # renders as if seen through frosted glass. Switch the grid off; it is a
+    # UI toggle, not design state, so nothing in the document changes.
+    grid = adsk.core.ListControlDefinition.cast(
+        app.userInterface.commandDefinitions.itemById('ViewLayoutGridCommand').controlDefinition)
+    grid.listItems.item(0).isSelected = False
+    adsk.doEvents()
+    print('layout grid shown: %s' % grid.listItems.item(0).isSelected)
+    # and the ground shadow, which has no ground under it once the grid is
+    # gone and reads as a smudge floating beside the arm. Item 1 is 'Off'.
+    shadow = adsk.core.ListControlDefinition.cast(
+        app.userInterface.commandDefinitions.itemById('ViewGroundShadowCommand').controlDefinition)
+    shadow.listItems.item(1).isSelected = True
+    adsk.doEvents()
     if not os.path.isdir(OUT):
         os.makedirs(OUT)
 
@@ -471,7 +486,7 @@ def run(_context: str):
                 lo_[i], hi_[i] = min(lo_[i], a_), max(hi_[i], c_)
         return lo_, hi_
     CLOSE = {'head_close': (lambda n: n.startswith('grip') or n == 'wrist_rotator', (1.0, 0.9, 0.7)),
-             'base_close': (lambda n: n in ('base_platter', 'base_lid', 'turntable_stator',
+             'base_close': (lambda n: n in ('base_platter', 'base_lid', 'turntable_stator', 'turret_shroud',
                                             'turntable_ring', 'j1_hub', '608ZZ_rollers')
                             or n.startswith('roller_cap'), (1.0, -1.2, 0.8))}
     for name, (pred, d) in CLOSE.items():

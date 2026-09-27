@@ -1,7 +1,7 @@
 # base_platter — spec (Fusion rebuild, replaces the printed legacy platter)
 
 Project: `models/robotarm/base_platter.py`
-Status: MODELED — 2026-09-27, revised same day · gate `_check_base.py` PASS · current exports `base_platter_v3`, `base_lid_v8`, `turntable_stator_v8`, `shoulder_bracket_v4`, `j1_hub_v2` (cable cup)
+Status: MODELED — 2026-09-27, restyled 2026-09-28 (12-sided pedestal, black) · gate `_check_base.py` PASS · current exports `base_platter_v5`, `base_lid_v8`, `turntable_stator_v9`, `turret_shroud_v1`, `shoulder_bracket_v4`, `j1_hub_v3`
 
 ## Why this exists
 Jonathan, 2026-09-27: J1 base yaw becomes an **MG995 360° (continuous)**; J2
@@ -26,7 +26,7 @@ rotor keep their fixing pattern.
 | Interface | Value | Source | Joint / fit |
 |---|---|---|---|
 | Turret mount | 3 × **Ø12** posts (was Ø8.8), 2.0 root fillet, M3 insert Ø4.0 × 8, r 45.0, az 120/180/240 | `tt_post_r` contract; Ø from `lib/j1_drive.TT_POST_D_MM` | insert, design_rules |
-| Shell | Ø190 × 42, wall 3.0, floor 2.4; lid recess Ø186.8 × 3.0 | CHOSEN — bay + finger gaps beside a 40.9 servo need r ~90 | — |
+| Shell | **12-sided**, 190 across flats (196.7 across corners) × 42, vertices at 30° + k·30°, wall 3.0, floor 2.4, 3.0 foot facet; lid recess Ø186.8 × 3.0 (round, inside the flats) | CHOSEN — bay + finger gaps beside a 40.9 servo need r ~90; dodecagon matches the ring's 12 lobes and `turret_shroud` (2026-09-28 restyle, flutes dropped) | — |
 | Lid columns | 4 × Ø8.8 at r 88, az 45/135/225/315, M3 insert Ø4.0 × 6 — merge into the wall | CHOSEN | insert |
 | J1 servo | MG995 360° — case 40.9 × 20.2 × 36.5, tab pitch 47.8 × 10.2, tab below top 7.2 | **Jonathan 2026-09-27: "same as the other big motor"** → `lib/servo.py` MG995 (l CONFIRMED, w MEASURED, rest DATASHEET) | locational (0.20) on case, slots per `MG995_TAB_SLOT_X_MM` |
 | J1 servo insertion | drops in from ABOVE: case through the stator window (case + 1.0) and the lid opening (+1.0 more); tabs land on the stator pad; lead follows down the stator keyway and the lid opening | Jonathan: "keep room for the cables and clearance to insert it" | SERVO_CASE_CLEARANCE 1.0 + play 1.0 |

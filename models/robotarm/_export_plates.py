@@ -574,7 +574,8 @@ def run(_context: str):
         if SPLIT_BY_COLOUR:
             _b = comp.bRepBodies.item(0)
             _ap = (_b.appearance.name if _b.appearance else '')
-            _col = 'green' if 'green' in _ap.lower() else 'white'
+            _col = ('green' if 'green' in _ap.lower() else
+                    'dark' if 'black' in _ap.lower() else 'white')
             PLATE_OF[name] = '%s_%s' % (PLATE_OF[name], _col)
         assert comp.bRepBodies.count == 1, '%s is not one body' % name
         body = comp.bRepBodies.item(0)

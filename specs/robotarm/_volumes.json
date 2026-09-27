@@ -1,6 +1,6 @@
 {
   "base_lid": 76524.414,
-  "base_platter": 157115.483,
+  "base_platter": 186488.597,
   "duct_grommet": 588.092,
   "forearm": 20898.472,
   "forearm_nx": 9967.902,
@@ -27,7 +27,8 @@
   "shoulder_hub": 2339.0,
   "turntable_ring": 15438.449,
   "turntable_stator": 38330.652,
-  "upper_arm": 39032.654,
+  "turret_shroud": 31151.386,
+  "upper_arm": 36622.081,
   "wrist_hub": 2990.357,
   "wrist_roll": 6609.201,
   "wrist_rotator": 5681.056

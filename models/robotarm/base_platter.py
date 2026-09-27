@@ -88,8 +88,10 @@ POST_AZ = (120.0, 180.0, 240.0)          # tt_ contract - the ring's holes
 LID_AZ = (45.0, 135.0, 225.0, 315.0)
 CORNERS = ((-1, -1), (1, -1), (1, 1), (-1, 1))
 TOL = 1e-9
-FLUTES = 12                   # = turntable_ring's lobe count
-FLUTE_AZ0 = 30.0              # its first lobe
+SIDES = 12                    # a dodecagon - turntable_ring has 12 lobes
+VERTEX_AZ0 = 30.0             # vertices on the ring's lobe azimuths, so every
+                              # FLAT is centred on 15 + 30k: the toggle (165)
+                              # and DC (195) land dead centre on two flats
 FULL_TURN = 360.0
 REL_TOL = 1e-6                # profile-area match, relative
 PETG_G_CM3 = 1.27             # printed-mass convention, _HANDOFF.md
@@ -221,8 +223,6 @@ def run(_context: str):
           'STYLE, 2026-09-27: _style.md rule 1 on the floor rim. It also does the\n'
           '           elephant-foot chamfer\'s job. 3.0 not 4.0: the wall (3.0) and floor\n'
           '           (2.4) must keep MIN_WALL across the corner behind it - asserted.')
-    param('flute_r', '4.0 mm', 'STYLE: vertical flutes on the outer wall, cutter radius')
-    param('flute_d', '1.0 mm', 'STYLE: flute depth - the 3.0 wall keeps 2.0')
     param('tol', '0.01 mm', 'overlap so joined solids share volume - not a dimension')
 
     # ---- idempotent rebuild ------------------------------------------------------
@@ -372,8 +372,28 @@ def run(_context: str):
 
     # ---- phase 1: shell --------------------------------------------------------------
     t0 = design.timeline.count
-    circle('floor', 0.0, 0.0, ro * 2, -H, val('floor_t'), NEW)
-    ring('wall', ro, ri, z_floor - val('tol'), H - val('floor_t') + val('tol'), JOIN)
+    # A DODECAGON, NOT A CYLINDER (2026-09-28). `od` is now ACROSS FLATS, so
+    # the wall is still `wall` thick at every flat and thicker at the corners;
+    # nothing inside moves. The cylinder read as a cake tin in every render.
+    r_v = ro / math.cos(math.pi / SIDES)                  # vertex radius
+
+    def dodeca(sk):
+        pts = [mxy(sk, r_v * math.cos(math.radians(VERTEX_AZ0) + 2 * math.pi * k / SIDES),
+                   r_v * math.sin(math.radians(VERTEX_AZ0) + 2 * math.pi * k / SIDES))
+               for k in range(SIDES)]
+        for k in range(SIDES):
+            sk.sketchCurves.sketchLines.addByTwoPoints(pts[k], pts[(k + 1) % SIDES])
+
+    sk = sketch(comp.xYConstructionPlane, 'floor')
+    dodeca(sk)
+    extrude(profs(sk), NEW, -H, val('floor_t'), 'floor')
+    sk = sketch(comp.xYConstructionPlane, 'wall')
+    dodeca(sk)
+    sk.sketchCurves.sketchCircles.addByCenterRadius(mxy(sk, 0, 0), ri)
+    _poly_a = SIDES * ro ** 2 * math.tan(math.pi / SIDES)
+    _want = _poly_a - math.pi * ri ** 2
+    extrude(profs(sk, lambda p: abs(p.areaProperties().area - _want) < _want * REL_TOL),
+            JOIN, z_floor - val('tol'), H - val('floor_t') + val('tol'), 'wall')
     ring('lid_recess', r_recess, ri - val('tol'), z_lid, val('lid_t') + val('tol'), CUT)
     group(t0, PH_SHELL)
 
@@ -454,16 +474,16 @@ def run(_context: str):
     extrude(profs(sk), CUT, z_floor, val('tie_h'), 'tie_tunnel')
     group(t3, PH_RIM)
 
-    # ---- phase 5: finish - elephant-foot chamfer on the floor's outer edge -------------------
+    # ---- phase 5: finish - the foot facet round the dodecagon's floor edge ------------------
     t4 = design.timeline.count
     body = comp.bRepBodies.item(0)
     edges = adsk.core.ObjectCollection.create()
     for e in body.edges:
-        g = e.geometry
-        if isinstance(g, adsk.core.Circle3D) and abs(g.center.z + H) < val('tol') \
-                and abs(g.radius - ro) < val('tol'):
+        a_, b_ = e.startVertex.geometry, e.endVertex.geometry
+        if abs(a_.z + H) < val('tol') and abs(b_.z + H) < val('tol') \
+                and math.hypot((a_.x + b_.x) / 2, (a_.y + b_.y) / 2) > ri:
             edges.add(e)
-    assert edges.count == 1, 'expected the one floor rim edge, found %d' % edges.count
+    assert edges.count == SIDES, 'expected %d floor rim edges, found %d' % (SIDES, edges.count)
     ch_in = comp.features.chamferFeatures.createInput2()
     ch_in.chamferEdgeSets.addEqualDistanceChamferEdgeSet(edges, V(PREFIX + 'foot_facet'), False)
     comp.features.chamferFeatures.add(ch_in).name = 'foot_facet'
@@ -484,28 +504,15 @@ def run(_context: str):
     f_in = comp.features.filletFeatures.createInput()
     f_in.addConstantRadiusEdgeSet(roots, V(PREFIX + 'post_fillet'), False)
     comp.features.filletFeatures.add(f_in).name = 'post_root_fillets'
-    # FLUTES, _style.md rule 4b carried down the base: 12, on the SAME
-    # azimuths as turntable_ring's lobes, so the two read as one design. They
-    # stop under the lid recess, where the wall is only rim_t, and above the
-    # foot facet - a plain band top and bottom frames them.
     assert (val('wall') + val('floor_t') - val('foot_facet')) / math.sqrt(2) >= val('min_wall') - TOL, (
         'the foot facet leaves under MIN_WALL across the floor corner')
-    assert val('wall') - val('flute_d') >= val('min_wall') - TOL, 'the flutes thin the wall'
-    _half = math.degrees(math.asin(min(1.0, math.sqrt(
-        val('flute_r') ** 2 - (val('flute_r') - val('flute_d')) ** 2) / ro)))
+    # the two rim holes sit on FLAT centres, and inside their flat
+    flat_w = 2 * ro * math.tan(math.pi / SIDES)
     for _nm, _haz, _d in (('toggle', val('toggle_az'), val('toggle_d')),
                           ('dc', val('dc_az'), val('dc_d'))):
-        _hz = math.degrees(_haz)
-        _hole_half = math.degrees(math.asin(_d / 2 / ro))
-        _gap = min(abs(((_hz - (FLUTE_AZ0 + k * FULL_TURN / FLUTES)) + FULL_TURN / 2) % FULL_TURN - FULL_TURN / 2)
-                   for k in range(FLUTES))
-        assert _gap >= _half + _hole_half + math.degrees(val('min_wall') / ro), (
-            'a flute runs into the %s hole' % _nm)
-    for k in range(FLUTES):
-        a = math.radians(FLUTE_AZ0 + k * FULL_TURN / FLUTES)
-        rc = ro + val('flute_r') - val('flute_d')
-        circle('flute_%02d' % k, rc * math.cos(a), rc * math.sin(a), 2 * val('flute_r'),
-               -H + val('foot_facet'), H - val('foot_facet') - val('lid_t') - val('min_wall'), CUT)
+        _k = (math.degrees(_haz) - VERTEX_AZ0 - FULL_TURN / SIDES / 2) / (FULL_TURN / SIDES)
+        assert abs(_k - round(_k)) < REL_TOL, 'the %s hole is not centred on a flat' % _nm
+        assert _d + 2 * val('min_wall') < flat_w, 'the %s hole is wider than its flat' % _nm
     group(t4, PH_FINISH)
 
     # ---- identity + diagnostics ---------------------------------------------------------------
