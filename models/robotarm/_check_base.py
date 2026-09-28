@@ -234,6 +234,12 @@ def build(app, stage):
     _box(root, 'mg995_tabs', -s.case_w / 2, s.case_w / 2, yo - s.tab_span / 2,
          yo + s.tab_span / 2, J1_DECK_Z_MM, J1_DECK_Z_MM + s.tab_thk)
     _cyl(root, 'mg995_boss', 0.0, 0.0, s.boss_dia, case_top, case_top + s.boss_h)
+    # the tab ribs (drawing 2026-09-28), square to full height - they stand
+    # up off the tab tops into whatever sits over the stator pad
+    from lib.servo import MG995_TAB_RIB_W_MM, MG995_TAB_RIB_TOP_MM
+    for y0, y1 in ((yo - s.tab_span / 2, yo - s.case_l / 2), (yo + s.case_l / 2, yo + s.tab_span / 2)):
+        _box(root, 'mg995_rib', -MG995_TAB_RIB_W_MM / 2, MG995_TAB_RIB_W_MM / 2, y0, y1,
+             J1_DECK_Z_MM, J1_DECK_Z_MM + MG995_TAB_RIB_TOP_MM)
     # the ESP32 carrier, from base_platter's own parameters
     def bp(n):
         return ups.itemByName('bp_' + n).value * 10

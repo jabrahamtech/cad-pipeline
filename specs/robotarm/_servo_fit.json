@@ -5,7 +5,7 @@
     {
       "case_at": null,
       "case_mm3": 0.0,
-      "control_mm3": 405.0,
+      "control_mm3": 425.25,
       "horn_at": null,
       "horn_mm3": 0.0,
       "host": "turntable_stator",
@@ -15,16 +15,16 @@
     {
       "case_at": null,
       "case_mm3": 0.0,
-      "control_mm3": 2133.0,
+      "control_mm3": 1940.62,
       "horn_at": [
-        16.1,
-        16.1,
+        17.6,
+        17.6,
         -2.85,
         3.15,
         -15.0,
-        -10.5
+        -12.0
       ],
-      "horn_mm3": 67.5,
+      "horn_mm3": 40.5,
       "host": "shoulder_bracket",
       "servo": "MG995",
       "tag": "J2 shoulder"

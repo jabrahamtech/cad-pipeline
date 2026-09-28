@@ -195,42 +195,83 @@ MG90S = ServoSpec(
     stall_kgcm=2.0,
 )
 
-# --- MG995: 55 g standard metal-gear. DATASHEET, two vendor drawings ----
-# THE TWO DRAWINGS JONATHAN SUPPLIED DISAGREE ON THE MOUNTING PATTERN:
-#   drawing A (grey):  tab span 54.0, case 40 x 20 x 38,  total 47.2
-#   drawing B (black): tab span 52.8, case 40 x 20 x 36.5, c-c 47.8 x 10.2
-# TIE PARTLY BROKEN 2026-08-27 by TowerPro's own config table
-# (towerpro.com.tw/product/mg995: A 42.7, B 40.9, C 37, D 20, E 54,
-# F 26.8 - the MG995 and MG996R pages carry the same case table): the
-# manufacturer sides with drawing A on the span (54, not 52.8) and reads
-# the case a shade longer (40.9). Adopted: tab_span 54.0, case_l 40.9,
-# tab_below_top 7.2 (DERIVED from official F: case_h - F - tab_thk =
-# 36.5 - 26.8 - 2.5). The hole pitch is still ONLY drawing B's 47.8 -
-# tab-centred derivation off the official numbers gives (B+E)/2 = 47.5,
-# published clones say 49.5 - so the bracket keeps mounting this servo on
-# SLOTS elongated along X (MG995_TAB_SLOT_X_MM, widened to cover
-# 47.5..49.5). Replace with MEASURED values before the bracket prints at
-# full size — this is the standing bench item that blocks the shoulder.
+# --- MG995: 55 g standard metal-gear. JONATHAN'S DRAWING, 2026-09-28 --------
+# calibration/2026-09-28-mg995-drawing.png - the drawing for the servos he
+# actually has. Jonathan: "this is more correct than what you had before".
+# It REPLACES the TowerPro-table numbers this block carried since 2026-08-27
+# (case 40.9 x 20.2 x 36.5, tab_below_top 7.2, pitch 47.8, span 54): those
+# described a different case, 4 mm shorter, with a flat top.
+#
+# DIMENSIONED on the drawing: case 40.00 x 20.00, 40.50 bottom to the top of
+# the LIP, tab span 55.00, hole pitch 49.00, hole O4.50, shaft 14.50 from the
+# near holes (-> shaft_from_end = 49/2 - 14.5 = 10.0), U-slots open out to
+# 15.50 from the shaft (pitch 51.0), tab underside -> lip top 12.95, tab
+# underside -> collar top 14.45.
+# SCALED off the same drawing (its dimension lines check to 4.02 px/mm, the
+# 12.95 and 14.45 both reproduce to 0.05): lip 2.2 tall, collar O12.5,
+# spline 3.9, tab plate 3.1, rib 2.0 wide reaching 6.7 above the tab
+# underside at the case wall, lead stub centred 9.8 up from the case bottom
+# on the shaft-end face.
+#
+# THE LIP. Jonathan, 2026-09-28: "the top of the motor has a lip so the top
+# is not flush". The top is a D-shaped plate 2.2 proud of the case top -
+# 3.2 in from the far end, ~0.7 in at the shaft end (R ~9.5 about the
+# shaft), ~18 wide. case_h is taken to the TOP OF THE LIP, over the whole
+# case footprint: every consumer that clears or bears on "the case top"
+# then clears or bears on the lip, which is the face that actually touches.
+# The 2.2 mm step round the lip is left out on purpose - nothing reaches
+# into it.
+#
+# case_w stays 20.2: MEASURED on the bench 2026-08-28, the drawing says 20.0.
+# boss_dia stays 13.0 against the drawing's scaled 12.5 - it only ever sizes
+# CLEARANCE bores, and the larger number is the safe one.
 MG995 = ServoSpec(
     name="MG995",
-    case_l=40.9, case_w=20.2, case_h=36.5,   # l CONFIRMED, w MEASURED
-                                            # 2026-08-28 (was 20.0)
-    tab_span=54.0, tab_thk=2.5, tab_hole_dia=4.8, tab_hole_pitch=47.8,
-    tab_below_top=7.2, shaft_from_end=10.0,
-    boss_dia=13.0, boss_h=3.0, spline_dia=5.9, spline_h=3.6,
+    case_l=40.0, case_w=20.2, case_h=40.5,   # l, h DRAWING (h to the lip top);
+                                            # w MEASURED 2026-08-28
+    tab_span=55.0, tab_thk=3.1, tab_hole_dia=4.5, tab_hole_pitch=49.0,
+    tab_below_top=9.85, shaft_from_end=10.0,  # 12.95 - tab_thk
+    boss_dia=13.0, boss_h=1.5, spline_dia=5.9, spline_h=3.9,
     horn_hub_dia=8.7, horn_hub_h=3.8, horn_blade_thk=2.2,
     horn_arm_len=16.5, horn_hole_dia=1.5, horn_hole_pitch=2.3,
     horn_screw_dia=3.0,
     lead_bundle_dia=4.2,
-    lead_x=-10.0, lead_y=0.0, lead_z=-22.6, # 2.5 + 7.2 - 36.5 = -26.8, +4.2
+    lead_x=-10.0, lead_y=0.0, lead_z=-17.75,  # bottom -27.55, stub centre +9.8
     mass_g=55.0,
     stall_kgcm=9.4,
 )
-# MG995 mounts on FOUR holes: 47.8 apart along X, this far apart across Y.
+# the drawing's two dimension chains, asserted so an edit above cannot
+# silently leave one of them behind
+assert abs(MG995.tab_below_top + MG995.tab_thk - 12.95) < 1e-9
+assert abs(MG995.tab_below_top + MG995.tab_thk + MG995.boss_h - 14.45) < 1e-9
+assert abs(MG995.tab_hole_pitch / 2 - MG995.shaft_from_end - 14.5) < 1e-9
+# THE LIP, as a footprint, in the servo frame (+X away from the shaft).
+# case_h runs to its top (see above); a mount that wants the CASE top flush
+# on a face pockets this instead. Scaled off the drawing's top view:
+#   height above the case top                 2.2
+#   width across Y (case 20.0 on the drawing) 17.8
+#   shaft-end edge: a D, R 9.75 about the shaft (case end is at 10.0)
+#   far-end edge: 3.2 in from the far end of the case
+# Modelled as the RECTANGLE x -R .. case_l - shaft_from_end - inset: the D's
+# corners are left in, which makes a pocket cut from it slightly generous.
+MG995_LIP_H_MM = 2.2
+MG995_LIP_W_MM = 17.8
+MG995_LIP_R_MM = 9.75
+MG995_LIP_FAR_INSET_MM = 3.2
+# The stiffening RIB on each tab: a web down the tab's centreline (between
+# the two holes) that rises from the tab top toward the case top. It is what
+# a pad clamping the tab TOP runs into. Width, and its top above the TAB
+# UNDERSIDE where it meets the case wall (it slopes down toward the tip).
+MG995_TAB_RIB_W_MM = 2.0
+MG995_TAB_RIB_TOP_MM = 6.7
+# MG995 mounts on FOUR holes: 49.0 apart along X, this far apart across Y
+# (not dimensioned; scales 10.1 - 10.2 kept, the difference is inside M3
+# clearance).
 MG995_TAB_HOLE_PITCH_Y = 10.2
-# Slot length along X that covers EVERY candidate pattern (derived 47.5,
-# drawing B's 47.8, published clones' 49.5) plus an M3 clearance hole:
-# 3.4 + (49.5 - 47.5) = 5.4, rounded up.
+# Slot length along X in a mount, centred on the 49.0 pitch: an M3 clearance
+# hole plus +-1.1 of travel for print and pitch error: 3.4 + 2.2 = 5.6. (The
+# servo's own U-slots run outward to pitch 51.0, so travel OUTWARD is free on
+# the servo side too.)
 MG995_TAB_SLOT_X_MM = 5.6
 
 # --- HORN GEOMETRY, CORRECTED 2026-08-27 ("the servo arms seem really

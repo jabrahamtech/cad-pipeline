@@ -64,6 +64,12 @@ from lib.palette import hints_for  # noqa: E402
 from lib.servo import (  # noqa: E402
     CATALOG,
     MG995_TAB_HOLE_PITCH_Y,
+    MG995_LIP_FAR_INSET_MM,
+    MG995_LIP_H_MM,
+    MG995_LIP_R_MM,
+    MG995_LIP_W_MM,
+    MG995_TAB_RIB_TOP_MM,
+    MG995_TAB_RIB_W_MM,
     horn_arm_w,
     horn_arms,
 )
@@ -149,7 +155,19 @@ def run(_context: str):
           '           end face at the shaft end, NOT a long side wall - five parts once\n'
           '           notched the wrong wall from this datum.')
     param('lead_z', '%.4f mm' % S.lead_z,
-          'one bundle diameter up from the case BOTTOM, so strongly negative')
+          'up from the case BOTTOM on the shaft-end face, so strongly negative')
+    if not micro:
+        param('lip_h', '%.4f mm' % MG995_LIP_H_MM,
+              'the LIP on the case top - case_h runs to ITS top (drawing 2026-09-28)')
+        param('lip_w', '%.4f mm' % MG995_LIP_W_MM, 'lip width across Y')
+        param('lip_r', '%.4f mm' % MG995_LIP_R_MM, 'shaft axis to the lip shaft-end edge')
+        param('lip_inset', '%.4f mm' % MG995_LIP_FAR_INSET_MM, 'lip in from the far end')
+        param('rib_w', '%.4f mm' % MG995_TAB_RIB_W_MM,
+              'the web down each tab centreline - drawing 2026-09-28')
+        param('rib_top', '%.4f mm' % MG995_TAB_RIB_TOP_MM,
+              'rib top above the tab plane at the case wall. Modelled SQUARE at\n'
+              '           that height to the tab tip - the real rib slopes down, so this\n'
+              '           is the conservative envelope.')
     _set(STYLE + 'ef', '0.4 mm', 'elephant-foot chamfer, functional faces', 'mm')
 
     # --- rebuild: RENAME then delete ---------------------------------------
@@ -205,10 +223,17 @@ def run(_context: str):
     sk = sketches.add(xy)
     sk.name = 'sk_case'
     rect(sk, x_near, x_far, -hw, hw)
-    ext = solid(sk, val('case_bot'), val('case_h'), NEW)
+    lip = 0.0 if micro else val('lip_h')
+    ext = solid(sk, val('case_bot'), val('case_h') - lip, NEW)
     ext.name = 'case'
     body = ext.bodies.item(0)
     body.name = BODY_NAME
+    if not micro:
+        # THE LIP: the top lip_h of case_h is this footprint only, not the case
+        sk = sketches.add(xy)
+        sk.name = 'sk_lip'
+        rect(sk, -val('lip_r'), x_far - val('lip_inset'), -val('lip_w') / 2.0, val('lip_w') / 2.0)
+        solid(sk, val('case_top') - lip, lip, JOIN, body).name = 'lip'
     group(t0, PH_CASE)
 
     # ---- PHASE: flange ---------------------------------------------------
@@ -242,6 +267,23 @@ def run(_context: str):
             adsk.fusion.ExtentDirections.PositiveExtentDirection)
         inp.startExtent = adsk.fusion.OffsetStartDefinition.create(V('0 mm'))
         extrudes.add(inp)
+    # THE TAB RIBS (MG995 only). They stand up off the tab TOP - the very
+    # face a flange recess clamps - so a pocket that ignores them seats the
+    # servo rib-height proud. Drawing 2026-09-28.
+    if not micro:
+        sk = sketches.add(xy)
+        sk.name = 'sk_tab_ribs'
+        rw = val('rib_w') / 2.0
+        rect(sk, x_mid - span / 2.0, x_near, -rw, rw)
+        rect(sk, x_far, x_mid + span / 2.0, -rw, rw)
+        for i in range(sk.profiles.count):
+            inp = extrudes.createInput(sk.profiles.item(i), JOIN)
+            inp.participantBodies = [body]
+            inp.setOneSideExtent(
+                adsk.fusion.DistanceExtentDefinition.create(V('%srib_top' % PREFIX)),
+                adsk.fusion.ExtentDirections.PositiveExtentDirection)
+            inp.startExtent = adsk.fusion.OffsetStartDefinition.create(V('0 mm'))
+            extrudes.add(inp).name = 'tab rib %d' % i
     group(t1, PH_FLANGE)
 
     # ---- PHASE: output ---------------------------------------------------

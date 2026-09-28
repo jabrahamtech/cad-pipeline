@@ -78,6 +78,9 @@ import adsk.core  # noqa: E402
 import adsk.fusion  # noqa: E402
 
 from lib.servo import CATALOG, SPLINE_BROACH_INTERFERENCE_MM  # noqa: E402
+from lib.servo import MG995_TAB_RIB_TOP_MM, MG995_TAB_RIB_W_MM  # noqa: E402
+from lib.servo import (MG995_LIP_H_MM, MG995_LIP_W_MM, MG995_LIP_R_MM,  # noqa: E402
+                       MG995_LIP_FAR_INSET_MM)
 
 MG995 = CATALOG['MG995']
 PARTS = ['wrist_hub', 'shoulder_hub', 'upper_arm', 'shoulder_bracket']
@@ -250,7 +253,7 @@ def run(_context: str):
     # library read is divided once, here, and never again.
     case_w = gv('sb_case_w')
     case_l = gv('sb_case_l')
-    case_h = MG995.case_h / 10.0        # lib/servo.py - DATASHEET drawing B
+    case_h = MG995.case_h / 10.0        # lib/servo.py - to the LIP top, drawing 2026-09-28
     boss_d = MG995.boss_dia / 10.0      # the Ø13.0 output collar
     boss_h = MG995.boss_h / 10.0
     spline_d = MG995.spline_dia / 10.0  # Ø5.9 of 25-tooth spline above it
@@ -267,6 +270,11 @@ def run(_context: str):
     # because sb_lobe_t is derived from it and the servo would silently move.
     standoff = gv('sb_horn_standoff')
     case_top = plate_out + standoff         # 0.0 since the standoff retired
+    # THE LIP (drawing 2026-09-28). lib's case_h and tab_below_top both run
+    # to the LIP top, and it is the lip that lands on plate_out; the case
+    # proper starts lip_h outboard of it. So `case_top` here IS the lip top.
+    lip_h = MG995_LIP_H_MM / 10.0
+    lip_top = case_top
     assert abs((tab_plane - case_top)
                - (gv('sb_tab_below_top') + gv('sb_tab_thk'))) < 1e-9, (
         'the case top is not tab stack below the tab plane - sb_lobe_t is '
@@ -287,10 +295,24 @@ def run(_context: str):
             'library disagree about the MG995, so this envelope is testing a '
             'servo that neither of them describes' % (pname, gv(pname) * 10, lib_mm))
     env_box('case', -case_w / 2, case_w / 2, case_lo, case_hi,
-            case_top, case_top + case_h, NEWB)
+            case_top + lip_h, case_top + case_h, NEWB)
+    env_box('lip', -MG995_LIP_W_MM / 20.0, MG995_LIP_W_MM / 20.0,
+            case_lo + MG995_LIP_FAR_INSET_MM / 10.0, MG995_LIP_R_MM / 10.0,
+            lip_top, lip_top + lip_h, JOINB)
+    # THE TAB BODY RUNS INBOARD OF THE TAB PLANE - from the tab underside
+    # (the plane) toward the case top. This box sat on the OUTBOARD side,
+    # tab_plane .. + tab_thk, from before the flange recess existed, and so
+    # could never see the recess or anything standing on the tab top.
+    # Corrected 2026-09-28 with the MG995 redrawn from Jonathan's drawing.
+    tab_mid = (case_hi + case_lo) / 2
     env_box('tabs', -case_w / 2, case_w / 2,
-            (case_hi + case_lo) / 2 - tab_span / 2, (case_hi + case_lo) / 2 + tab_span / 2,
-            tab_plane, tab_plane + tab_thk, JOINB)
+            tab_mid - tab_span / 2, tab_mid + tab_span / 2,
+            tab_plane - tab_thk, tab_plane, JOINB)
+    # and the rib on each tab, square to its full height (lib/servo.py)
+    rib_hw = MG995_TAB_RIB_W_MM / 20.0
+    rib_top = MG995_TAB_RIB_TOP_MM / 10.0
+    for z0, z1 in ((tab_mid - tab_span / 2, case_lo), (case_hi, tab_mid + tab_span / 2)):
+        env_box('tab_rib', -rib_hw, rib_hw, z0, z1, tab_plane - rib_top, tab_plane, JOINB)
     assert env.bRepBodies.count == 1, 'servo envelope came out in %d pieces' % (
         env.bRepBodies.count)
     env.bRepBodies.item(0).name = 'MG995_envelope'
@@ -318,9 +340,9 @@ def run(_context: str):
     # lib/servo.py. This stack runs INBOARD from the case top - the servo's
     # +Z is this frame's -X, see the docstring - so each piece starts where
     # the one below it ended and the arithmetic never has to be done twice.
-    boss_top = case_top - boss_h                   # top of the Ø13 collar
+    boss_top = lip_top - boss_h                    # top of the collar, off the LIP
     spline_top = boss_top - spline_h               # top of the spline
-    env_cyl('output_boss', 0.0, 0.0, boss_d, boss_top, case_top, NEWB)
+    env_cyl('output_boss', 0.0, 0.0, boss_d, boss_top, lip_top, NEWB)
     # AT THE BROACHED DIAMETER, NOT THE FREE ONE - docstring, and the same
     # argument env_cyl itself carries about the boss. The 0.25 mm of designed
     # interference is checked as arithmetic below, where it can be read.

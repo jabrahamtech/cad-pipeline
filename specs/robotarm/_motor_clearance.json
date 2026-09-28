@@ -18,33 +18,33 @@
     {
       "audit": {
         "axis": "z",
-        "delta": -0.0,
-        "part": 10.2,
+        "delta": 0.0,
+        "part": 4.35,
         "parts": "tt_race_z+-tt_hub_h+-tt_hub_seat_z",
-        "table": 10.2
+        "table": 4.350000000000003
       },
       "control_gap_mm": 0.0,
-      "control_mm3": 4.0,
+      "control_mm3": 8.0,
       "control_overdrive_mm": 1.0,
       "control_pitches": 1.0,
       "control_shift_mm": 1.2,
       "frame_ok": true,
       "frame_seated_mm3": 0.0,
       "furniture": {
-        "hub_top": 13.9,
-        "retain_head_d": 5.0,
-        "retain_stack_d": 5.0,
-        "retain_top": 15.65,
-        "tab_head_d": 4.0,
-        "tab_head_h": 1.4,
-        "tab_screw": "M2",
-        "washer_d": 6.25,
+        "hub_top": 19.75,
+        "retain_head_d": 6.0,
+        "retain_stack_d": 6.0,
+        "retain_top": 21.85,
+        "tab_head_d": 8.0,
+        "tab_head_h": 2.8,
+        "tab_screw": "M4",
+        "washer_d": 7.25,
         "washer_fitted": false
       },
       "host": "turntable_stator",
       "kind": "revolute",
-      "min_gap_against": "retain_SG90",
-      "min_gap_at": 45.0,
+      "min_gap_against": "retain_MG995",
+      "min_gap_at": -90.0,
       "min_gap_mm": 0.2,
       "moving": "shoulder_bracket",
       "retain_basis": "PROUD of j1_hub top face",
@@ -53,67 +53,67 @@
           "at": -90.0,
           "gap_mm": 0.2,
           "hit_mm3": 0.0,
-          "nearest": "retain_SG90",
+          "nearest": "retain_MG995",
           "unit": "deg"
         },
         {
           "at": -67.5,
           "gap_mm": 0.2,
           "hit_mm3": 0.0,
-          "nearest": "retain_SG90",
+          "nearest": "retain_MG995",
           "unit": "deg"
         },
         {
           "at": -45.0,
           "gap_mm": 0.2,
           "hit_mm3": 0.0,
-          "nearest": "retain_SG90",
+          "nearest": "retain_MG995",
           "unit": "deg"
         },
         {
           "at": -22.5,
           "gap_mm": 0.2,
           "hit_mm3": 0.0,
-          "nearest": "retain_SG90",
+          "nearest": "retain_MG995",
           "unit": "deg"
         },
         {
           "at": 0.0,
           "gap_mm": 0.2,
           "hit_mm3": 0.0,
-          "nearest": "retain_SG90",
+          "nearest": "retain_MG995",
           "unit": "deg"
         },
         {
           "at": 22.5,
           "gap_mm": 0.2,
           "hit_mm3": 0.0,
-          "nearest": "retain_SG90",
+          "nearest": "retain_MG995",
           "unit": "deg"
         },
         {
           "at": 45.0,
           "gap_mm": 0.2,
           "hit_mm3": 0.0,
-          "nearest": "retain_SG90",
+          "nearest": "retain_MG995",
           "unit": "deg"
         },
         {
           "at": 67.5,
           "gap_mm": 0.2,
           "hit_mm3": 0.0,
-          "nearest": "retain_SG90",
+          "nearest": "retain_MG995",
           "unit": "deg"
         },
         {
           "at": 90.0,
           "gap_mm": 0.2,
           "hit_mm3": 0.0,
-          "nearest": "retain_SG90",
+          "nearest": "retain_MG995",
           "unit": "deg"
         }
       ],
-      "servo": "SG90",
+      "servo": "MG995",
       "tag": "J1 yaw",
       "travel": [
         -90.0,
@@ -129,22 +129,22 @@
       "audit": {
         "axis": "x",
         "delta": 0.0,
-        "part": 29.6,
+        "part": 32.85,
         "parts": "sb_plate_out+sb_lobe_t",
-        "table": 29.6
+        "table": 32.85
       },
       "control_gap_mm": 0.0,
       "control_mm3": 39.0,
       "control_overdrive_mm": 2.0,
       "control_pitches": 2.0,
-      "control_shift_mm": 3.8,
+      "control_shift_mm": 5.0,
       "frame_ok": true,
       "frame_seated_mm3": 0.0,
       "furniture": {
-        "hub_top": 16.3,
+        "hub_top": 18.349999999999998,
         "retain_head_d": 6.0,
         "retain_stack_d": 7.25,
-        "retain_top": 19.2,
+        "retain_top": 21.249999999999996,
         "tab_head_d": 8.0,
         "tab_head_h": 2.8,
         "tab_screw": "M4",
@@ -155,69 +155,69 @@
       "kind": "revolute",
       "min_gap_against": "retain_MG995",
       "min_gap_at": -90.0,
-      "min_gap_mm": 1.8,
+      "min_gap_mm": 3.0,
       "moving": "upper_arm",
       "retain_basis": "recessed in shoulder_hub (sh_access_d)",
       "samples": [
         {
           "at": -90.0,
-          "gap_mm": 1.8,
+          "gap_mm": 3.0,
           "hit_mm3": 0.0,
           "nearest": "retain_MG995",
           "unit": "deg"
         },
         {
           "at": -67.5,
-          "gap_mm": 1.8,
+          "gap_mm": 3.0,
           "hit_mm3": 0.0,
           "nearest": "retain_MG995",
           "unit": "deg"
         },
         {
           "at": -45.0,
-          "gap_mm": 1.8,
+          "gap_mm": 3.0,
           "hit_mm3": 0.0,
           "nearest": "retain_MG995",
           "unit": "deg"
         },
         {
           "at": -22.5,
-          "gap_mm": 1.8,
+          "gap_mm": 3.0,
           "hit_mm3": 0.0,
           "nearest": "retain_MG995",
           "unit": "deg"
         },
         {
           "at": 0.0,
-          "gap_mm": 1.8,
+          "gap_mm": 3.0,
           "hit_mm3": 0.0,
           "nearest": "retain_MG995",
           "unit": "deg"
         },
         {
           "at": 22.5,
-          "gap_mm": 1.8,
+          "gap_mm": 3.0,
           "hit_mm3": 0.0,
           "nearest": "retain_MG995",
           "unit": "deg"
         },
         {
           "at": 45.0,
-          "gap_mm": 1.8,
+          "gap_mm": 3.0,
           "hit_mm3": 0.0,
           "nearest": "retain_MG995",
           "unit": "deg"
         },
         {
           "at": 67.5,
-          "gap_mm": 1.8,
+          "gap_mm": 3.0,
           "hit_mm3": 0.0,
           "nearest": "retain_MG995",
           "unit": "deg"
         },
         {
           "at": 90.0,
-          "gap_mm": 1.8,
+          "gap_mm": 3.0,
           "hit_mm3": 0.0,
           "nearest": "retain_MG995",
           "unit": "deg"

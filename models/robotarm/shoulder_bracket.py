@@ -181,6 +181,7 @@ from lib.servo import SERVO_CASE_CLEARANCE_MM  # noqa: E402
 from lib.servo import CATALOG as _SERVOS  # noqa: E402
 from lib.servo import MG995_TAB_HOLE_PITCH_Y as _MG995_PITCH_Y  # noqa: E402
 from lib.servo import MG995_TAB_SLOT_X_MM as _MG995_SLOT_X  # noqa: E402
+from lib.servo import MG995_TAB_RIB_W_MM, MG995_TAB_RIB_TOP_MM  # noqa: E402
 from lib.design_rules import FASTENER_MM as _FASTENER  # noqa: E402
 
 # THE J1 DRIVE CONTRACT LIVES IN lib/j1_drive.py since 2026-09-27 (J1 -> MG995).
@@ -553,10 +554,10 @@ def run(_context: str):
     param('magnet_pocket_h', '%.2f mm' % MAGNET_POCKET_MM, 'half the magnet - lib/j1_drive')
 
     # ---- MG995, DATASHEET (lib/servo.py) ------------------------------------
-    param('case_l', '40.9 mm', 'MG995 case length - runs DOWN along Z, see the\n           docstring. 40.0 -> 40.9 on TowerPro B, 2026-08-27 flange audit')
-    param('case_w', '20.2 mm', 'MG995 case width - lies along Y. MEASURED\n           2026-08-28 (was the datasheet 20.0). The gauge bed cut at\n           20.0 + 0.2 loc was line-to-line on the real case - not a fit.')
-    param('shaft_end', '10.0 mm', 'shaft axis to the near end of the case, along Z')
-    param('tab_thk', '2.5 mm',
+    param('case_l', '%.2f mm' % _MG995.case_l, 'MG995 case length - runs DOWN along Z, see the\n           docstring. Read from lib/servo.py (Jonathan\'s drawing 2026-09-28)')
+    param('case_w', '%.2f mm' % _MG995.case_w, 'MG995 case width - lies along Y. MEASURED\n           2026-08-28 (was the datasheet 20.0). The gauge bed cut at\n           20.0 + 0.2 loc was line-to-line on the real case - not a fit.')
+    param('shaft_end', '%.2f mm' % _MG995.shaft_from_end, 'shaft axis to the near end of the case, along Z')
+    param('tab_thk', '%.2f mm' % _MG995.tab_thk,
           'MG995 tab thickness, and now also the FLANGE RECESS DEPTH. This read\n'
           '           "the pad is this proud, it is the datum" until 2026-08-31, and\n'
           '           that sentence WAS the fault GATE servo_fit measured: the tab\n'
@@ -569,12 +570,36 @@ def run(_context: str):
           '           flange recess is cut from. It is tab_span - case_l = 13.1 mm\n'
           '           longer than the case, and every one of those 13.1 mm was landing\n'
           '           on solid pad until the recess below existed.')
-    param('tab_below_top', '7.2 mm', 'case top to the tab TOP, along X - DERIVED from\n           TowerPro F 26.8: case_h - F - tab_thk. Was 7.5')
-    param('tab_pitch', '47.8 mm',
-          'tab hole pitch along the case, drawing B. Drawing A implies 49.5 - hence\n'
+    param('tab_below_top', '%.2f mm' % _MG995.tab_below_top,
+          'case top to the tab TOP, along X. The "case top" is the top of the\n'
+          '           LIP (lib/servo.py MG995_LIP_H_MM): the lip is the face that lands\n'
+          '           on plate_out. Drawing 2026-09-28: 12.95 tab underside to lip top.\n'
+          '           Was 7.2 off the TowerPro table, which described a flat-topped\n'
+          '           36.5 case - 3.25 mm short of this pad.')
+    param('tab_pitch', '%.2f mm' % _MG995.tab_hole_pitch,
+          'tab hole pitch along the case - DIMENSIONED 49.00 on the 2026-09-28\n'
+          '           drawing (was 47.8, drawing B). Still slotted, for print error -\n'
           '           slots, see MG995_TAB_SLOT_X_MM in lib/servo.py')
-    param('tab_pitch_y', '10.2 mm', 'tab hole pitch across the case - MG995_TAB_HOLE_PITCH_Y')
-    param('slot_len', '5.6 mm', 'MG995_TAB_SLOT_X_MM - covers every candidate pitch\n           (derived 47.5, drawing B 47.8, clones 49.5)')
+    param('tab_pitch_y', '%.2f mm' % _MG995_PITCH_Y, 'tab hole pitch across the case - MG995_TAB_HOLE_PITCH_Y')
+    param('slot_len', '%.2f mm' % _MG995_SLOT_X, 'MG995_TAB_SLOT_X_MM - M3 clearance plus +-1.1 of\n           travel about the 49.0 pitch')
+    # THE LIP. Jonathan 2026-09-28: "the top of the motor has a lip so the top
+    # is not flush". lib/servo.py's case_h and tab_below_top both run to the
+    # LIP top, so it is the lip that lands on plate_out and the case proper
+    # stands lip_h off it. That is also where the drive hub needs it: the hub
+    # collar is fixed by plate_in + collar_l, and seat_z (lip top + gap) puts
+    # the spline exactly there. Pocketing the lip instead was tried first and
+    # moved the spline 2.2 mm into the collar - _check_shoulder, 505 mm3.
+    param('rib_w', '%.2f mm' % MG995_TAB_RIB_W_MM,
+          'the web down each tab\'s centreline - lib/servo.py, drawing 2026-09-28')
+    param('rib_top', '%.2f mm' % MG995_TAB_RIB_TOP_MM,
+          'rib top above the TAB UNDERSIDE, at the case wall (its highest point)')
+    param('rib_slot_w', PREFIX + 'rib_w + ' + PREFIX + 'srv_clear',
+          'derived: the relief for that rib, with the case window clearance')
+    param('rib_slot_d', PREFIX + 'rib_top - ' + PREFIX + 'tab_thk + ' + PREFIX + 'free',
+          'derived: how far past the recess floor the rib reaches, plus the\n'
+          '           running gap. The pad clamps the tab TOP, and the rib stands up\n'
+          '           off exactly that face - without this the tabs sit rib-height\n'
+          '           proud of their floor and the servo cocks in the pad.')
     param('slot_w', '2.5 mm', 'M3 self-tapper into PETG')
     param('slot_depth', '5.0 mm',
           'blind, and MEASURED FROM THE RECESS FLOOR since 2026-08-31, not from\n'
@@ -887,6 +912,12 @@ def run(_context: str):
         '- a slot mouth would start partly on the pad face and partly on the '
         'recess floor. sb_tab_pitch has moved without sb_tab_span moving with '
         'it.' % (slot_lo * 10, slot_hi * 10, recess_lo * 10, recess_hi * 10))
+    assert val('tab_pitch_y') / 2 - val('slot_w') / 2 >= val('rib_slot_w') / 2 + val('wall') - TOL, (
+        'the tab pilots at |y| %.2f run into the %.2f wide rib relief'
+        % ((val('tab_pitch_y') - val('slot_w')) / 2 * 10, val('rib_slot_w') * 10))
+    assert recess_x0 - val('rib_slot_d') - val('plate_out') >= val('wall') - TOL, (
+        'the rib relief leaves %.2f mm of pad floor over plate_out'
+        % ((recess_x0 - val('rib_slot_d') - val('plate_out')) * 10))
     assert slot_y <= val('flange_w') / 2 - TOL, (
         'the tab slots reach |y| %.2f and the flange recess is only %.2f half '
         'wide' % (slot_y * 10, val('flange_w') / 2 * 10))
@@ -915,9 +946,16 @@ def run(_context: str):
         'tt_boss_h must equal ring_lift + ring_t so the ring finishes flush; the '
         'boss top is %.2f and the ring reaches %.2f'
         % (boss_top * 10, ring_top * 10))
-    assert pad_r < journal_r - 1e-9, (
-        'the servo pad reaches r %.1f and the journal boss it stands on is only r %.1f'
-        % (pad_r * 10, journal_r * 10))
+    # THE PAD MAY REACH PAST THE JOURNAL ABOVE THE BOSS TOP - nothing turns
+    # against it there - but NOT below it, where the retainer ring laps the
+    # boss from r ring_bore/2. Since the MG995 grew to its drawn 12.95 stack
+    # (2026-09-28) the pad corner reaches past r 34, so the band from the rim
+    # top to the boss top is TRIMMED round to journal_r in phase 4. What this
+    # still guards: the trim only ever takes corners, never the whole pad face.
+    assert val('plate_out') + lobe_t < journal_r - 1e-9, (
+        'the servo pad FACE reaches r %.1f, past the r %.1f journal boss - the '
+        'trim below the boss top would cut the tab plane itself'
+        % ((val('plate_out') + lobe_t) * 10, journal_r * 10))
     assert leg_r < journal_r - 1e-9, (
         'a fork leg reaches r %.1f, past the journal boss at r %.1f' % (
             leg_r * 10, journal_r * 10))
@@ -1098,6 +1136,19 @@ def run(_context: str):
         'overhangs the case window by.'
         % (_flange_drop, _flange_floor,
            (val('flange_l') - val('case_l') - val('srv_clear')) / 2 * 10))
+    # THE RIB RELIEF. Each MG995 tab carries a web down its centreline that
+    # rises off the tab TOP toward the case - the face this recess floor
+    # clamps. One slot along the whole flange length, rib_slot_d past the
+    # floor; the case window has already cleared its middle.
+    _vol_before_rib = comp.bRepBodies.item(0).volume
+    yz_rect('rib_relief',
+            -val('rib_slot_w') / 2, val('rib_slot_w') / 2,
+            recess_lo, recess_hi,
+            PREFIX + 'plate_out + ' + PREFIX + 'lobe_t - ' + PREFIX + 'tab_thk - '
+            + PREFIX + 'rib_slot_d',
+            PREFIX + 'rib_slot_d', CUT)
+    assert comp.bRepBodies.item(0).volume < _vol_before_rib, (
+        'the rib relief removed nothing - it is not under the flange')
     for i, z_s in enumerate(screw_z):
         for j, y_s in enumerate((-val('tab_pitch_y') / 2, val('tab_pitch_y') / 2)):
             xy = sketch(comp.yZConstructionPlane, 'sk_tab_slot_%d%d' % (i, j))
@@ -1161,6 +1212,25 @@ def run(_context: str):
         'the three hub bolts and their counterbores removed %.1f mm3 against '
         'a %.1f floor - wrong place or wrong scale'
         % (_bolt_drop, HUB_BOLT_MIN_DROP_MM3))
+    # THE JOURNAL TRIM - see the pad_r assert. An annulus from the journal
+    # radius out past the pad corner, over the boss band only (rim top to
+    # boss top): it takes the pad corners that would ride on the retainer
+    # ring and touches nothing else, because the legs and the boss are
+    # inside journal_r and the rim is below the band.
+    _vol_before_trim = comp.bRepBodies.item(0).volume
+    sk_t = sketch(comp.xYConstructionPlane, 'sk_journal_trim')
+    sk_t.sketchCurves.sketchCircles.addByCenterRadius(mpt(sk_t, 0, 0, 0), journal_r)
+    sk_t.sketchCurves.sketchCircles.addByCenterRadius(
+        mpt(sk_t, 0, 0, 0), pad_r + val('wall'))
+    _ann = [sk_t.profiles.item(i) for i in range(sk_t.profiles.count)
+            if sk_t.profiles.item(i).profileLoops.count == 2]
+    assert len(_ann) == 1, 'journal trim: expected one annulus profile'
+    _ti = comp.features.extrudeFeatures.createInput(_ann[0], CUT)
+    _ti.startExtent = adsk.fusion.OffsetStartDefinition.create(V(mm(rim_top)))
+    _ti.setDistanceExtent(False, V(TURRET + 'boss_h'))
+    comp.features.extrudeFeatures.add(_ti).name = 'journal_trim'
+    _trim_mm3 = (_vol_before_trim - comp.bRepBodies.item(0).volume) * 1000
+    assert _trim_mm3 >= 0.0
     # The loom, astern of the arm at 270 deg - one of the two azimuths a leg
     # does not occupy.
     xy_arc('cable_window', val('cable_ir'), race_in - val('wall'),
@@ -1273,8 +1343,9 @@ def run(_context: str):
           'the spline centres the hub and this joint takes up the difference'
           % (tval('hub_bolt_d') * 10 - _FASTENER[J1_HUB_SCREW]['clearance']))
     print('CLEARANCES:')
-    print('  servo pad reaches r %.1f, fork legs r %.1f, journal boss is r %.1f' % (
-        pad_r * 10, leg_r * 10, journal_r * 10))
+    print('  servo pad reaches r %.1f above the boss top (trimmed to r %.1f below it, '
+          '%.1f mm3), fork legs r %.1f, journal boss is r %.1f' % (
+              pad_r * 10, journal_r * 10, _trim_mm3, leg_r * 10, journal_r * 10))
     print('  MG995 case bottom z %.2f vs ring top z %.2f -> %.2f mm of daylight' % (
         case_lo * 10, ring_top * 10, (case_lo - ring_top) * 10))
     print('  servo pad ends z %.2f, %.2f mm inside the boss top' % (

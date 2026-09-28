@@ -128,6 +128,14 @@ _J4_SEAT_Z = _spline_hub(
 _J4_TAB_X = _PIVOT.plate_out + _J4_SEAT_Z
 _J3_SERVO = _servo_for('J3')
 from lib.j1_drive import J1_DECK_Z_MM as _J1_DECK_Z_MM  # noqa: E402
+from lib.servo import CATALOG as _CAT  # noqa: E402
+# J2's tab plane = sb_plate_out + sb_lobe_t. plate_out 19.90 is the bracket's
+# (wrist straddle + gap + plate_t); lobe_t is the MG995 stack from the LIP top
+# (which lands on plate_out) to the tab underside - 12.95 on the 2026-09-28
+# drawing. Was a typed 29.6 off the old flat-topped 9.7 stack.
+_SB_PLATE_OUT_MM = 19.9
+_J2_TAB_PLANE_MM = (_SB_PLATE_OUT_MM + _CAT['MG995'].tab_below_top
+                    + _CAT['MG995'].tab_thk)
 _J3_CAP_T = _J3_SERVO.tab_below_top + _J3_SERVO.tab_thk
 
 MOUNTS = [
@@ -144,7 +152,7 @@ MOUNTS = [
          insert=(0.0, 0.0, -1.0), travel=30.0),
     dict(tag='J2 shoulder', host='shoulder_bracket',
          servo=_servo_name_for('J2'),
-         shaft=(29.6, 0.0, 0.0),
+         shaft=(_J2_TAB_PLANE_MM, 0.0, 0.0),
          xa=('z', -1), za=('x', -1),
          insert=(-1.0, 0.0, 0.0), travel=45.0),
     # J3 DOES NOT MOUNT IN THE FOREARM ANY MORE, and this row went on saying
