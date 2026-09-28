@@ -12,7 +12,7 @@ Everything PETG, 0.2 layers, 3 walls, 15–20 % infill, **supports off**, unless
 Files are in `exports/robotarm/`.
 
 **1. Gauge first**
-- `gauge_broach_v1.3mf` — its G row settles the MG995 spline press the J1 hub is cut to.
+- `gauge_broach_v2.3mf` — ~19 g. Starts in clearance, so the first station always goes on; its G row settles the MG995 spline press the hubs are cut to (v1 fitted nothing — don't use it).
 
 **2. Base + turret (black PETG, ~290 g)**
 - `base_platter_v5.3mf` ×1 — 12-sided, floor down, no brim needed (3 mm foot facet) · ~154 g
