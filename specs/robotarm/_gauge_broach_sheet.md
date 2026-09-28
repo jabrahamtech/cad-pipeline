@@ -1,5 +1,23 @@
 # _gauge_broach — the broach-interference coupon
 
+> **v2, 2026-09-28 — `exports/robotarm/gauge_broach_v2.3mf`.** v1 did not fit
+> at all: Jonathan, "nothing fits", not even the loosest station. v2 starts in
+> **clearance** so the first station is guaranteed to go on:
+>
+> - two rows only: **`S` = SG90**, **`G` = MG995** (MG90S is out of the arm)
+> - labels are interference in hundredths: **`G-45` is a bore 0.45 mm BIGGER
+>   than the spline**, `G05` is 0.05 smaller, `G25` is today's shipping value
+> - stations: −45, −35, −25, −15, −5, 05, 15, 25 · ~19 g · 88 × 156 mm
+>
+> **How to read it, quickly:** snap stations off one at a time and work from
+> `-45` downward. Write down (1) the **first one that will not slide on by
+> hand**, and (2) the **first one you cannot press fully home** with a vice.
+> Those two labels are all I need; the old v1 steps below (twist test,
+> marking the spline) still apply to the stations in between.
+>
+> Also useful: a caliper reading of the MG995 spline across its teeth
+> (assumed Ø5.9 — the servo drawing does not give it).
+
 One coupon, 122 × 129 mm, ~27,400 mm³, **≈ 22.7 g of PETG**. It answers one
 question, and it is the question every driven joint in the arm now stands on:
 

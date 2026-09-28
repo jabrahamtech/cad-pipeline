@@ -267,9 +267,18 @@ KGCM_TO_NMM = 98.0665           # 1 kgf.cm = 0.0980665 N.m
 # step is 0.05 because that is about the resolution a printed bore can
 # actually hold - design_rules.DIM_TOL_MM is 0.15 per printed dimension in
 # plane, so a finer step would be sweeping inside its own noise.
-BROACH_LO = 0.10
-BROACH_HI = 0.40
-BROACH_STEP = 0.05
+#
+# v2, 2026-09-28. Jonathan printed v1: "none of the broach fit" - "nothing
+# fits", not even the 0.10 end. So the sweep now starts in CLEARANCE: a
+# negative interference is a bore BIGGER than the spline. The loose end is
+# 0.45 over, so whatever this printer does to a small vertical hole, the
+# first station slides on, and the ladder then walks through line-to-line
+# into the press fits. Step 0.10 - coarser than v1 - because the question is
+# first WHERE the fit is, then how tight; v1's 0.05 resolution was spent on
+# a band this printer never reached. 0.25, the shipping value, stays in it.
+BROACH_LO = -0.45
+BROACH_HI = 0.25
+BROACH_STEP = 0.10
 INTERFERENCE = [
     round(BROACH_LO + k * BROACH_STEP, 4)
     for k in range(int(round((BROACH_HI - BROACH_LO) / BROACH_STEP)) + 1)
@@ -278,13 +287,14 @@ INTERFERENCE = [
 # ---- the servos, in the order they go on the bed, left to right -----------
 # One letter each, because the label has to fit on a 7.5 mm lever and still
 # be legible after the boss it is attached to has been twisted apart.
-ROW_TAGS = [('S', 'SG90'), ('M', 'MG90S'), ('G', 'MG995')]
+# v2: MG90S dropped - nothing in the arm runs one any more (lib/joints).
+ROW_TAGS = [('S', 'SG90'), ('G', 'MG995')]
 
 # ---- the wall. DERIVED from the reference implementation. -----------------
 # j3_pinion.py computes and prints exactly this as `hub_wall`. Mirroring the
 # arithmetic rather than the number means a change to J3_PAIR or to the
 # MG90S's boss diameter moves the coupon with the part.
-HUB_WALL_MM = J3_PAIR.r_root(J3_PAIR.z_pinion) - J3_HUB.boss_clear_d / 2.0
+J3_HUB_WALL_MM = J3_PAIR.r_root(J3_PAIR.z_pinion) - J3_HUB.boss_clear_d / 2.0
 
 # The thinnest wall any real part presents AT ITS BROACH SECTION, used only
 # to prove the coupon is the conservative one. MIRRORED from
@@ -297,6 +307,12 @@ GRIPPER_TEETH = 12
 GRIPPER_DEDENDUM_F = 1.25
 GRIPPER_ROOT_R_MM = (GRIPPER_MODULE_MM * GRIPPER_TEETH / 2.0
                      - GRIPPER_MODULE_MM * GRIPPER_DEDENDUM_F)
+# v2: THE THINNER OF THE TWO. j3_pinion's hub wall grew to 5.05 when J3 went
+# to the SG90 (smaller boss bore), which made it FATTER than gripper_pinion's
+# 4.80 and tripped the assert below. The coupon must split first, so it takes
+# whichever real broach wall is thinnest.
+HUB_WALL_MM = min(J3_HUB_WALL_MM,
+                  GRIPPER_ROOT_R_MM - spline_bore_d(CATALOG['SG90']) / 2.0)
 
 # lib/servo_hub.spline_hub()'s own engage_min default, restated so the
 # assertion below reads as a comparison against the library's floor rather
@@ -315,7 +331,7 @@ LEVER_R_MAX_MM = 30.0
 # the advance itself, and it is used here to size a pocket the text must fit
 # inside, with the fit asserted rather than eyeballed.
 TEXT_ADVANCE = 0.80
-LABEL_CHARS = 3
+LABEL_CHARS = 4          # v2: 'G-45' - the clearance stations carry a sign
 
 
 def run(_context: str):
@@ -473,13 +489,8 @@ def run(_context: str):
         'broach section - the coupon would survive an interference that splits '
         'a real part, which is the one direction this must not be wrong in'
         % (wall, gp_wall))
-    assert abs(wall - (J3_PAIR.r_root(J3_PAIR.z_pinion)
-                       - J3_HUB.boss_clear_d / 2.0)) < 1e-9, (
-        'gb_wall no longer equals j3_pinion\'s reported hub_wall')
-    assert CATALOG['SG90'].spline_dia != CATALOG['MG90S'].spline_dia, (
-        'lib/servo.py now gives the SG90 and MG90S the same spline - if that is '
-        'right, this coupon is sweeping the same bore twice and one row should '
-        'come off it')
+    assert abs(wall - HUB_WALL_MM) < 1e-9, (
+        'gb_wall no longer equals the thinnest real broach wall')
     assert text_h * 0.125 >= MIN_EMBOSS_MM - 1e-9, (
         'a %.1f mm cap height gives roughly a %.2f mm stroke, under '
         'MIN_EMBOSS_MM %.2f - raised text that thin does not print'
@@ -515,7 +526,11 @@ def run(_context: str):
             # the spline; the underside seats on the collar below it. A bore
             # as wide as that collar would swallow it and the coupon would
             # slide straight past the spline, testing nothing.
-            assert b < s.boss_dia, (
+            # v2: ONLY FOR THE PRESS FITS. A clearance station wider than an
+            # SG90's O5.0 collar drops over it onto the case - and that is a
+            # legitimate answer for a station whose whole question is "does
+            # it go on at all". The interference stations must still seat.
+            assert i < 0.0 or b < s.boss_dia, (
                 '%s at %.2f: the Oe%.3f bore is not smaller than the Oe%.2f '
                 'output collar - the station would drop over the boss instead '
                 'of seating on it' % (c['name'], i, b, s.boss_dia))
@@ -782,16 +797,12 @@ def run(_context: str):
     print('  the shipping value sits at station index %d, which is the control.'
           % INTERFERENCE.index(SPLINE_BROACH_INTERFERENCE_MM))
     print('')
-    print('WALL: %.2f mm of PETG around every bore. DERIVED = j3_pinion hub_wall'
-          % wall)
-    print('  J3_PAIR.r_root(%d) %.2f - J3_HUB.boss_clear_d/2 %.2f = %.2f'
-          % (J3_PAIR.z_pinion, J3_PAIR.r_root(J3_PAIR.z_pinion),
-             J3_HUB.boss_clear_d / 2.0, wall))
-    print('  thinnest real broach-section wall in the arm is gripper_pinion\'s '
-          '%.2f, so this coupon splits FIRST. Correct direction.' % gp_wall)
+    print('WALL: %.2f mm of PETG around every bore = the thinner of j3_pinion '
+          '(%.2f) and gripper_pinion (%.2f), so this coupon splits FIRST.'
+          % (wall, J3_HUB_WALL_MM, gp_wall))
     print('')
-    print('STATIONS - 3 splines x %d interferences = %d, each on its own boss'
-          % (n_sta, len(cols) * n_sta))
+    print('STATIONS - %d splines x %d interferences = %d, each on its own boss'
+          % (len(cols), n_sta, len(cols) * n_sta))
     print('  %-4s %-6s %6s %6s %6s %6s %6s %7s'
           % ('lab', 'servo', 'intf', 'bore', 'bossOD', 'grip', 'bite%', 'tipN'))
     for c in cols:
