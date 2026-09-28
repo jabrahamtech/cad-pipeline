@@ -467,12 +467,34 @@ del _s
 # will displace before it splits a thin hub. 0.25 is the starting figure and
 # it is ASSUMED - print the sweep before committing a gear to it.
 SPLINE_BROACH_INTERFERENCE_MM = 0.25   # ASSUMED - bore = spline_dia - this
+#
+# MEASURED 2026-09-28, gauge_broach_v2. v1 (0.10..0.40) fitted NOTHING on
+# Jonathan's printer. v2 swept -0.45..+0.25; his reading: "S-5 and G-25 fit
+# super tight" - i.e. those are the stations that press on, and are tight.
+# So the DRAWN interference that gives a tight press on this printer is:
+#   SG90   -0.05  (bore drawn 4.95 on a 4.90 spline)
+#   MG995  -0.25  (bore drawn 6.15 on a 5.90 spline)
+# NEGATIVE: the bore is drawn LARGER than the spline and the printer's hole
+# shrink makes it the press. The two differ by 0.20 - either the MG995's
+# spline is bigger than the 5.9 assumed, or its 25 teeth bite differently;
+# either way each servo is read off its own row, not off the other.
+# CAVEAT, stated by Jonathan: the coupon was printed in PLA at 90 % infill.
+# Infill does not form a bore (the perimeters do); the material can move
+# it by a few hundredths. Print the hubs in the same material, or re-check
+# one station in PETG before a PETG hub.
+SPLINE_BROACH_INTERFERENCE_BY_SERVO = {"SG90": -0.05, "MG995": -0.25}
 SPLINE_TEETH = {"SG90": 20, "MG90S": 20, "MG995": 25}
 
 
 def spline_bore_d(spec: ServoSpec, interference: float = None) -> float:
-    """Bore diameter for a printed hub the servo spline broaches into."""
-    i = SPLINE_BROACH_INTERFERENCE_MM if interference is None else interference
+    """Bore diameter for a printed hub the servo spline broaches into.
+
+    Per servo from SPLINE_BROACH_INTERFERENCE_BY_SERVO (gauged); a servo
+    with no gauge reading falls back to the old assumed constant."""
+    if interference is None:
+        interference = SPLINE_BROACH_INTERFERENCE_BY_SERVO.get(
+            spec.name, SPLINE_BROACH_INTERFERENCE_MM)
+    i = interference
     return spec.spline_dia - i
 
 

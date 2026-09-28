@@ -77,7 +77,7 @@ for _stale in [m for m in list(sys.modules) if m == 'lib' or m.startswith('lib.'
 import adsk.core  # noqa: E402
 import adsk.fusion  # noqa: E402
 
-from lib.servo import CATALOG, SPLINE_BROACH_INTERFERENCE_MM  # noqa: E402
+from lib.servo import CATALOG, spline_bore_d  # noqa: E402
 from lib.servo import MG995_TAB_RIB_TOP_MM, MG995_TAB_RIB_W_MM  # noqa: E402
 from lib.servo import (MG995_LIP_H_MM, MG995_LIP_W_MM, MG995_LIP_R_MM,  # noqa: E402
                        MG995_LIP_FAR_INSET_MM)
@@ -258,7 +258,7 @@ def run(_context: str):
     boss_h = MG995.boss_h / 10.0
     spline_d = MG995.spline_dia / 10.0  # Ø5.9 of 25-tooth spline above it
     spline_h = MG995.spline_h / 10.0
-    broach_d = spline_d - SPLINE_BROACH_INTERFERENCE_MM / 10.0
+    broach_d = spline_bore_d(MG995) / 10.0     # per-servo, gauged 2026-09-28
     tab_thk = gv('sb_tab_thk')
     tab_span = MG995.tab_span / 10.0    # TowerPro official E 54.0
     case_hi = gv('sb_shaft_end')
@@ -370,7 +370,7 @@ def run(_context: str):
         'broach interference = %.3f - the press fit this joint is assembled by '
         'is not the one shoulder_hub is cut for'
         % (gv('sh_broach_d') * 10, spline_d * 10,
-           SPLINE_BROACH_INTERFERENCE_MM, broach_d * 10))
+           spline_d * 10 - broach_d * 10, broach_d * 10))
     # and the geometric half of the same question: does the spline REACH?
     engaged = min(boss_top, hub_seat) - max(spline_top, hub_top)
     assert abs(engaged - gv('sh_engaged')) < tol_cm, (
