@@ -16,7 +16,7 @@ Files are in `exports/robotarm/`.
 **1. Gauge — DONE 2026-09-28** (`gauge_broach_v2.3mf`: S-5 and G-25 pressed on tight). Reprint it only if you change filament.
 
 **2. Base + turret (black PETG, ~290 g)**
-- `base_platter_v5.3mf` ×1 — 12-sided, floor down, no brim needed (3 mm foot facet) · ~154 g
+- `base_platter_v6.3mf` ×1 — 12-sided, **LED eyes in the front**, floor down, no brim needed (3 mm foot facet) · ~154 g
 - `base_lid_v9.3mf` ×1 — top face down, brim · ~63 g
 - `turntable_stator_v10.3mf` ×1 — base down, supports OFF · ~31 g
 - `turret_shroud_v1.3mf` ×1 — **new**: upright, lid end down, no support · ~26 g
@@ -37,7 +37,7 @@ Files are in `exports/robotarm/`.
 - `plates/plate_grip_white_v2.3mf` — 2 jaws + pinion
 - `grip_finger_v1.3mf` ×2 — **TPU 95A**, flat, 20–25 mm/s
 
-Superseded — don't print: `base_platter_v4` (fluted round), and everything cut for the old flat-topped MG995: `shoulder_bracket_v4`, `turntable_stator_v9`, `base_lid_v8`, `j1_hub_v3`/`_v4`, `plate_armstack_*_v9`–`_v11`, `plate_wrist_*_v8`/`_v9`, `plate_grip_*_v1` (hub bores cut before the gauge). Retired: the pruner (`pruner_*`, `gripcut_finger`) and the old `gripper_shell` / `gripper_rack_jaw`.
+Superseded — don't print: `base_platter_v4` (fluted round), `base_platter_v5` (no eyes), and everything cut for the old flat-topped MG995: `shoulder_bracket_v4`, `turntable_stator_v9`, `base_lid_v8`, `j1_hub_v3`/`_v4`, `plate_armstack_*_v9`–`_v11`, `plate_wrist_*_v8`/`_v9`, `plate_grip_*_v1` (hub bores cut before the gauge). Retired: the pruner (`pruner_*`, `gripcut_finger`) and the old `gripper_shell` / `gripper_rack_jaw`.
 
 **Assembly note:** the shroud goes on after the rotor and BEFORE the ring — slide it down over the three turret posts. With it fitted, J2 can pitch down to **23°** below horizontal (was 25°).
 
@@ -47,6 +47,7 @@ Superseded — don't print: `base_platter_v4` (fluted round), and everything cut
 - MG995 360° ×1, MG995 ×1, SG90 ×4 (in hand)
 - 608ZZ ×4 — 3 turntable, 1 elbow
 - A3144 hall sensor ×1 (pack), 5 × 2 mm N52 disc magnets (pack)
+- **5 mm LEDs ×2 for the eyes** — any 5 mm LED fits; addressable RGB (WS2812D-F5 / PL9823-F5) runs both off one ESP32 pin. Push in from inside until the flange seats; a dab of hot glue holds them
 
 **Filament**
 - PETG **black** (~290 g: base, lid, stator, ring, shroud, J1 hub, bits), PETG white, PETG green

@@ -1226,6 +1226,10 @@ def run(_context: str):
             if sk_t.profiles.item(i).profileLoops.count == 2]
     assert len(_ann) == 1, 'journal trim: expected one annulus profile'
     _ti = comp.features.extrudeFeatures.createInput(_ann[0], CUT)
+    # SCOPED. An unscoped CUT reaches into every body it meets, in ANY
+    # component: built after base_platter in _check_base's document, this
+    # annulus cut a 1.5 mm ring out of the platter floor (-1464 mm3).
+    _ti.participantBodies = [comp.bRepBodies.item(0)]
     _ti.startExtent = adsk.fusion.OffsetStartDefinition.create(V(mm(rim_top)))
     _ti.setDistanceExtent(False, V(TURRET + 'boss_h'))
     comp.features.extrudeFeatures.add(_ti).name = 'journal_trim'

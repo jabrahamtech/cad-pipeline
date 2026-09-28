@@ -79,6 +79,8 @@ PH_SHELL = 'shell'
 PH_POSTS = 'posts + columns'
 PH_BAY = 'esp32 bay'
 PH_RIM = 'rim + strain relief'
+# a standard 5 mm LED, flange underside to dome tip - for the print only
+LED_5MM_FLANGE_TO_TIP_MM = 8.6
 PH_FINISH = 'finish'
 PHASES = [PH_SHELL, PH_POSTS, PH_BAY, PH_RIM, PH_FINISH]
 MATERIAL_NAME = 'PET Plastic'
@@ -213,6 +215,30 @@ def run(_context: str):
     param('dc_d', '9.95 mm', 'DC cable O9.7 + clearance - MEASURED (legacy)')
     param('dc_az', '195.0 deg', 'rear, beside the toggle', 'deg')
     param('rim_z', '-21.0 mm', 'height of both rim holes - mid-wall')
+    # ---- the EYES: two 5 mm LEDs in the front face -----------------------------------
+    # Jonathan 2026-09-28: "add the led holes on the base platter like eyes".
+    # Front = +X, the side the ESP32 bay is on (the toggle and DC are at the
+    # rear). az 0 is a VERTEX of the dodecagon, so the eyes sit on the two
+    # flats either side of it, at +-15 deg, and that front corner reads as a
+    # nose. Standard 5 mm LED: O5.0 body, O5.8 x 1.0 flange, 8.6 from the
+    # flange to the dome tip; any 5 mm LED fits, including the addressable
+    # RGB ones (WS2812D-F5 / PL9823-F5) on one data pin.
+    param('eye_az', '15.0 deg', 'each eye this far either side of the front (+X) corner', 'deg')
+    param('eye_z', '-15.0 mm', 'eye height - upper half of the rim, above the rear holes')
+    param('eye_led_d', '5.0 mm', '5 mm LED body')
+    param('eye_bore', 'bp_eye_led_d + 0.3 mm',
+          'LED bore. HORIZONTAL hole, so it prints small and droops at its\n'
+          '           crown; +0.3 drawn lands a snug push fit (gauge_broach_v2 read\n'
+          '           this printer\'s small holes ~0.1-0.3 under)')
+    param('eye_flange_d', '6.3 mm', 'counterbore for the O5.8 LED flange, from inside')
+    param('eye_flange_h', '1.2 mm', 'flange counterbore depth - the LED stops here')
+    param('eye_boss_l', '4.0 mm',
+          'inward boss behind each eye. Sets how far the dome stands out: flange\n'
+          '           seat at ri - boss_l + flange_h, 8.6 of LED -> the dome shows ~2.8\n'
+          '           past the flat. TEARDROP section so it prints with no support.')
+    param('eye_boss_d', '11.0 mm', 'boss diameter around the LED')
+    param('eye_socket_d', '8.0 mm', 'shallow socket round each eye on the outside - the look')
+    param('eye_socket_h', '0.8 mm', 'socket depth')
     param('tie_w', '4.0 mm', 'zip-tie slot width - 2.5 tie + clearance')
     param('tie_h', '3.0 mm', 'zip-tie slot height under the bridge')
     param('tie_bridge', '3.0 mm', 'bridge bar thickness over the tie')
@@ -445,6 +471,47 @@ def run(_context: str):
                 ri - val('tol') * 100, ro + val('tol') * 100)
     radial_hole('dc_hole', val('dc_az'), val('dc_d'), val('rim_z'),
                 ri - val('tol') * 100, ro + val('tol') * 100)
+    # THE EYES. A teardrop boss inside each front flat (its underside is two
+    # 45 deg faces, so it prints off the wall with no support), then the LED
+    # bore, the flange counterbore from inside, and a socket outside.
+    def eye_plane(name, az):
+        pl_in = comp.constructionPlanes.createInput()
+        pl_in.setByAngle(comp.zConstructionAxis, adsk.core.ValueInput.createByReal(az),
+                         comp.yZConstructionPlane)
+        pl = comp.constructionPlanes.add(pl_in)
+        pl.name = 'pl_' + name
+        pl.isLightBulbOn = False
+        return pl
+
+    def tpt(sk, az, u, z):
+        # u along the TANGENT at az, z up: the plane through the Z axis at az
+        return sk.modelToSketchSpace(P3(-u * math.sin(az), u * math.cos(az), z))
+
+    _v_eyes = comp.bRepBodies.item(0).volume
+    for sgn in (1, -1):
+        az = sgn * val('eye_az')
+        tag = 'eye_%s' % ('l' if sgn > 0 else 'r')
+        ez, br = val('eye_z'), val('eye_boss_d') / 2
+        sk = comp.sketches.add(eye_plane(tag + '_boss', az))
+        sk.name = 'sk_' + tag + '_boss'
+        c45 = br * math.sqrt(2) / 2
+        a0, a1 = tpt(sk, az, -c45, ez - c45), tpt(sk, az, c45, ez - c45)
+        tip = tpt(sk, az, 0.0, ez - br * math.sqrt(2))
+        sk.sketchCurves.sketchArcs.addByThreePoints(a1, tpt(sk, az, 0.0, ez + br), a0)
+        sk.sketchCurves.sketchLines.addByTwoPoints(a0, tip)
+        sk.sketchCurves.sketchLines.addByTwoPoints(tip, a1)
+        assert sk.profiles.count == 1, sk.name
+        extrude(profs(sk), JOIN, ri - val('eye_boss_l'), val('eye_boss_l') + val('wall') / 2,
+                tag + '_boss')
+        radial_hole(tag + '_bore', az, val('eye_bore'), ez,
+                    ri - val('eye_boss_l') - val('tol') * 100, ro + val('tol') * 100)
+        radial_hole(tag + '_flange', az, val('eye_flange_d'), ez,
+                    ri - val('eye_boss_l') - val('tol') * 100,
+                    ri - val('eye_boss_l') + val('eye_flange_h'))
+        radial_hole(tag + '_socket', az, val('eye_socket_d'), ez,
+                    ro - val('eye_socket_h'), ro + val('tol') * 100)
+    assert comp.bRepBodies.count == 1, 'an eye boss did not join the wall'
+    assert abs(comp.bRepBodies.item(0).volume - _v_eyes) > TOL, 'the eyes changed nothing'
     # zip-tie bridge: two legs either side of the cable path and a bar over a
     # tie-sized tunnel, standing on the floor just inside the DC entry.
     a = val('dc_az')
@@ -504,12 +571,20 @@ def run(_context: str):
     f_in = comp.features.filletFeatures.createInput()
     f_in.addConstantRadiusEdgeSet(roots, V(PREFIX + 'post_fillet'), False)
     comp.features.filletFeatures.add(f_in).name = 'post_root_fillets'
+    # the eye bosses must stay under the lid and clear of the bay
+    assert val('eye_z') + val('eye_boss_d') / 2 <= -val('lid_t') - val('min_wall') + TOL, (
+        'the eye boss reaches the lid shelf')
+    _eye_in = ri - val('eye_boss_l')
+    assert _eye_in * math.cos(val('eye_az')) > val('esp_x0') + val('pcb_w') + val('finger'), (
+        'the eye bosses reach into the ESP32 bay')
     assert (val('wall') + val('floor_t') - val('foot_facet')) / math.sqrt(2) >= val('min_wall') - TOL, (
         'the foot facet leaves under MIN_WALL across the floor corner')
     # the two rim holes sit on FLAT centres, and inside their flat
     flat_w = 2 * ro * math.tan(math.pi / SIDES)
     for _nm, _haz, _d in (('toggle', val('toggle_az'), val('toggle_d')),
-                          ('dc', val('dc_az'), val('dc_d'))):
+                          ('dc', val('dc_az'), val('dc_d')),
+                          ('eye', val('eye_az'), val('eye_socket_d')),
+                          ('eye', -val('eye_az'), val('eye_socket_d'))):
         _k = (math.degrees(_haz) - VERTEX_AZ0 - FULL_TURN / SIDES / 2) / (FULL_TURN / SIDES)
         assert abs(_k - round(_k)) < REL_TOL, 'the %s hole is not centred on a flat' % _nm
         assert _d + 2 * val('min_wall') < flat_w, 'the %s hole is wider than its flat' % _nm
@@ -566,6 +641,15 @@ def run(_context: str):
     print('  sides OPEN between the corners - the bottom-face cables come out and up; '
           'finger gaps %.0f past each short end reach r %.1f of %.1f'
           % (val('finger') * 10, _far * 10, ri * 10))
+    print('EYES: 2 x 5 mm LED at az +-%.0f (the flats either side of the front corner), z %.1f, '
+          '%.1f apart; bore O%.2f, flange seat O%.2f x %.1f from inside a %.1f boss, '
+          'socket O%.1f x %.1f outside - dome shows ~%.1f past the flat'
+          % (math.degrees(val('eye_az')), val('eye_z') * 10,
+             2 * ro * math.sin(val('eye_az')) * 10, val('eye_bore') * 10,
+             val('eye_flange_d') * 10, val('eye_flange_h') * 10, val('eye_boss_l') * 10,
+             val('eye_socket_d') * 10, val('eye_socket_h') * 10,
+             (ri - val('eye_boss_l') + val('eye_flange_h')) * 10 + LED_5MM_FLANGE_TO_TIP_MM
+             - ro * 10))
     print('RIM: toggle O%.2f at az %.0f, DC pass-through O%.2f at az %.0f, both z %.1f; '
           'zip-tie bridge at r %.0f' % (val('toggle_d') * 10, math.degrees(val('toggle_az')),
                                           val('dc_d') * 10, math.degrees(val('dc_az')),
