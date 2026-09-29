@@ -1,0 +1,27 @@
+STATIC (home pose): clean
+INSERT upper arm over both spigots                  clear along -x (40 mm)
+INSERT J2 gear onto its register                    clear along -x (40 mm)
+INSERT J3 gear onto its register                    clear along -x (40 mm)
+INSERT dowel into the idler boss                    clear along -x (40 mm)
+INSERT idler onto the dowel                         clear along -x (40 mm)
+INSERT J3 plate unit (SG90 + pinion + board)        clear along -x (40 mm)
+INSERT J2 plate unit (MG995 + pinion + board)       clear along -x (40 mm)
+INSERT upper arm cover                              clear along -x (40 mm)
+INSERT J4 gear onto the wrist spigot                clear along -x (40 mm)
+INSERT J4 plate unit (SG90 + pinion + board)        clear along -x (40 mm)
+INSERT forearm plate                                clear along -x (40 mm)
+POSE J3  -150: clean
+POSE J3  -120: clean
+POSE J3   -90: clean
+POSE J3   -60: clean
+POSE J3   -30: clean
+POSE J3   +30: clean
+POSE J3   +60: clean
+POSE J3   +90: clean
+POSE J3  +120: clean
+POSE J3  +150: clean
+POSE J2    +0: clean
+POSE J2   +30: clean
+POSE J2  +150: clean
+POSE J2  +180: clean
+VERDICT: PASS (static + insertion; pose clashes are fold LIMITS, reported not failed)

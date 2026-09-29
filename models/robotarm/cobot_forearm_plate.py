@@ -13,7 +13,7 @@ gear, spigot, plate and body clamped in one stack.
     trap the upper arm's wall, AX_GAP each side
   * the J3 axis carries the J3 encoder's magnet (on the gear's stalk), so
     the loom crosses J3 in a service loop between the two end-cap ports
-  * the other 2 screws (M3 x 12, into the J4-end corbels) sit in
+  * the other 2 screws (M3 x 12, into the J4 plate's two standoffs) sit in
     COUNTERBORES: the links are offset, so the upper arm's wall sweeps
     AX_GAP over this whole face as the elbow folds
   * the inner face is FREE over the J4 SG90's case bottom: the servo's
@@ -89,9 +89,10 @@ def run(_context: str):
     param('cbore_d', '%.4f mm' % C.CBORE_D, 'lib/cobot CBORE_D - M3 cap head + FREE')
     param('cbore_h', '%.4f mm' % C.CBORE_H, 'lib/cobot CBORE_H - head below the face')
     param('lead_in', '%.4f mm' % LEAD_IN, 'spigot end chamfer')
+    param('slot', '%.4f mm' % C.PLATE_SLOT, 'lib/cobot PLATE_SLOT - follows the J4 plate\'s mesh setting')
 
     x_in = val('x_out') - val('t')
-    assert val('cbore_d') / 2 <= C.BOSS_R / 10, 'a counterbore wider than its boss'
+    assert val('cbore_d') / 2 <= C.STANDOFF_R / 10, 'a counterbore wider than its standoff'
 
     STALE = COMPONENT + '_stale_'
     for i in range(design.allComponents.count):
@@ -112,7 +113,7 @@ def run(_context: str):
     JOIN = adsk.fusion.FeatureOperations.JoinFeatureOperation
     CUT = adsk.fusion.FeatureOperations.CutFeatureOperation
 
-    def along_x(name, loops_mm, circles_mm, x0, x1, op):
+    def along_x(name, loops_mm, circles_mm, x0, x1, op, pick='largest'):
         sk = comp.sketches.add(comp.yZConstructionPlane)
         sk.name = 'sk_' + name
         for pts in loops_mm:
@@ -121,13 +122,19 @@ def run(_context: str):
                 sk.sketchCurves.sketchLines.addByTwoPoints(sp[k], sp[(k + 1) % len(sp)])
         for u, v, d in circles_mm:
             sk.sketchCurves.sketchCircles.addByCenterRadius(sk.modelToSketchSpace(P3(0, u / 10, v / 10)), d / 2 / 10)
-        best, bp = -1, None
-        for i in range(sk.profiles.count):
-            pr = sk.profiles.item(i)
-            a_ = pr.areaProperties().area
-            if a_ > best:
-                best, bp = a_, pr
-        inp = ext.createInput(bp, op)
+        profs = adsk.core.ObjectCollection.create()
+        if pick == 'all':
+            for i in range(sk.profiles.count):
+                profs.add(sk.profiles.item(i))
+        else:
+            best, bp = -1, None
+            for i in range(sk.profiles.count):
+                pr = sk.profiles.item(i)
+                a_ = pr.areaProperties().area
+                if a_ > best:
+                    best, bp = a_, pr
+            profs.add(bp)
+        inp = ext.createInput(profs, op)
         inp.startExtent = adsk.fusion.OffsetStartDefinition.create(V(mm(x0)))
         inp.setDistanceExtent(False, V(mm(x1 - x0)))
         if op != NEW:
@@ -151,9 +158,21 @@ def run(_context: str):
     t1 = design.timeline.count
     for k, (u, v) in enumerate(C.J3.bolts()):
         along_x('j3_bolt_%d' % k, [], [(u, v, val('clear') * 10)], x_in, xe, CUT)
-    for k, (u, v) in enumerate(C.FA_CORBEL_SCREWS):
-        along_x('screw_%d' % k, [], [(u, v, val('clear') * 10)], x_in, xo, CUT)
-        along_x('cbore_%d' % k, [], [(u, v, val('cbore_d') * 10)], xo - val('cbore_h'), xo, CUT)
+    # the J4 plate (and its standoffs) is set +-PLATE_SLOT along the J4 mesh
+    # line on assembly, so these holes are SLOTS along that same line
+    du, dv = C.J4_PIN[0] - C.L2, C.J4_PIN[1]
+    n = math.hypot(du, dv)
+    du, dv = du / n * val('slot') * 10, dv / n * val('slot') * 10
+
+    def slot(name, u, v, d_mm, x0_, x1_):
+        w = d_mm / 2
+        nu, nv = -dv / (val('slot') * 10) * w, du / (val('slot') * 10) * w
+        loop = [(u - du + nu, v - dv + nv), (u + du + nu, v + dv + nv), (u + du - nu, v + dv - nv),
+                (u - du - nu, v - dv - nv)]
+        along_x(name, [loop], [(u - du, v - dv, d_mm), (u + du, v + dv, d_mm)], x0_, x1_, CUT, pick='all')
+    for k, (u, v) in enumerate(C.FA_STANDOFFS):
+        slot('screw_%d' % k, u, v, val('clear') * 10, x_in, xo)
+        slot('cbore_%d' % k, u, v, val('cbore_d') * 10, xo - val('cbore_h'), xo)
     group(t1, PH_HOLES)
 
     body = comp.bRepBodies.item(0)
@@ -196,7 +215,7 @@ def run(_context: str):
     print('plate x %.2f..%.2f; J3 spigot O%.1f to x %.2f (lead-in %.1f), register O%.0f x %.1f; %d J3 through-holes; '
           '%d counterbored M3 (cbore O%.1f x %.1f); chamfer edges %d'
           % (x_in * 10, xo * 10, C.J3.spigot_od, xe * 10, LEAD_IN, C.REG_D, C.REG_H, len(C.J3.bolt_az),
-             len(C.FA_CORBEL_SCREWS), val('cbore_d') * 10, val('cbore_h') * 10, col.count))
+             len(C.FA_STANDOFFS), val('cbore_d') * 10, val('cbore_h') * 10, col.count))
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f'
           % (bb.minPoint.x * 10, bb.maxPoint.x * 10, bb.minPoint.y * 10, bb.maxPoint.y * 10,
              bb.minPoint.z * 10, bb.maxPoint.z * 10))

@@ -448,8 +448,12 @@ J3_HOLES = servo_holes(SG90, J3_PIN[0], J3_PIN[1], (-1.0, 0.0))
 J2_POSTS = ((18.0, -24.0), (55.0, -22.0), (78.0, -15.0))
 J3_POSTS = ((48.0, 16.0), (L1, 23.5), (L1, -23.5))
 # the cover: corbel bosses off the shell, above everything inside
-UA_COVER_SCREWS = ((-17.5, 17.5), (-17.5, -17.5), (40.0, 24.0), (100.0, 24.0), (L1 + 17.5, 17.5),
+# NOT at the J2 end: the J2 gear (tip 23.75) is lowered in through the whole
+# height of the arm there, and a corbel inside that column blocks it
+# (_check_cobot_fit found it). The plates are notched round the rest.
+UA_COVER_SCREWS = ((37.0, 24.0), (44.0, -24.0), (100.0, 24.0), (100.0, -24.0), (L1 + 17.5, 17.5),
                    (L1 + 17.5, -17.5))
+NOTCH = BOSS_R + FREE + 1.0     # a plate's notch round a cover corbel, from its axis
 CORBEL_BITE = 0.8     # a corbel boss must overlap its shell by this, or it floats
 
 # the servo plates, as outlines in the link's (u, v). Each lies inside the
@@ -461,15 +465,23 @@ CLAMP_OFF = BOARD_POCKET / 2 + 1.2
 _W2 = (J2_CASE[0] - LOC, J2_CASE[1] + LOC, J2_CASE[2] - LOC, J2_CASE[3] + LOC)     # the MG995 window
 J2_PLATE = [(-15.5, -15.5), (-15.5, 15.5), (15.5, 15.5), (15.5, 5.5), (_W2[0], 5.5), (_W2[0], _W2[2]),
             (_W2[1], _W2[2]), (_W2[1], 5.5), (76.0, 5.5), (76.0, -9.5), (83.5, -9.5), (83.5, -20.5),
-            (60.0, -25.5), (13.0, -25.5)]
+            (60.0, -25.5), (44.0 + NOTCH, -25.5), (44.0 + NOTCH, -24.0 + NOTCH), (44.0 - NOTCH, -24.0 + NOTCH),
+            (44.0 - NOTCH, -25.5), (13.0, -25.5)]
 J2_CLAMPS = ((0.0, CLAMP_OFF), (0.0, -CLAMP_OFF))
-J3_PLATE = [(42.5, 6.5), (86.0, 6.5), (86.0, -25.8)] + \
-    [p for p in ring(UA_IN - LOC, cx=L1) if p[0] > L1 - 8.0 and p[1] < 0] + \
-    sorted([p for p in ring(UA_IN - LOC, cx=L1) if p[0] > L1 - 8.0 and p[1] >= 0], key=lambda q: q[1]) + \
-    [(42.5, 25.8)]
+_J3_END = L1 + 13.0
+J3_PLATE = [(42.5, 6.5), (86.0, 6.5), (86.0, -25.8), (100.0 - NOTCH, -25.8), (100.0 - NOTCH, -24.0 + NOTCH),
+            (100.0 + NOTCH, -24.0 + NOTCH), (100.0 + NOTCH, -25.8), (L1 + 6.9, -25.8), (_J3_END, -14.0),
+            (_J3_END, 14.0), (L1 + 6.9, 25.8), (100.0 + NOTCH, 25.8), (100.0 + NOTCH, 24.0 - NOTCH),
+            (100.0 - NOTCH, 24.0 - NOTCH), (100.0 - NOTCH, 25.8), (42.5, 25.8)]
 J3_CLAMPS = ((L1, CLAMP_OFF), (L1, -CLAMP_OFF))
-J4_PLATE = [(0.5, -20.5), (34.0, -20.5), (34.0, -13.8), (58.2, -13.8), (58.2, 13.8), (34.0, 13.8),
+J4_PLATE = [(0.5, -20.5), (34.0, -20.5), (34.0, -13.8), (46.0, -13.8), (46.0, -18.8), (53.5, -18.8),
+            (58.2, -13.8), (58.2, 13.8), (53.5, 18.8), (46.0, 18.8), (46.0, 13.8), (34.0, 13.8),
             (34.0, 20.5), (0.5, 20.5)]
+# the forearm plate's J4 end screws into two STANDOFFS printed on the J4
+# plate (the J4 gear goes in before the plate, so nothing may stand in its
+# column in the body - a corbel there blocked it; _check_cobot_fit)
+STANDOFF_R = 3.0
+FA_STANDOFFS = ((51.0, 15.2), (51.0, -15.2))
 J4_CLAMPS = ((L2, CLAMP_OFF), (L2, -CLAMP_OFF))
 # the cover corbels start above both plates' tops (and the boards on them)
 UA_COVER_X0 = max(UA_J2_TAB_TOP, UA_J3_TAB_TOP) + BOARD_T + FREE
@@ -477,10 +489,13 @@ UA_COVER_X0 = max(UA_J2_TAB_TOP, UA_J3_TAB_TOP) + BOARD_T + FREE
 # CABLE PORTS (grommeted O8) and lanes: every joint is crossed by a service loop
 # between a port on each link at the end cap nearest the joint. Inside, the
 # loom runs ABOVE the servo plates, in the lane beside the MG995.
-UA_PORT_X = UA_X1 - COVER_T - PORT_D / 2 - 6.0         # between the plates' boards and the cover
+# the lane runs in the band between the J3 SG90's bottom and the cover (the
+# MG995 fills the arm to the cover); the ports sit in that band
+UA_LANE_X0 = UA_J3_CASE_TOP + SG90.case_h + FREE
+UA_PORT_X = (UA_LANE_X0 + UA_X1 - COVER_T) / 2
 UA_J2_PORT = (-UA_A, 0.0)                              # the J2 end cap, out along -u
 UA_J3_PORT = (L1 + UA_A, 0.0)                          # the J3 end cap, out along +u
-UA_LANE_V = -21.0                                      # beside the MG995, over the J2 posts
+UA_LANE_V = 12.0                                       # over the J3 SG90, clear of the MG995
 FA_PORT_X = FA_J4_TAB_TOP + BOARD_T + (FA_X1 - FA_PLATE_T - FA_J4_TAB_TOP - BOARD_T) / 2
 FA_J3_PORT = (-FA_A, 0.0)
 FA_J4_PORT = (L2 + FA_A, 0.0)
@@ -493,12 +508,7 @@ J4_PIN = (L2 - math.sqrt(J4_PAIR.centre_distance ** 2 - J4_SERVO_V ** 2), J4_SER
 J4_CASE, J4_TABS = case_box(SG90, J4_PIN[0], J4_PIN[1], (0.0, 1.0))
 J4_HOLES = servo_holes(SG90, J4_PIN[0], J4_PIN[1], (0.0, 1.0))
 J4_POSTS = ((4.0, 17.0), (4.0, -17.0), (30.0, 17.5), (30.0, -17.5))
-# the forearm plate: J3's 3 through-bolts at the J3 end, 2 corbels at the J4 end
-FA_CORBEL_R = 19.0                       # from J4: bites the shell by CORBEL_BITE
-FA_CORBEL_AZ = (70.0, -70.0)             # from +u
-FA_CORBEL_SCREWS = tuple((L2 + FA_CORBEL_R * math.cos(math.radians(a)), FA_CORBEL_R * math.sin(math.radians(a)))
-                         for a in FA_CORBEL_AZ)
-FA_CORBEL_X0 = J4.x_gear_back + FREE     # a corbel cone's apex: above the J4 gear
+# the forearm plate: J3's 3 through-bolts at the J3 end, 2 standoffs on the J4 plate at the J4 end
 FA_PLATE_SCREW_L = 12.0                  # M3 x 12, counterbored
 
 # WRIST
@@ -598,11 +608,6 @@ def check():
             assert math.hypot(p[0] - b[0], p[1] - b[1]) >= 2 * BOSS_R + FREE, 'J4 post on a J3 boss'
     for b in J3.bolts():
         assert rect_dist(b, J4_TABS) >= BOSS_R + FREE - EPS, 'a J3 boss in the J4 servo'
-    # the corbels: above the J4 gear, clear of the J4 plate's board and the servo
-    for p in FA_CORBEL_SCREWS:
-        assert abs(p[1]) - BOSS_R >= BOARD_POCKET / 2 + FREE, 'a corbel on the J4 board'
-        assert rect_dist(p, J4_TABS) >= BOSS_R + FREE - EPS
-        assert FA_CORBEL_R + M3['pilot'] / 2 <= FA_IN, 'a corbel pilot breaks the shell'
     # ---- fits ---------------------------------------------------------------------
     for j in (J2, J3, J4):
         assert REG_D / 2 + MIN_WALL <= j.bolt_r - M3['clearance'] / 2, j.name + ': the register hits the bolts'
@@ -638,26 +643,55 @@ def check():
     for p in J2_PLATE:
         assert not poly_has(J3_PLATE, p)
     assert min(p[0] for p in J3_PLATE if p[1] < 6.5) - max(p[0] for p in J2_PLATE) >= FREE, 'plates touch'
-    # the J4 plate clears the corbel cones
-    for c in FA_CORBEL_SCREWS:
-        for p in J4_PLATE:
-            assert math.hypot(p[0] - c[0], p[1] - c[1]) >= BOSS_R + FREE or abs(p[1]) < abs(c[1]) - BOSS_R - FREE
     # every corbel bites into its shell (else it prints as a separate body)
     for p in UA_COVER_SCREWS:
         assert not inside_capsule(p, UA_IN, L1, BOSS_R - CORBEL_BITE), 'cover corbel %r floats' % (p,)
-    for p in FA_CORBEL_SCREWS:
-        assert not inside_capsule(p, FA_IN, L2, BOSS_R - CORBEL_BITE), 'forearm corbel %r floats' % (p,)
     # the cover corbels sit clear of the boards and posts in plan, and above the plates in x
     for p in UA_COVER_SCREWS:
         for b_ in ((0.0, 0.0), (L1, 0.0)):
             assert rect_dist(p, (b_[0] - BOARD_POCKET / 2, b_[0] + BOARD_POCKET / 2,
                                  -BOARD_POCKET / 2, BOARD_POCKET / 2)) >= BOSS_R + FREE
-        assert abs(p[1] - UA_LANE_V) >= BOSS_R + LOOM_D / 2 or p[0] < 0 or p[0] > L1, 'a corbel in the loom lane'
-    assert UA_PORT_X - PORT_D / 2 >= UA_COVER_X0, 'the UA ports under the plates'
     assert FA_PORT_X + PORT_D / 2 <= FA_X1 - FA_PLATE_T and FA_PORT_X - PORT_D / 2 >= FA_J4_TAB_TOP + BOARD_T
     # the loom lanes pass the servos
-    assert UA_LANE_V + LOOM_D / 2 <= J2_TABS[2] - FREE and UA_LANE_V - LOOM_D / 2 >= -UA_IN, 'UA lane'
     assert FA_LANE_V + LOOM_D / 2 <= J4_TABS[2] - FREE and FA_LANE_V - LOOM_D / 2 >= -FA_IN, 'FA lane'
+    # ---- INSERTION COLUMNS (what _check_cobot_fit found): a part lowered in
+    # along -x sweeps its plan shape through every x above it. So every cover
+    # corbel stays out of every plate's plan and every output gear's column,
+    # and the forearm's standoffs are on the J4 plate, not in the body
+    def seg_dist(p, a, b):
+        ax, ay, bx, by = a[0], a[1], b[0], b[1]
+        L2_ = (bx - ax) ** 2 + (by - ay) ** 2
+        t = 0.0 if L2_ == 0 else max(0.0, min(1.0, ((p[0] - ax) * (bx - ax) + (p[1] - ay) * (by - ay)) / L2_))
+        return math.hypot(p[0] - (ax + t * (bx - ax)), p[1] - (ay + t * (by - ay)))
+
+    def poly_clear(poly, p, r):
+        return (not poly_has(poly, p)) and min(seg_dist(p, poly[i], poly[(i + 1) % len(poly)])
+                                               for i in range(len(poly))) >= r
+    for p in UA_COVER_SCREWS:
+        for poly in (J2_PLATE, J3_PLATE):
+            assert poly_clear(poly, p, BOSS_R + FREE), 'cover corbel %r over a plate' % (p,)
+        assert math.hypot(p[0], p[1]) >= J2.keep_out_r + BOSS_R, 'cover corbel %r in the J2 gear column' % (p,)
+        assert math.hypot(p[0] - L1, p[1]) >= J3.keep_out_r + BOSS_R, 'cover corbel %r in the J3 gear column' % (p,)
+        for c, r in ((J2_PIN, J2_PAIR.r_tip(J2_PAIR.z_pinion)), (J3_PIN, J3B_PAIR.r_tip(J3B_PAIR.z_pinion))):
+            assert math.hypot(p[0] - c[0], p[1] - c[1]) >= r + FREE + BOSS_R, 'cover corbel %r in a pinion column' % (p,)
+        assert math.hypot(p[0] - J3_IDLER[0], p[1] - J3_IDLER[1]) >= \
+            J3B_PAIR.r_tip(J3B_PAIR.z_gear) + FREE + BOSS_R, 'cover corbel %r in the idler column' % (p,)
+    for p in J2_POSTS + J3_POSTS:
+        assert math.hypot(p[0], p[1]) >= J2.keep_out_r + BOSS_R
+    for p in FA_STANDOFFS:
+        for k in range(16):
+            q = (p[0] + STANDOFF_R * math.cos(k * math.pi / 8), p[1] + STANDOFF_R * math.sin(k * math.pi / 8))
+            assert poly_has(J4_PLATE, q), 'standoff %r overhangs the J4 plate' % (p,)
+        assert rect_dist(p, (L2 - BOARD_POCKET / 2, L2 + BOARD_POCKET / 2, -BOARD_POCKET / 2,
+                             BOARD_POCKET / 2)) >= STANDOFF_R + FREE, 'standoff on the J4 board'
+        for c in J4_CLAMPS:
+            assert math.hypot(p[0] - c[0], p[1] - c[1]) >= STANDOFF_R + 1.9 + FREE, 'standoff on a board clamp'
+        assert inside_capsule(p, FA_IN - LOC, L2, STANDOFF_R), 'standoff %r in the shell' % (p,)
+        assert STANDOFF_R - M3['pilot'] / 2 >= MIN_WALL - 0.2
+    # the UA lane band clears the J3 SG90 below and the cover above
+    assert (UA_X1 - COVER_T) - UA_LANE_X0 >= LOOM_D + FREE, 'no room for the loom over the J3 SG90'
+    assert UA_LANE_V - LOOM_D / 2 >= J2_TABS[3] + FREE, 'the lane on the MG995'
+    assert UA_PORT_X + PORT_D / 2 <= UA_X1 - COVER_T and UA_PORT_X - PORT_D / 2 >= UA_LANE_X0 - PORT_D / 2
     # ---- the bolt stacks ----------------------------------------------------------
     e3 = J3.bolt_engaged(J3_BOLT_L, FA_PLATE_T)
     assert 6.0 <= e3 <= FA_J3_PILOT_DEPTH - 0.5, 'J3 M3 x %.0f: %.1f engaged' % (J3_BOLT_L, e3)

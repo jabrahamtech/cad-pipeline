@@ -15,18 +15,20 @@ its +x face; the servo link (S) at J4.
     line so the mesh is SET on assembly
   * three J3 BOSSES under the J3 axis: the J3 gear's 3 x M3 x 30 run through
     gear, spigot and the forearm plate into them - one clamp stack
-  * two CORBELS at the J4 end, above the J4 gear on 45 deg cones, take the
-    forearm plate's other two screws
+  * NOTHING stands in the J4 gear's column: the gear is lowered in along -x
+    through the open face, so the forearm plate's J4-end screws go into two
+    STANDOFFS printed on the J4 plate instead (_check_cobot_fit)
   * every gear sweep and the servo case are CUT at the end
   * the loom: in at the J3 end cap port, over the J4 plate in the lane at
-    v -17.5, across to v 0 before the corbels, out of the J4 end cap port
+    v -17.5, across to v 0 past the J4 board, out of the J4 end cap port
 
 ASSEMBLY:
   1. over the wrist's J4 spigot, plate off
   2. the J4 gear onto its register: 4 x M3 x 18
   3. the J4 plate unit, pinion into mesh, set with 0.1 paper: 4 x M3 x 8
   4. the loom, then the forearm plate: 2 x M3 x 12 (counterbored) into
-     the corbels; its J3 end is clamped later by the J3 gear's bolts
+     the J4 plate's standoffs; its J3 end is clamped later by the J3 gear's
+     bolts
 
 Print: JOINT WALL DOWN, no support.
 Frame: arm x; y = u along the link from J3 (0) to J4 (L2); z = v across.
@@ -54,7 +56,7 @@ MATERIAL_NAME = 'PET Plastic'
 APPEARANCE_HINTS = hints_for('cobot_forearm')
 PH_FORM = 'wall + shell'
 PH_JOINT = 'J4 bore'
-PH_POSTS = 'plate posts + J3 bosses + corbels'
+PH_POSTS = 'plate posts + J3 bosses'
 PH_LOOM = 'ports'
 PH_KEEP = 'keep-outs'
 PHASES = [PH_FORM, PH_JOINT, PH_POSTS, PH_LOOM, PH_KEEP]
@@ -97,7 +99,6 @@ def run(_context: str):
     param('m3_deep', '8.0 mm', 'pilot depth')
     param('j3_deep', '%.4f mm' % C.FA_J3_PILOT_DEPTH, 'lib/cobot - the J3 gear\'s M3 x 30')
     param('j4_post_top', '%.4f mm' % C.FA_J4_PLATE_X0, 'lib/cobot - the J4 plate sits on these')
-    param('corbel_x0', '%.4f mm' % C.FA_CORBEL_X0, 'lib/cobot - a corbel cone\'s apex, above the J4 gear')
     param('port_d', '%.4f mm' % C.PORT_D, 'a grommeted cable port')
     param('port_x', '%.4f mm' % C.FA_PORT_X, 'lib/cobot - over the J4 plate, under the forearm plate')
 
@@ -217,13 +218,6 @@ def run(_context: str):
     for k, (u, v) in enumerate(C.J3.bolts()):
         along_x('j3_boss_%d' % k, [], [(u, v, 2 * pr)], xw, xt, JOIN)
         along_x('j3_pilot_%d' % k, [], [(u, v, val('m3_pilot') * 10)], xt - val('j3_deep'), xt, CUT)
-    cx0 = val('corbel_x0')
-    for k, (u, v) in enumerate(C.FA_CORBEL_SCREWS):
-        uc, vc = u / 10, v / 10
-        revolve_xu('corbel_cone_%d' % k, vc, [(cx0, uc), (cx0 + pr / 10, uc), (cx0 + pr / 10, uc + pr / 10)],
-                   [(cx0, uc), (cx0 + pr / 10, uc)], JOIN)
-        along_x('corbel_%d' % k, [], [(u, v, 2 * pr)], cx0 + pr / 10, xt, JOIN)
-        along_x('corbel_pilot_%d' % k, [], [(u, v, val('m3_pilot') * 10)], xt - val('m3_deep'), xt, CUT)
     group(t2, PH_POSTS)
 
     t3 = design.timeline.count
@@ -278,9 +272,8 @@ def run(_context: str):
     print("body: '%s' | appearance: %s | PRINT 1, joint wall down" % (body.name, used))
     print('capsule a %.0f over %.0f; wall x %.2f..%.2f, shell to x %.2f (plate to %.2f); J4 bore O%.2f'
           % (C.FA_A, C.L2, x0 * 10, xw * 10, xt * 10, C.FA_X1, C.J4.bore))
-    print('J4 posts %s to x %.2f; J3 bosses at r %.1f pilots %.0f deep; corbels %s from x %.2f; ports at x %.2f'
-          % (list(C.J4_POSTS), C.FA_J4_PLATE_X0, C.J3.bolt_r, C.FA_J3_PILOT_DEPTH,
-             [tuple(round(q, 2) for q in c) for c in C.FA_CORBEL_SCREWS], C.FA_CORBEL_X0, C.FA_PORT_X))
+    print('J4 posts %s to x %.2f; J3 bosses at r %.1f pilots %.0f deep; ports at x %.2f'
+          % (list(C.J4_POSTS), C.FA_J4_PLATE_X0, C.J3.bolt_r, C.FA_J3_PILOT_DEPTH, C.FA_PORT_X))
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f'
           % (bb.minPoint.x * 10, bb.maxPoint.x * 10, bb.minPoint.y * 10, bb.maxPoint.y * 10,
              bb.minPoint.z * 10, bb.maxPoint.z * 10))

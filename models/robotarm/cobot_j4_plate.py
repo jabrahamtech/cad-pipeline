@@ -12,7 +12,7 @@ THE J4 SERVO PLATE - a BENCH UNIT. On the bench:
      its edges (the pocket is 23.4 - CALIPER the board first)
 Then the whole unit drops into the forearm along -x: the pinion meshes AXIALLY
 (lead-ins on both gears), the output gear's stalk enters the O12 hole
-and puts its magnet under the chip. It is located by its 4 posts, whose holes are SLOTS +-0.6 along the mesh line: set the mesh with 0.1 paper, push, drive 4 x M3 x 8, pull the paper.
+and puts its magnet under the chip. It is located by its 4 posts, whose holes are SLOTS +-0.6 along the mesh line: set the mesh with 0.1 paper, push, drive 4 x M3 x 8, pull the paper. Its two STANDOFFS take the forearm plate's J4-end screws.
 
 Print: FLAT, bottom face down, no support; the board pocket opens upward.
 Frame: arm x; y = u along the forearm; z = v across it.
@@ -48,12 +48,15 @@ PIN_AT = None                    # the idler pin's hole, or None
 SLOT_DIR = (C.J4_PIN[0] - C.L2, C.J4_PIN[1])                # unit (du, dv) along the mesh line, or None: the posts' slots run along it
 PLATE_TOP = C.FA_J4_TAB_TOP
 PLATE_T = C.PLATE_T
+STANDOFFS = C.FA_STANDOFFS              # (u, v) columns up to the link's cover / plate, or ()
+STANDOFF_TOP = C.FA_X1 - C.FA_PLATE_T
 MATERIAL_NAME = 'PET Plastic'
 APPEARANCE_HINTS = hints_for('cobot_j4_plate')
 PH_PLATE = 'plate + window'
 PH_HOLES = 'servo + posts'
 PH_BOARD = 'encoder'
-PHASES = [PH_PLATE, PH_HOLES, PH_BOARD]
+PH_STAND = 'standoffs'
+PHASES = [PH_PLATE, PH_HOLES, PH_BOARD, PH_STAND]
 PETG_G_PER_MM3 = 1.27 * 0.65 / 1000.0
 EPS_MM = 1e-6
 
@@ -93,6 +96,10 @@ def run(_context: str):
     param('pocket_h', '%.4f mm' % C.BOARD_POCKET_H, 'the board stands proud of it for the clamps')
     param('stalk_hole', '%.4f mm' % C.STALK_HOLE_D, 'the stalk + slot travel + FREE')
     param('clamp_pilot', '%.4f mm' % C.M2['pilot'], 'M2 x 5 + washer clamps the board edge')
+    param('standoff_r', '%.4f mm' % C.STANDOFF_R, 'lib/cobot STANDOFF_R')
+    param('standoff_top', '%.4f mm' % (STANDOFF_TOP or 0.0), 'the plate above screws down onto these')
+    param('m3_pilot', '%.4f mm' % C.M3['pilot'], 'M3 x 12 from the plate above')
+    param('m3_deep', '10.0 mm', 'pilot depth')
 
     assert abs(val('x0') * 10 + PLATE_T - PLATE_TOP) < EPS_MM
 
@@ -190,6 +197,15 @@ def run(_context: str):
     for k, (u, v) in enumerate(CLAMPS):
         hole('clamp_%d' % k, u, v, val('clamp_pilot'), x0, t)
     group(t2, PH_BOARD)
+
+    t3 = design.timeline.count
+    JOIN = adsk.fusion.FeatureOperations.JoinFeatureOperation
+    for k, (u, v) in enumerate(STANDOFFS):
+        sk = sketch('standoff_%d' % k)
+        sk.sketchCurves.sketchCircles.addByCenterRadius(pt(sk, u, v), val('standoff_r'))
+        extrude_all(sk, JOIN, x0 + t, val('standoff_top') - x0 - t, 'standoff_%d' % k)
+        hole('standoff_pilot_%d' % k, u, v, val('m3_pilot'), val('standoff_top') - val('m3_deep'), val('m3_deep'))
+    group(t3, PH_STAND)
 
     assert comp.bRepBodies.count == 1, 'the plate came out in %d pieces' % comp.bRepBodies.count
     body = comp.bRepBodies.item(0)
