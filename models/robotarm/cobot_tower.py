@@ -7,7 +7,10 @@ THE COBOT ARM'S SHOULDER. J1's rotating half, the column, and J2's drum, in
 one part. It holds NO servo: the J2 MG995 lives in the upper arm (lib/cobot
 docstring - the servo drops in along its own shaft there). What this part
 carries at J2 is the SPIGOT the upper arm turns on, and the four pilots the
-MG995's broached hub bolts into.
+J2 OUTPUT GEAR (36T m1.25, driven 1.64:1 by the MG995's pinion) bolts into
+with 4 x M3 x 30 from inside the upper arm, CENTRED on the O12 register boss
+on the spigot's end (LOC in the gear's recess - lib/cobot FITS). That gear's stalk carries the J2
+encoder magnet; this part is the joint's H side and holds no electronics.
 
   * the rotor: the O76 turntable disc on the three 608ZZ, the O68 journal
     boss the ring laps, the J1 hub bolt circle, the loom window and the
@@ -17,7 +20,7 @@ MG995's broached hub bolts into.
   * the column: a 12-gon about J1 that stays inside the boss (r 29 < 34),
     so the ring still goes on over the rotor from above
   * the J2 drum: a 12-gon about J2 from x -28 out to the +x face at x 47.5,
-    where the solid J2 spigot stands. It lies on its side in the print, so
+    where the solid J2 spigot stands (lib/cobot TOWER_X1). It lies on its side in the print, so
     its two lower diagonal facets are merged into 45 deg chamfers
     (lib/cobot.belly_ring), and a keel under its belly carries the overhang
     past the column, cut back by a 45 deg cone so it never touches the
@@ -176,11 +179,11 @@ def run(_context: str):
     param('relief', '%.4f mm' % C.FREE, 'the column clears the stationary ring by this')
     param('spigot_od', '%.4f mm' % C.J2.spigot_od, 'lib/cobot J2 - the upper arm turns on it')
     param('spigot_l', '%.4f mm' % (C.J2.x_spigot_end - C.J2.x_face), 'through the upper arm wall + 2 gaps')
-    param('bolt_r', '%.4f mm' % C.J2.bolt_r, 'J2 hub bolt circle - placed beside the MG995 case')
+    param('bolt_r', '%.4f mm' % C.J2.bolt_r, 'lib/cobot J2 - the output gear\'s bolt circle')
     param('pilot_d', '%.4f mm' % C.M3['pilot'], 'M3 self-tap pilot - design_rules')
-    param('pilot_deep', '10.0 mm', 'M3 x 12 through the 3 mm hub flange')
-    param('screw_recess_d', '%.4f mm' % C.SCREW_HEAD_RECESS[0], 'the MG995 screw + washer, broached hub')
-    param('screw_recess_h', '%.4f mm' % C.SCREW_HEAD_RECESS[1], 'its depth')
+    param('pilot_deep', '%.4f mm' % C.TW_J2_PILOT_DEPTH, 'lib/cobot - the J2 gear\'s M3 x 30')
+    param('reg_d', '%.4f mm' % C.REG_D, 'lib/cobot REG_D - the J2 gear centres on this boss')
+    param('reg_h', '%.4f mm' % C.REG_H, 'lib/cobot REG_H')
     param('access_d', '7.0 mm', 'O7 from the top to each J1 hub bolt head - a 2.5 key and its handle')
     param('port_d', '%.4f mm' % C.PORT_D, 'the J2 loom port, grommeted')
     param('loom_d', '8.0 mm', 'the channel from the port down to the rotor window')
@@ -337,7 +340,6 @@ def run(_context: str):
     assert val('spigot_od') / 2 <= a - val('wall'), 'the J2 spigot overhangs the drum face'
     # the J2 hub bolt pilots land in the spigot, a wall from its edge
     assert val('bolt_r') + val('pilot_d') / 2 + val('wall') <= val('spigot_od') / 2 + TOL
-    assert val('screw_recess_d') / 2 + val('wall') <= val('bolt_r') - val('pilot_d') / 2 + TOL
 
     # ---- phase 1: the rotor -------------------------------------------------------------
     t0 = design.timeline.count
@@ -371,8 +373,7 @@ def run(_context: str):
     t2 = design.timeline.count
     yz_circle('j2_spigot', 0, 0, val('spigot_od'), mm(xf), PREFIX + 'spigot_l', JOIN)
     x_end = xf + val('spigot_l')
-    yz_circle('servo_screw_recess', 0, 0, val('screw_recess_d'), mm(x_end - val('screw_recess_h')),
-              PREFIX + 'screw_recess_h', CUT)
+    yz_circle('j2_register', 0, 0, val('reg_d'), mm(x_end), PREFIX + 'reg_h', JOIN)
     for k, (bu, bv) in enumerate(C.J2.bolts()):
         # the MG995 case runs along +y (the upper arm's +u) at zero pitch
         yz_circle('hub_pilot_%d' % k, bu / 10, bv / 10, val('pilot_d'), mm(x_end - val('pilot_deep')),
@@ -454,11 +455,9 @@ def run(_context: str):
     print('tower: 12-gon a %.1f (vertex r %.2f inside the r %.1f journal); J2 drum x %.1f..%.1f; '
           'keel to x %.1f under it, cone relief from r %.2f'
           % (a * 10, vtx * 10, journal_r * 10, -a * 10, xf * 10, xf * 10, r0 * 10))
-    print('J2 spigot O%.1f x %.2f at x %.2f..%.2f; 4 x M3 pilots O%.1f x %.0f at r %.1f az %s; '
-          'screw recess O%.0f x %.0f' % (val('spigot_od') * 10, val('spigot_l') * 10, xf * 10, x_end * 10,
-                                          val('pilot_d') * 10, val('pilot_deep') * 10, val('bolt_r') * 10,
-                                          list(C.J2.bolt_az), val('screw_recess_d') * 10,
-                                          val('screw_recess_h') * 10))
+    print('J2 spigot O%.1f x %.2f at x %.2f..%.2f; %d x M3 pilots O%.1f x %.0f at r %.1f az %s (the J2 gear)'
+          % (val('spigot_od') * 10, val('spigot_l') * 10, xf * 10, x_end * 10, len(C.J2.bolt_az),
+             val('pilot_d') * 10, val('pilot_deep') * 10, val('bolt_r') * 10, list(C.J2.bolt_az)))
     print('J1 hub bolts: 3 x O%.0f access holes from the top; loom: O%.0f channel at (%.1f, %.1f) and '
           'a O%.0f port out the back at z %.1f'
           % (val('access_d') * 10, val('loom_d') * 10, val('port_x') * 10, ly * 10, val('port_d') * 10,

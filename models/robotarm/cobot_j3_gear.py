@@ -1,26 +1,27 @@
 """robotarm/cobot_j3_gear - Fusion MCP generating script.
 
 Rebuilds `robotarm_cobot_j3_gear` (idempotent). Spec: specs/robotarm/cobot.md;
-the pair is lib/gears.py J3_PAIR, the joint is lib/cobot.py J3.
+the pair is lib/cobot J3A_PAIR, the joint lib/cobot J3.
 
-THE J3 GEAR, AND THE J3 RETAINER, IN ONE PART. 36T module 1 face 10 - the
-same gear j3_gear cut, teeth from lib/gears, 2:1 against the 18T j3_pinion
-on the J3 SG90. What is new is how it is held:
-  * bolted with 3 x M3 x 18 to the END of the forearm's hollow J3 spigot,
-    from inside the upper arm; the heads sit ON the tooth face (a counterbore
-    would leave 0.55 mm to the loom bore) - nothing turns within r 12.5 there
-  * its O32 FLANGE traps the upper arm's joint wall against the forearm -
-    the axial bearing on this side of J3
-  * the flange also stands the teeth off the wall by FLANGE_T: the pinion's
-    retaining screw and washer sit on the pinion's far face, and they need
-    that room
-  * the O12 BORE is the loom's way across J3 - the only joint the loom
-    crosses inside the arm, because it is the only one whose axis is free
+THE J3 OUTPUT GEAR (36T m1 face 12), which is also the joint's
+RETAINER and the carrier of its ENCODER MAGNET:
+  * bolted with 3 x M3 x 30 to the end of the forearm plate's solid J3 spigot,
+    from inside the upper arm, heads SUNK in counterbores in the tooth face (the servo
+    plate passes over this face)
+  * its FLANGE traps the upper arm's joint wall: the axial bearing on this side
+  * the STALK on its axis rises into the servo plate's O12 hole; the O6 x 2.5
+    diametric magnet is glued into its top, AIR_GAP under the AS5600 chip
+    on the plate (lib/cobot stalk_top). Magnetise direction is irrelevant;
+    CENTRE is what counts - the stalk is on the gear's own axis
+  * CENTRED by a register: a LOC recess in the flange's bed face over the
+    O12 boss on the spigot end. The bolts only clamp (clearance holes would
+    let it float 0.2 - the mesh's whole backlash)
+  * a 45 deg LEAD-IN on its tooth tips at the back face: the pinion enters
+    the mesh from that side, axially, with its plate
 
-Print: FLANGE DOWN, no support - the teeth are then vertical prisms, which is
-how every gear in this project prints.
-
-Frame: z along the J3 axis, 0 on the spigot-end face, +z into the upper arm.
+Print: FLANGE DOWN, no support: the teeth are vertical prisms and the stalk
+stands on the tooth face.
+Frame: z along the joint axis, 0 on the spigot-end face, +z into the upper arm.
 """
 
 import math
@@ -37,19 +38,24 @@ import adsk.core  # noqa: E402
 import adsk.fusion  # noqa: E402
 
 import lib.cobot as C  # noqa: E402
-from lib.gears import J3_PAIR  # noqa: E402
 from lib.palette import hints_for  # noqa: E402
 
 COMPONENT = 'robotarm_cobot_j3_gear'
 BODY_NAME = 'cobot_j3_gear'
-PREFIX = 'cjg_'
+PREFIX = 'cg3_'
+JOINT = C.J3
+PAIR = C.J3A_PAIR
+PLATE_TOP = C.UA_J3_TAB_TOP
+BOLT_L = C.J3_BOLT_L
 MATERIAL_NAME = 'PET Plastic'
 APPEARANCE_HINTS = hints_for('cobot_j3_gear')
 PH_TEETH = 'flange + teeth'
-PH_BORE = 'bore + bolts'
-PHASES = [PH_TEETH, PH_BORE]
+PH_STALK = 'stalk + magnet'
+PH_BOLTS = 'register + lead-in + bolts'
+PHASES = [PH_TEETH, PH_STALK, PH_BOLTS]
 PETG_G_PER_MM3 = 1.27 * 0.65 / 1000.0
 TOOTH_SAMPLES = 14
+LEAD_OVER = 0.01          # cm - the lead-in cutter runs this far past the tip
 
 
 def run(_context: str):
@@ -60,13 +66,12 @@ def run(_context: str):
     V = adsk.core.ValueInput.createByString
     P3 = adsk.core.Point3D.create
     C.check()
-    P = J3_PAIR
 
-    def param(name, expr, comment='', units='mm'):
+    def param(name, expr, comment=''):
         full = PREFIX + name
         p = ups.itemByName(full)
         if p is None:
-            ups.add(full, V(expr), units, comment)
+            ups.add(full, V(expr), 'mm', comment)
         else:
             p.expression = expr
             p.comment = comment
@@ -77,20 +82,23 @@ def run(_context: str):
     def mm(v_cm):
         return '%.5f mm' % (v_cm * 10)
 
-    param('face', '%.4f mm' % P.face, 'lib/gears J3_PAIR')
-    param('r_tip', '%.5f mm' % P.r_tip(P.z_gear), 'lib/gears')
-    param('r_root', '%.5f mm' % P.r_root(P.z_gear), 'lib/gears')
-    param('flange_t', '%.4f mm' % C.FLANGE_T, 'lib/cobot FLANGE_T - the retainer, and the pinion screw\'s room')
-    param('flange_d', '%.4f mm' % C.J3.flange_od, 'lib/cobot J3 - laps the upper arm wall')
-    param('bore', '%.4f mm' % C.J3.spigot_id, 'lib/cobot J3 - the loom\'s way across')
-    param('bolt_r', '%.4f mm' % C.J3.bolt_r, 'lib/cobot J3')
+    stalk_h = C.stalk_top(PLATE_TOP) - JOINT.x_gear_back
+    param('face', '%.4f mm' % PAIR.face, 'lib/cobot ' + PAIR.name)
+    param('flange_t', '%.4f mm' % C.FLANGE_T, 'lib/cobot FLANGE_T - the retainer')
+    param('flange_d', '%.4f mm' % JOINT.flange_od, 'lib/cobot - laps the joint wall')
+    param('bolt_r', '%.4f mm' % JOINT.bolt_r, 'lib/cobot')
     param('bolt_d', '%.4f mm' % C.M3['clearance'], 'M3 clearance')
+    param('cbore_d', '%.4f mm' % C.CBORE_D, 'M3 cap head + FREE')
+    param('cbore_h', '%.4f mm' % C.CBORE_H, 'the head sunk below the tooth face')
+    param('stalk_d', '%.4f mm' % C.STALK_D, 'lib/cobot STALK_D - runs in the plate\'s hole')
+    param('stalk_h', '%.4f mm' % stalk_h, 'tooth face -> magnet face (lib/cobot stalk_top)')
+    param('mag_d', '%.4f mm' % C.MAGNET_POCKET[0], 'the O6 magnet, glued')
+    param('mag_h', '%.4f mm' % C.MAGNET_POCKET[1], 'its depth')
     param('tooth_sink', '0.5 mm', 'how far a tooth profile reaches inside the root circle')
+    param('reg_d', '%.4f mm' % C.REG_RECESS[0], 'lib/cobot - LOC over the spigot\'s register boss: CENTRES the gear')
+    param('reg_h', '%.4f mm' % C.REG_RECESS[1], 'its depth')
 
-    assert val('flange_d') / 2 < val('r_root'), 'the flange would stand proud of the tooth roots'
-    assert val('bolt_r') + val('bolt_d') / 2 + C.MIN_WALL / 10 <= val('r_root')
-    assert val('bolt_r') - val('bolt_d') / 2 >= val('bore') / 2 + C.MIN_WALL / 10, 'bolt hole breaks into the loom bore'
-    assert (C.J3.bolt_r + C.M3_HEAD_D / 2 + C.FREE) / 10 < val('r_root'), 'a head overhangs the teeth'
+    assert val('flange_d') / 2 <= PAIR.r_tip(PAIR.z_gear) / 10
 
     STALE = COMPONENT + '_stale_'
     for i in range(design.allComponents.count):
@@ -133,15 +141,35 @@ def run(_context: str):
         sk.sketchCurves.sketchCircles.addByCenterRadius(mpt(sk, x, y), d / 2)
         return extrude(sk.profiles.item(0), op, z0, dz, name)
 
+    def lead_in(name, r_tip, z_face, sense):
+        """45 deg lead-in on the tooth tips at z_face; sense -1: teeth below the face, +1: above."""
+        sk = comp.sketches.add(comp.xZConstructionPlane)
+        sk.name = 'sk_' + name
+        L = C.LEAD_IN / 10
+        over = LEAD_OVER
+        a_ = sk.modelToSketchSpace(P3(r_tip - L, 0, z_face))
+        b_ = sk.modelToSketchSpace(P3(r_tip + over, 0, z_face))
+        c_ = sk.modelToSketchSpace(P3(r_tip + over, 0, z_face + sense * (L + over)))
+        ls = sk.sketchCurves.sketchLines
+        l1 = ls.addByTwoPoints(a_, b_)
+        l2 = ls.addByTwoPoints(l1.endSketchPoint, c_)
+        ls.addByTwoPoints(l2.endSketchPoint, l1.startSketchPoint)
+        rv = comp.features.revolveFeatures
+        ri = rv.createInput(sk.profiles.item(0), comp.zConstructionAxis, CUT)
+        ri.setAngleExtent(False, V('360 deg'))
+        ri.participantBodies = [comp.bRepBodies.item(i) for i in range(comp.bRepBodies.count)]
+        rv.add(ri).name = name
+
     def group(start, name):
         if design.timeline.count - start > 1:
             design.timeline.timelineGroups.add(start, design.timeline.count - 1).name = name
 
     ft, fc = val('flange_t'), val('face')
+    top = ft + fc
     t0 = design.timeline.count
     disc('flange', 0.0, 0.0, val('flange_d'), 0.0, ft, NEW)
-    disc('blank', 0.0, 0.0, val('r_root') * 2, ft, fc, JOIN)
-    T = P.tooth_polar(P.z_gear, n=TOOTH_SAMPLES, sink=val('tooth_sink') * 10)
+    disc('blank', 0.0, 0.0, PAIR.r_root(PAIR.z_gear) / 10 * 2, ft, fc, JOIN)
+    T = PAIR.tooth_polar(PAIR.z_gear, n=TOOTH_SAMPLES, sink=val('tooth_sink') * 10)
     sk = comp.sketches.add(comp.xYConstructionPlane)
     sk.name = 'sk_tooth_profile'
     lines = sk.sketchCurves.sketchLines
@@ -159,18 +187,27 @@ def run(_context: str):
     pat = adsk.core.ObjectCollection.create()
     pat.add(tooth)
     cp = comp.features.circularPatternFeatures.createInput(pat, comp.zConstructionAxis)
-    cp.quantity = adsk.core.ValueInput.createByReal(P.z_gear)
+    cp.quantity = adsk.core.ValueInput.createByReal(PAIR.z_gear)
     cp.totalAngle = V('360 deg')
     cp.isSymmetric = False
     comp.features.circularPatternFeatures.add(cp).name = 'tooth_ring'
     group(t0, PH_TEETH)
 
     t1 = design.timeline.count
-    top = ft + fc
-    disc('loom_bore', 0.0, 0.0, val('bore'), 0.0, top, CUT)
-    for k, (bx, by) in enumerate(C.J3.bolts()):
-        disc('bolt_%d' % k, bx / 10, by / 10, val('bolt_d'), 0.0, top, CUT)
-    group(t1, PH_BORE)
+    if val('stalk_h') > 0:
+        disc('stalk', 0.0, 0.0, val('stalk_d'), top, val('stalk_h'), JOIN)
+    s_top = top + val('stalk_h')
+    disc('magnet', 0.0, 0.0, val('mag_d'), s_top - val('mag_h'), val('mag_h'), CUT)
+    group(t1, PH_STALK)
+
+    t2 = design.timeline.count
+    disc('register', 0.0, 0.0, val('reg_d'), 0.0, val('reg_h'), CUT)
+    lead_in('lead_in', PAIR.r_tip(PAIR.z_gear) / 10, top, -1)
+    for k, az in enumerate(JOINT.bolt_az):
+        bx, by = val('bolt_r') * math.cos(math.radians(az)), val('bolt_r') * math.sin(math.radians(az))
+        disc('bolt_%d' % k, bx, by, val('bolt_d'), 0.0, top, CUT)
+        disc('cbore_%d' % k, bx, by, val('cbore_d'), top - val('cbore_h'), val('cbore_h'), CUT)
+    group(t2, PH_BOLTS)
 
     assert comp.bRepBodies.count == 1
     body = comp.bRepBodies.item(0)
@@ -197,10 +234,12 @@ def run(_context: str):
     bb = body.boundingBox
     v = body.volume * 1000
     print("body: '%s' | appearance: %s | PRINT 1, flange down" % (body.name, used))
-    print('%dT m %.1f face %.1f on a O%.0f x %.1f flange; O%.0f loom bore; %d x M3 x 18 at r %.1f, heads on the face'
-          % (P.z_gear, P.module, P.face, C.J3.flange_od, C.FLANGE_T, C.J3.spigot_id, len(C.J3.bolt_az), C.J3.bolt_r))
-    print('tip r %.3f root r %.3f; centre distance to the pinion %.2f' % (T['r_tip'], P.r_root(P.z_gear),
-                                                                       P.centre_distance))
+    print('%s: %dT m%.2f face %.0f on a O%.0f x %.0f flange; stalk O%.0f x %.2f, magnet pocket O%.1f x %.1f; '
+          '%d x M3 x %.0f at r %.1f sunk %.1f' % (JOINT.name, PAIR.z_gear, PAIR.module, PAIR.face, JOINT.flange_od,
+                                                   C.FLANGE_T, C.STALK_D, val('stalk_h') * 10, C.MAGNET_POCKET[0],
+                                                   C.MAGNET_POCKET[1], len(JOINT.bolt_az), BOLT_L, JOINT.bolt_r,
+                                                   C.CBORE_H))
+    print('tip r %.3f root r %.3f; centre distance %.2f' % (T['r_tip'], PAIR.r_root(PAIR.z_gear), PAIR.centre_distance))
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f'
           % (bb.minPoint.x * 10, bb.maxPoint.x * 10, bb.minPoint.y * 10, bb.maxPoint.y * 10,
              bb.minPoint.z * 10, bb.maxPoint.z * 10))

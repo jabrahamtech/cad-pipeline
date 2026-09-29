@@ -3,22 +3,22 @@
 Rebuilds `robotarm_cobot_j3_plate` (idempotent). Spec: specs/robotarm/cobot.md;
 every number from lib/cobot.py.
 
-THE J3 SERVO PLATE. The J3 SG90's near tab hole is 8.65 from its shaft -
-inside the 18T pinion's r 10.4 sweep - so no post from the upper arm's wall
-can reach it. Instead the SG90 is screwed to this plate ON THE BENCH
-(2 x M2 x 6 through both tabs - NOT the ~8 mm bag screws: their tips would
-reach the pinion, lib/cobot J3_TAB_SCREW_MAX), and the plate, riding above the
-pinion, screws down onto two posts that stand outside both gear sweeps
-(2 x M3 x 8). The plate therefore sets the gear centre distance: its window
-is a locational fit on the case and its posts are pilot holes in the body.
+THE J3 SERVO PLATE - a BENCH UNIT. On the bench:
+  1. the SG90 360 with its pinion already broached on and screwed, down
+     through the plate's case window (a LOC fit - it locates the servo)
+  2. its tabs screwed to the plate: 2 x M2 x 6 (not the ~8 mm bag screws)
+  3. the AS5600 board into the pocket on the top face, CHIP DOWN over the
+     stalk hole, wires soldered to its pads; 2 x M2 x 5 with washers clamp
+     its edges (the pocket is 23.4 - CALIPER the board first)
+Then the whole unit drops into the upper arm along -x: the pinion meshes AXIALLY
+(lead-ins on both gears), the output gear's stalk enters the O12 hole
+and puts its magnet under the chip. The idler pin, already standing in the upper arm with the idler on it, passes through the plate's LOC hole and LOCATES it, so both J3 meshes are set by the parts (their tolerance stacks are built into their centre distances - lib/cobot FITS); 3 x M3 x 10 to the posts through round clearance holes.
 
-Insert path: servo + pinion + plate go into the open upper arm along -x as
-one piece; the pinion slides into mesh axially. Nothing has to move sideways.
-
-Print: FLAT, no support.
-Frame: the upper arm's (arm x; y = u along the link; z = v across).
+Print: FLAT, bottom face down, no support; the board pocket opens upward.
+Frame: arm x; y = u along the upper arm; z = v across it.
 """
 
+import math
 import os
 import sys
 
@@ -32,19 +32,29 @@ import adsk.core  # noqa: E402
 import adsk.fusion  # noqa: E402
 
 import lib.cobot as C  # noqa: E402
-from lib.design_rules import FASTENER_MM as _FASTENER  # noqa: E402
 from lib.palette import hints_for  # noqa: E402
 
 COMPONENT = 'robotarm_cobot_j3_plate'
 BODY_NAME = 'cobot_j3_plate'
-PREFIX = 'cjp_'
+PREFIX = 'cp3p_'
+OUTLINE = C.J3_PLATE
+CASE = C.J3_CASE
+TAB_HOLES = C.J3_HOLES
+TAB_PILOT = C.M2['pilot']
+POSTS = C.J3_POSTS
+BOARD_AT = (C.L1, 0.0)
+CLAMPS = C.J3_CLAMPS
+PIN_AT = C.J3_IDLER                    # the idler pin's hole, or None
+SLOT_DIR = None                # unit (du, dv) along the mesh line, or None: the posts' slots run along it
+PLATE_TOP = C.UA_J3_TAB_TOP
+PLATE_T = C.PLATE_T
 MATERIAL_NAME = 'PET Plastic'
 APPEARANCE_HINTS = hints_for('cobot_j3_plate')
-PHASES = ['plate']
+PH_PLATE = 'plate + window'
+PH_HOLES = 'servo + posts'
+PH_BOARD = 'encoder'
+PHASES = [PH_PLATE, PH_HOLES, PH_BOARD]
 PETG_G_PER_MM3 = 1.27 * 0.65 / 1000.0
-J3_POST_U = 14.0        # = cobot_upper_arm J3_POST_U - asserted against its parameter when present
-J3_POST_V = 15.0
-EDGE = 2.5              # CHOSEN - plate beyond a hole centre
 EPS_MM = 1e-6
 
 
@@ -56,7 +66,6 @@ def run(_context: str):
     V = adsk.core.ValueInput.createByString
     P3 = adsk.core.Point3D.create
     C.check()
-    SG = C.SG90
 
     def param(name, expr, comment=''):
         full = PREFIX + name
@@ -68,31 +77,24 @@ def run(_context: str):
             p.comment = comment
 
     def val(name):
-        return ups.itemByName(PREFIX + name).value
+        return ups.itemByName(PREFIX + name).value      # cm
 
     def mm(v_cm):
         return '%.5f mm' % (v_cm * 10)
 
-    pin_u = C.L1 - C.J3_CENTRE
-    near = SG.shaft_from_end + (SG.tab_hole_pitch - SG.case_l) / 2       # 8.65
-    far = SG.case_l - SG.shaft_from_end + (SG.tab_hole_pitch - SG.case_l) / 2
-    param('x0', '%.4f mm' % (C.UA_J3_TAB_TOP - C.PLATE_T), 'lib/cobot - on the upper arm posts')
-    param('t', '%.4f mm' % C.PLATE_T, 'lib/cobot PLATE_T')
-    param('u0', '%.4f mm' % (pin_u - J3_POST_U - EDGE - C.M3['clearance'] / 2), 'plate end toward J2')
-    param('u1', '%.4f mm' % (pin_u + SG.case_w / 2 + EDGE), 'plate end toward J3')
-    param('v0', '%.4f mm' % (-far - EDGE), 'plate edge, far tab side')
-    param('v1', '%.4f mm' % (J3_POST_V + EDGE + C.M3['clearance'] / 2), 'plate edge, post side')
-    param('win_u', '%.4f mm' % (SG.case_w / 2 + C.LOC), 'the case window, half across u - locational')
-    param('win_v0', '%.4f mm' % (-(SG.case_l - SG.shaft_from_end) - C.LOC), 'window, far end')
-    param('win_v1', '%.4f mm' % (SG.shaft_from_end + C.LOC), 'window, near end')
-    param('pilot', '%.4f mm' % _FASTENER['M2']['pilot'], 'SG90 bag screw pilot')
-    param('clear', '%.4f mm' % C.M3['clearance'], 'M3 clearance to the posts')
+    param('x0', '%.4f mm' % (PLATE_TOP - PLATE_T), 'lib/cobot - the plate\'s bottom face')
+    param('t', '%.4f mm' % PLATE_T, 'lib/cobot')
+    param('loc', '%.4f mm' % C.LOC, 'the case window, locational')
+    param('tab_pilot', '%.4f mm' % TAB_PILOT, 'the servo\'s tab screws')
+    param('post_clear', '%.4f mm' % C.M3['clearance'], 'M3 x 10 to the posts')
+    param('slot', '%.4f mm' % (C.PLATE_SLOT if SLOT_DIR else 0.0), 'lib/cobot PLATE_SLOT - the mesh is SET on assembly')
+    param('pin_hole', '%.4f mm' % (C.IDLER_PIN_D + C.LOC), 'the idler pin, locational - it LOCATES this plate')
+    param('pocket', '%.4f mm' % C.BOARD_POCKET, 'lib/cobot BOARD_POCKET - the 23 x 23 AS5600 + LOC')
+    param('pocket_h', '%.4f mm' % C.BOARD_POCKET_H, 'the board stands proud of it for the clamps')
+    param('stalk_hole', '%.4f mm' % C.STALK_HOLE_D, 'the stalk + slot travel + FREE')
+    param('clamp_pilot', '%.4f mm' % C.M2['pilot'], 'M2 x 5 + washer clamps the board edge')
 
-    ups_post = ups.itemByName('cua_j3_post_u')
-    if ups_post is not None:
-        assert abs(ups_post.value * 10 - (pin_u - J3_POST_U)) < EPS_MM, 'the plate and the upper arm disagree on the posts'
-    assert val('v0') * 10 >= -(C.UA_A3 - C.SHELL - C.LOC), 'the plate hits the shell'
-    assert val('v1') * 10 <= C.UA_A3 - C.SHELL - C.LOC, 'the plate hits the shell'
+    assert abs(val('x0') * 10 + PLATE_T - PLATE_TOP) < EPS_MM
 
     STALE = COMPONENT + '_stale_'
     for i in range(design.allComponents.count):
@@ -107,44 +109,89 @@ def run(_context: str):
     occ = root.occurrences.addNewComponent(adsk.core.Matrix3D.create())
     comp = occ.component
     comp.name = COMPONENT
+    assert comp.name == COMPONENT, 'a stale component still holds the name'
     ext = comp.features.extrudeFeatures
     NEW = adsk.fusion.FeatureOperations.NewBodyFeatureOperation
     CUT = adsk.fusion.FeatureOperations.CutFeatureOperation
 
-    def sk_uv(name):
+    def sketch(name):
         sk = comp.sketches.add(comp.yZConstructionPlane)
         sk.name = 'sk_' + name
         return sk
 
     def pt(sk, u, v):
-        return sk.modelToSketchSpace(P3(0, u, v))
+        return sk.modelToSketchSpace(P3(0, u / 10, v / 10))
 
-    def extrude(prof, op, name):
-        inp = ext.createInput(prof, op)
-        inp.startExtent = adsk.fusion.OffsetStartDefinition.create(V(mm(val('x0'))))
-        inp.setDistanceExtent(False, V(mm(val('t'))))
+    def extrude_all(sk, op, x0, dx, name):
+        col = adsk.core.ObjectCollection.create()
+        for i in range(sk.profiles.count):
+            col.add(sk.profiles.item(i))
+        inp = ext.createInput(col, op)
+        inp.startExtent = adsk.fusion.OffsetStartDefinition.create(V(mm(x0)))
+        inp.setDistanceExtent(False, V(mm(dx)))
         if op != NEW:
-            inp.participantBodies = [comp.bRepBodies.item(0)]
+            inp.participantBodies = [comp.bRepBodies.item(i) for i in range(comp.bRepBodies.count)]
         ext.add(inp).name = name
 
-    t0 = design.timeline.count
-    sk = sk_uv('plate')
-    sk.sketchCurves.sketchLines.addTwoPointRectangle(pt(sk, val('u0'), val('v0')), pt(sk, val('u1'), val('v1')))
-    extrude(sk.profiles.item(0), NEW, 'plate')
-    sk = sk_uv('case_window')
-    pu = pin_u / 10
-    sk.sketchCurves.sketchLines.addTwoPointRectangle(pt(sk, pu - val('win_u'), val('win_v0')),
-                                                     pt(sk, pu + val('win_u'), val('win_v1')))
-    extrude(sk.profiles.item(0), CUT, 'case_window')
-    for k, (u, v, d) in enumerate(((pin_u, near, val('pilot')), (pin_u, -far, val('pilot')),
-                                   (pin_u - J3_POST_U, J3_POST_V, val('clear')),
-                                   (pin_u - J3_POST_U, -J3_POST_V, val('clear')))):
-        sk = sk_uv('hole_%d' % k)
-        sk.sketchCurves.sketchCircles.addByCenterRadius(pt(sk, u / 10, v / 10), d / 2)
-        extrude(sk.profiles.item(0), CUT, 'hole_%d' % k)
-    if design.timeline.count - t0 > 1:
-        design.timeline.timelineGroups.add(t0, design.timeline.count - 1).name = PHASES[0]
+    def poly(name, pts, op, x0, dx):
+        sk = sketch(name)
+        sp = [pt(sk, u, v) for u, v in pts]
+        for k in range(len(sp)):
+            sk.sketchCurves.sketchLines.addByTwoPoints(sp[k], sp[(k + 1) % len(sp)])
+        extrude_all(sk, op, x0, dx, name)
 
+    def hole(name, u, v, d_cm, x0, dx, slot_cm=0.0, along=None):
+        sk = sketch(name)
+        c = pt(sk, u, v)
+        if slot_cm and along:
+            n = math.hypot(along[0], along[1])
+            du, dv = along[0] / n * slot_cm * 10, along[1] / n * slot_cm * 10
+            a_, b_ = pt(sk, u - du, v - dv), pt(sk, u + du, v + dv)
+            sk.sketchCurves.sketchCircles.addByCenterRadius(a_, d_cm / 2)
+            sk.sketchCurves.sketchCircles.addByCenterRadius(b_, d_cm / 2)
+            w = d_cm / 2 * 10
+            nu, nv = -dv / (slot_cm * 10) * w, du / (slot_cm * 10) * w
+            q = [pt(sk, u - du + nu, v - dv + nv), pt(sk, u + du + nu, v + dv + nv),
+                 pt(sk, u + du - nu, v + dv - nv), pt(sk, u - du - nu, v - dv - nv)]
+            for k in range(len(q)):
+                sk.sketchCurves.sketchLines.addByTwoPoints(q[k], q[(k + 1) % len(q)])
+        else:
+            sk.sketchCurves.sketchCircles.addByCenterRadius(c, d_cm / 2)
+        extrude_all(sk, CUT, x0, dx, name)
+
+    def group(start, name):
+        if design.timeline.count - start > 1:
+            design.timeline.timelineGroups.add(start, design.timeline.count - 1).name = name
+
+    x0, t = val('x0'), val('t')
+    lc = val('loc') * 10
+    t0 = design.timeline.count
+    poly('plate', OUTLINE, NEW, x0, t)
+    poly('case_window', [(CASE[0] - lc, CASE[2] - lc), (CASE[1] + lc, CASE[2] - lc),
+                         (CASE[1] + lc, CASE[3] + lc), (CASE[0] - lc, CASE[3] + lc)], CUT, x0, t)
+    group(t0, PH_PLATE)
+
+    t1 = design.timeline.count
+    for k, (u, v) in enumerate(TAB_HOLES):
+        hole('tab_pilot_%d' % k, u, v, val('tab_pilot'), x0, t)
+    # the mesh line: slots run along the line from the output gear's axis to the pinion
+    for k, (u, v) in enumerate(POSTS):
+        hole('post_%d' % k, u, v, val('post_clear'), x0, t, val('slot'), SLOT_DIR)
+    if PIN_AT is not None:
+        hole('idler_pin', PIN_AT[0], PIN_AT[1], val('pin_hole'), x0, t)
+    group(t1, PH_HOLES)
+
+    t2 = design.timeline.count
+    bu, bv = BOARD_AT
+    hp = val('pocket') * 10 / 2
+    poly('board_pocket', [(bu - hp, bv - hp), (bu + hp, bv - hp), (bu + hp, bv + hp), (bu - hp, bv + hp)], CUT,
+         x0 + t - val('pocket_h'), val('pocket_h'))
+    hole('stalk_hole', bu, bv, val('stalk_hole'), x0, t)
+    for k, (u, v) in enumerate(CLAMPS):
+        hole('clamp_%d' % k, u, v, val('clamp_pilot'), x0, t)
+    group(t2, PH_BOARD)
+
+    assert comp.bRepBodies.count == 1, 'the plate came out in %d pieces' % comp.bRepBodies.count
     body = comp.bRepBodies.item(0)
     body.name = BODY_NAME
     for i in range(app.materialLibraries.count):
@@ -152,29 +199,29 @@ def run(_context: str):
         if m:
             body.material = m
             break
+    used = 'none'
     for want in APPEARANCE_HINTS:
-        hit = None
         for i in range(app.materialLibraries.count):
             apps = app.materialLibraries.item(i).appearances
             for j in range(apps.count):
-                if all(w.lower() in apps.item(j).name.lower() for w in want):
-                    hit = apps.item(j)
+                a_ = apps.item(j)
+                if all(w.lower() in a_.name.lower() for w in want):
+                    body.appearance = a_
+                    used = a_.name
                     break
-            if hit:
+            if used != 'none':
                 break
-        if hit:
-            body.appearance = hit
+        if used != 'none':
             break
     bb = body.boundingBox
-    v = body.volume * 1000
-    print("body: '%s' | PRINT 1, flat" % body.name)
-    print('plate x %.2f..%.2f, u %.2f..%.2f, v %.2f..%.2f; window %.1f x %.1f; M2 pilots at v %.2f / %.2f; '
-          'M3 clearance at u %.1f v +-%.1f' % (val('x0') * 10, (val('x0') + val('t')) * 10, val('u0') * 10,
-                                              val('u1') * 10, val('v0') * 10, val('v1') * 10,
-                                              val('win_u') * 10 * 2, (val('win_v1') - val('win_v0')) * 10, near, -far,
-                                              pin_u - J3_POST_U, J3_POST_V))
+    v_ = body.volume * 1000
+    print("body: '%s' | appearance: %s | PRINT 1, flat" % (body.name, used))
+    print('plate x %.2f..%.2f; window %.1f x %.1f (LOC); %d tab pilots O%.1f; %d posts %s; board pocket %.1f sq at %r%s'
+          % (x0 * 10, (x0 + t) * 10, CASE[1] - CASE[0] + 2 * lc, CASE[3] - CASE[2] + 2 * lc, len(TAB_HOLES),
+             TAB_PILOT, len(POSTS), 'slotted +-%.1f along the mesh' % (val('slot') * 10) if SLOT_DIR else 'round',
+             val('pocket') * 10, BOARD_AT, '; idler pin hole O%.1f' % (val('pin_hole') * 10) if PIN_AT else ''))
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f'
           % (bb.minPoint.x * 10, bb.maxPoint.x * 10, bb.minPoint.y * 10, bb.maxPoint.y * 10,
              bb.minPoint.z * 10, bb.maxPoint.z * 10))
-    print('volume mm3: %.3f | printed ~%.1f g | valid: %s' % (v, v * PETG_G_PER_MM3, body.isValid))
+    print('volume mm3: %.3f | printed ~%.1f g | valid: %s' % (v_, v_ * PETG_G_PER_MM3, body.isValid))
     print('timeline groups: %r' % (PHASES,))
