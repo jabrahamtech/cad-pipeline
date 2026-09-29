@@ -57,6 +57,7 @@ MATERIAL_NAME = 'PET Plastic'
 # and hoping you found them all.
 from lib.design_rules import FASTENER_MM as _FASTENERS  # noqa: E402
 from lib.palette import hints_for  # noqa: E402
+import lib.facets as F  # noqa: E402
 
 _M3 = _FASTENERS['M3']
 APPEARANCE_HINTS = hints_for('upper_arm')
@@ -238,13 +239,21 @@ def run(_context: str):
             arcs.addByThreePoints(mpt(sk, 0, ta[0], ta[1]),
                                   mpt(sk, 0, mid_y, sz * waist),
                                   mpt(sk, 0, tb[0], tb[1]))
-        for cy, out in ((y_a, y_a + r_end if y_a > y_b else y_a - r_end),
-                        (y_b, y_b + r_end if y_b > y_a else y_b - r_end)):
+        # THE DRUMS ARE 12-GON ARCS (_style.md rule 6, lib/facets): vertices on
+        # the drum circle, so nothing grows past drum_r and the forearm's
+        # clearance cut still holds; one on the link axis, so they line up
+        # with the hex sockets' corners.
+        n_facets = 0
+        for cy, other in ((y_a, y_b), (y_b, y_a)):
             up, dn = tangent(cy, h), tangent(cy, -h)
-            arcs.addByThreePoints(mpt(sk, 0, up[0], up[1]),
-                                  mpt(sk, 0, out, 0.0),
-                                  mpt(sk, 0, dn[0], dn[1]))
-        return extrude(profiles(sk, expected=1), op, x0, dx, name), waist
+            via = 0.0 if cy > other else math.pi
+            pts = F.arc_polyline(cy, 0.0, r_end, math.atan2(up[1], up[0] - cy),
+                                 math.atan2(dn[1], dn[0] - cy), via)
+            for u, w in zip(pts, pts[1:]):
+                sk.sketchCurves.sketchLines.addByTwoPoints(mpt(sk, 0, u[0], u[1]),
+                                                           mpt(sk, 0, w[0], w[1]))
+            n_facets += len(pts) - 1
+        return extrude(profiles(sk, expected=1), op, x0, dx, name), waist, n_facets
 
     def hex_socket(name, y_c, sign):
         sk = sketch(comp.yZConstructionPlane, 'sk_' + name)
@@ -303,7 +312,7 @@ def run(_context: str):
     r_fil = arc_radius(L1, val('drum_r'), val('waist_z'))
     assert r_fil > 0, 'no concave arc joins drums of r %.1f over %.1f at a %.1f waist' % (
         val('drum_r') * 10, L1 * 10, val('waist_z') * 10)
-    _, waist = link_profile('link', 0.0, -L1, val('drum_r'), r_fil,
+    _, waist, n_drum_facets = link_profile('link', 0.0, -L1, val('drum_r'), r_fil,
                             '-' + PREFIX + 'half_x', '2 * ' + PREFIX + 'half_x', NEW)
     group(t0, PHASES[0])
 
@@ -356,11 +365,19 @@ def run(_context: str):
         'a %.1f mm facet leaves %.2f mm between the chamfer and the duct corner '
         '- design_rules MIN_WALL_MM is 1.6' % (facet_mm, duct_wall_mm))
 
+    # 2026-09-29: the drums are 12-gon arcs now, so the silhouette is LINES as
+    # well as arcs. Socket flats and drum facets are both lines round the same
+    # two centres; they are told apart by DISTANCE from the joint axis - a
+    # socket flat's midpoint sits inside the hex circumradius, a drum facet's
+    # at the drum's apothem.
+    split_r = (r_c + val('drum_r') * math.cos(math.pi / F.SIDES)) / 2
+
     def side_edges(kind):
-        """Edges on either side face, of one curve type. RE-QUERIED EVERY TIME:
-        a chamfer rebuilds the B-rep, so references collected before one are
-        dead after it - which is what 'InternalValidationError : isSucceeded'
-        means when a second chamfer is added from a stale collection."""
+        """Edges on either side face: 'silhouette' or 'socket'. RE-QUERIED EVERY
+        TIME: a chamfer rebuilds the B-rep, so references collected before one
+        are dead after it - which is what 'InternalValidationError :
+        isSucceeded' means when a second chamfer is added from a stale
+        collection."""
         col = adsk.core.ObjectCollection.create()
         for e in comp.bRepBodies.item(0).edges:
             bb = e.boundingBox
@@ -368,7 +385,13 @@ def run(_context: str):
                 continue
             if abs(bb.maxPoint.x - bb.minPoint.x) > val('tol'):
                 continue
-            if e.geometry.objectType.endswith('Arc3D') == (kind == 'arc'):
+            if e.geometry.objectType.endswith('Arc3D'):
+                silhouette = True
+            else:
+                my = (bb.minPoint.y + bb.maxPoint.y) / 2
+                mz = (bb.minPoint.z + bb.maxPoint.z) / 2
+                silhouette = min(math.hypot(my, mz), math.hypot(my + L1, mz)) > split_r
+            if silhouette == (kind == 'silhouette'):
                 col.add(e)
         return col
 
@@ -376,7 +399,7 @@ def run(_context: str):
     # and do not touch the silhouette, so doing them first leaves the arcs
     # untouched - and doing them SECOND does not work at all, because the
     # facet has rebuilt the body by then.
-    lines = side_edges('line')
+    lines = side_edges('socket')
     n_line = lines.count
     if n_line:
         c_inp = chf.createInput2()
@@ -384,11 +407,12 @@ def run(_context: str):
             lines, V(STYLE + 'ef'), False)
         chf.add(c_inp).name = 'socket_ef'
 
-    arcs = side_edges('arc')
+    arcs = side_edges('silhouette')
     n_arc = arcs.count
-    assert n_arc == 8, (
-        'expected 8 silhouette arcs across the two side faces, found %d - the '
-        'outline changed and the facet would land somewhere else' % n_arc)
+    assert n_arc == 2 * (2 + n_drum_facets), (
+        'expected %d silhouette edges (2 waist arcs + %d drum facets, both side '
+        'faces), found %d - the outline changed and the facet would land '
+        'somewhere else' % (2 * (2 + n_drum_facets), n_drum_facets, n_arc))
     c_inp = chf.createInput2()
     c_inp.chamferEdgeSets.addEqualDistanceChamferEdgeSet(
         arcs, V(STYLE + 'facet'), False)
@@ -405,11 +429,14 @@ def run(_context: str):
     assert val('half_x') - val('duct_x') - val('panel_d') >= val('wall') - tol, (
         'the side panel thins the duct wall under MIN_WALL')
     for sign in (1, -1):
+        # a stadium with 12-gon ends (_style.md rule 6), one closed polyline
         sk = sketch(comp.yZConstructionPlane, 'sk_side_panel_%d' % (sign + 1))
-        sk.sketchCurves.sketchLines.addTwoPointRectangle(
-            mpt(sk, 0, p_y0, -p_r), mpt(sk, 0, p_y1, p_r))
-        for yc in (p_y0, p_y1):
-            sk.sketchCurves.sketchCircles.addByCenterRadius(mpt(sk, 0, yc, 0), p_r)
+        ring = (F.arc_polyline(p_y1, 0.0, p_r, math.pi / 2, -math.pi / 2, 0.0)
+                + F.arc_polyline(p_y0, 0.0, p_r, -math.pi / 2, math.pi / 2, math.pi))
+        for k in range(len(ring)):
+            u, w = ring[k], ring[(k + 1) % len(ring)]
+            sk.sketchCurves.sketchLines.addByTwoPoints(mpt(sk, 0, u[0], u[1]),
+                                                       mpt(sk, 0, w[0], w[1]))
         if sign > 0:
             extrude(profiles(sk), CUT, PREFIX + 'half_x', '-' + PREFIX + 'panel_d',
                     'side_panel_%d' % (sign + 1))
@@ -518,9 +545,9 @@ def run(_context: str):
         print('elbow bolt: %.1f clear on the J3 axis, through the duct. Screw '
               'length not stated - %s not in this document'
               % (val('bolt_clear') * 10, ', '.join(_need)))
-    print('POLYGONAL: %.1f mm facet on %d silhouette arcs, %.1f on %d socket flats;'
+    print('POLYGONAL: 12-gon drums (%d facets); %.1f mm facet on %d silhouette edges, %.1f on %d socket flats;'
           ' %.2f mm of wall left at the duct corner'
-          % (sval('facet') * 10, n_arc, sval('ef') * 10, n_line, duct_wall_mm))
+          % (n_drum_facets, sval('facet') * 10, n_arc, sval('ef') * 10, n_line, duct_wall_mm))
     print('duct %.1f x %.1f runs the full length and OUT through both drum ends, %.1f rails' % (
         val('duct_x') * 20, val('duct_z') * 20, rail * 10))
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f' % (

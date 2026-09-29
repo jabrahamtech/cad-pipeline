@@ -10,6 +10,11 @@ J1 = MG995 360° · J2 = MG995 (sized from the drawing in `calibration/2026-09-2
 
 Everything PETG, 0.2 layers, 3 walls, 15–20 % infill, **supports off**, unless noted.
 
+**Printer: Bambu Lab X2D.** Every plate is packed to the X2D's **dual-nozzle** area (235.5 × 256, 260 tall), so any plate can print with one nozzle or both without re-arranging. In Bambu Studio: pick the X2D + 0.4 nozzle, Generic/Bambu PETG HF, textured PEI plate. Chamber heating **off** for PETG. Keep **auto-arrange rotation locked** — the orientations are baked in.
+- **One colour per plate** (files are split `_green` / `_white`). With the X2D you can also load green on one nozzle and white on the other and print a green and a white plate together with no purge tower waste — but never let the slicer re-orient anything.
+- **TPU fingers:** print from the external spool on the main (direct-drive) nozzle, not through the AMS; 20–25 mm/s, no retraction tuning needed beyond the Bambu TPU 95A profile.
+- **Small holes print under** on this machine (gauge_broach_v2): the gripper's Ø3.5 rod bores in the jaws should slide on a Ø3 rod; if one drags, run a 3.5 mm drill through by hand.
+
 **Spline bores are gauged (2026-09-28, gauge_broach_v2 in PLA): SG90 drawn −0.05, MG995 drawn −0.25.** Print the hubs (J1 hub, shoulder hub, J3 pinion, wrist hubs, rotator, gripper pinion) in the same material as the gauge, or re-check one gauge station in PETG first.
 Files are in `exports/robotarm/`.
 
@@ -28,8 +33,8 @@ Files are in `exports/robotarm/`.
 - `shoulder_bracket_v5.3mf` ×1 — −X face down · ~53 g
 
 **4. Arm**
-- `plates/plate_armstack_green_v12.3mf` — upper arm (open duct, recessed side panels), forearm halves, 2 rails (brim), J3 servo cap, 2 duct grommets
-- `plates/plate_armstack_white_v12.3mf` — J3 gear, J3 pinion, J3 axle, shoulder hub
+- `plates/plate_armstack_green_v13.3mf` — upper arm and forearm halves with **12-gon faceted drums and bosses** (2026-09-29), 2 rails (brim), J3 servo cap, 2 duct grommets
+- `plates/plate_armstack_white_v13.3mf` — J3 gear, J3 pinion, J3 axle, shoulder hub (unchanged parts, re-packed for the X2D)
 - `plates/plate_wrist_white_v10.3mf` — wrist roll pair (mirrored), rotator, 2 hubs — all on one plate now, no shims
 
 **5. Gripper head (v3 — rod-guided, one-piece 12-gon body)**
@@ -37,7 +42,7 @@ Files are in `exports/robotarm/`.
 - `plates/plate_grip_white_v3.3mf` — 2 jaws + pinion
 - `grip_finger_v1.3mf` ×2 — **TPU 95A**, flat, 20–25 mm/s
 
-Superseded — don't print: `base_platter_v4` (fluted round), `base_platter_v5` (no eyes), and everything cut for the old flat-topped MG995: `shoulder_bracket_v4`, `turntable_stator_v9`, `base_lid_v8`/`_v9`, `j1_hub_v3`/`_v4`, `plate_armstack_*_v9`–`_v11`, `plate_wrist_*_v8`/`_v9`, `plate_grip_*_v1` (hub bores cut before the gauge), `plate_grip_*_v2` (clamshell head, replaced by v3). Retired: the pruner (`pruner_*`, `gripcut_finger`) and the old `gripper_shell` / `gripper_rack_jaw`.
+Superseded — don't print: `base_platter_v4` (fluted round), `base_platter_v5` (no eyes), and everything cut for the old flat-topped MG995: `shoulder_bracket_v4`, `turntable_stator_v9`, `base_lid_v8`/`_v9`, `j1_hub_v3`/`_v4`, `plate_armstack_*_v9`–`_v12`, `plate_wrist_*_v8`/`_v9`, `plate_grip_*_v1` (hub bores cut before the gauge), `plate_grip_*_v2` (clamshell head, replaced by v3). Retired: the pruner (`pruner_*`, `gripcut_finger`) and the old `gripper_shell` / `gripper_rack_jaw`.
 
 **Assembly note:** the shroud goes on after the rotor and BEFORE the ring — slide it down over the three turret posts. With it fitted, J2 can pitch down to **23°** below horizontal (was 25°).
 

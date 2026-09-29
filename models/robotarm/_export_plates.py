@@ -139,7 +139,14 @@ LEDGER = os.path.join(REPO, 'specs', 'robotarm', '_volumes.json')
 # wrist_rotator is the other way up. Reusing the version would leave two
 # files with the same name meaning two different things.
 VERSION = 9
-BED_X, BED_Y = 256.0, 256.0
+# THE PRINTER IS A BAMBU LAB X2D (Jonathan, 2026-09-29: "make sure these parts
+# are optimised to be printed with a x2d printer"). 256 x 256 x 260 with one
+# nozzle, but 235.5 x 256 where BOTH nozzles can reach - and the X2D's point
+# is the second nozzle (two-tone parts, _style.md rule 5, or a support
+# interface). Packing to the dual-nozzle width means any plate can go out
+# either way without being re-arranged. Source: Bambu Lab X2D spec sheet.
+BED_X, BED_Y = 235.5, 256.0
+BED_H = 260.0
 MARGIN, GAP = 6.0, 4.0
 # A BRIM IS FOOTPRINT. base_lid is 171.75 across, 3 thick, and warps without
 # one - so it needs a brim, and a brim is 5-8 mm of extra plastic all round
@@ -667,8 +674,10 @@ def run(_context: str):
         for pc in items:
             assert (pc['w'] <= BED_X - 2 * MARGIN
                     and pc['d'] <= BED_Y - 2 * MARGIN), (
-                '%s is %.1f x %.1f and does not fit a %.0f x %.0f bed'
+                '%s is %.1f x %.1f and does not fit a %.1f x %.0f bed'
                 % (pc['name'], pc['w'], pc['d'], BED_X, BED_Y))
+            assert pc['h'] <= BED_H, '%s is %.1f tall - the X2D builds %.0f' % (
+                pc['name'], pc['h'], BED_H)
             # YAW IS FREE. Turning a part 90 deg about the BED's z does not
             # change which face is on the bed, so it costs nothing in print
             # quality and it is the difference between this fitting and not.

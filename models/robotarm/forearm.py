@@ -187,6 +187,7 @@ from lib.bearings import B608ZZ  # noqa: E402 - the idler runs in one
 from lib.design_rules import FASTENER_MM as _FASTENERS  # noqa: E402
 from lib.design_rules import JOINT_FIT_MM as _FIT  # noqa: E402 - the J4 running gap
 from lib.forearm_split import Seam, Seat, ServoBlock  # noqa: E402
+import lib.facets as F  # noqa: E402 - _style.md rule 6, 12-gon round forms
 from lib.forearm_split import Silhouette, Straddle  # noqa: E402
 from lib.gears import J3_MOUNT, J3_PAIR  # noqa: E402 - the elbow reduction
 from lib.joints import j3_standoff as _j3_standoff  # noqa: E402
@@ -920,6 +921,17 @@ def run(_context: str):
         sk.sketchCurves.sketchCircles.addByCenterRadius(mpt(sk, 0, y_c, z_c), d_cm / 2)
         return extrude(profiles(sk, expected=1), op, x0_expr, dx_expr, name)
 
+    def yz_polygon(name, y_c, z_c, d_cm, x0_expr, dx_expr, op):
+        """A 12-gon boss on an axis parallel to X, its FLATS on the d_cm circle
+        (_style.md rule 6) - so a wall measured to that circle still holds."""
+        sk = sketch(comp.yZConstructionPlane, 'sk_' + name)
+        ring = F.polygon(y_c, z_c, d_cm / 2, outside=True)
+        for k in range(len(ring)):
+            u, w = ring[k], ring[(k + 1) % len(ring)]
+            sk.sketchCurves.sketchLines.addByTwoPoints(mpt(sk, 0, u[0], u[1]),
+                                                       mpt(sk, 0, w[0], w[1]))
+        return extrude(profiles(sk, expected=1), op, x0_expr, dx_expr, name)
+
     def yz_rect(name, y0, y1, z0, z1, x0_expr, dx_expr, op):
         sk = sketch(comp.yZConstructionPlane, 'sk_' + name)
         sk.sketchCurves.sketchLines.addTwoPointRectangle(
@@ -965,12 +977,18 @@ def run(_context: str):
             arcs.addByThreePoints(mpt(sk, 0, ta[0], ta[1]),
                                   mpt(sk, 0, mid_y, sz * waist),
                                   mpt(sk, 0, tb[0], tb[1]))
-        for cy, out in ((y_a, y_a + r_end if y_a > y_b else y_a - r_end),
-                        (y_b, y_b + r_end if y_b > y_a else y_b - r_end)):
+        # THE DRUMS ARE 12-GON ARCS (_style.md rule 6, lib/facets), drawn with
+        # their FLATS on the boss circle (outside=True): every wall this file
+        # measures to fa_boss_r - the counterbore, the 608 pocket - keeps its
+        # thickness, and the vertices stand 3.5 % proud of it.
+        for cy, other in ((y_a, y_b), (y_b, y_a)):
             up, dn = tangent(cy, h), tangent(cy, -h)
-            arcs.addByThreePoints(mpt(sk, 0, up[0], up[1]),
-                                  mpt(sk, 0, out, 0.0),
-                                  mpt(sk, 0, dn[0], dn[1]))
+            pts = F.arc_polyline(cy, 0.0, r_end, math.atan2(up[1], up[0] - cy),
+                                 math.atan2(dn[1], dn[0] - cy),
+                                 0.0 if cy > other else math.pi, outside=True)
+            for u, w in zip(pts, pts[1:]):
+                sk.sketchCurves.sketchLines.addByTwoPoints(mpt(sk, 0, u[0], u[1]),
+                                                           mpt(sk, 0, w[0], w[1]))
         return extrude(profiles(sk, expected=1), op, x0_expr, dx_expr, name), waist
 
     def xz_rect(name, x0, x1, z0, z1, y0_expr, dy_expr, op):
@@ -1249,7 +1267,7 @@ def run(_context: str):
         x0, dx = plate(sx)
         tag = 'p' if sx > 0 else 'm'
         for y_p, jnt in ((0.0, 'j4'), (-L2, 'j3')):
-            yz_circle('boss_%s_%s' % (jnt, tag), y_p, 0.0,
+            yz_polygon('boss_%s_%s' % (jnt, tag), y_p, 0.0,
                       2 * val('boss_r'), x0, dx, JOIN)
     for sx, y_p, run, jnt in LOBES:
         _, _, _, lo, hi = lobe_geometry(y_p, run)
@@ -1590,6 +1608,22 @@ def run(_context: str):
     # so the fuller outline is worth having.
     # Also note: match the SIGNED x. Comparing abs() to abs() picks up both
     # faces on the first pass and then re-uses dead references on the second.
+    # THE OUTLINE IS 12-GON FLATS NOW (rule 6), so select it by GEOMETRY, not
+    # by curve type: a line whose two ends both lie between the boss circle
+    # and the polygon's vertex radius about ONE joint axis. The counterbore
+    # and pocket circles are circles, and nothing else on the face has both
+    # ends out there.
+    def on_outline(e):
+        if not e.geometry.objectType.endswith('Line3D'):
+            return False
+        r_lo = val('boss_r') - val('tol')
+        r_hi = val('boss_r') / math.cos(math.pi / F.SIDES) + val('tol')
+        for y_j in (0.0, -L2):
+            if all(r_lo <= math.hypot(v.geometry.y - y_j, v.geometry.z) <= r_hi
+                   for v in (e.startVertex, e.endVertex)):
+                return True
+        return False
+
     n_face = 0
     for x_pick in ((val('plate_out'), -val('plate_out')) if FACET else ()):
         col = adsk.core.ObjectCollection.create()
@@ -1599,11 +1633,7 @@ def run(_context: str):
                 continue
             if abs(bb.maxPoint.x - x_pick) > val('tol'):
                 continue
-            t = e.geometry.objectType
-            if not (t.endswith('Arc3D') or t.endswith('Circle3D')):
-                continue
-            reach = max(abs(bb.minPoint.z), abs(bb.maxPoint.z))
-            if abs(reach - val('boss_r')) < val('tol'):
+            if on_outline(e):
                 col.add(e)
         # WHAT THIS HAS TO BE, and it is no longer "two edges". The rule
         # selects everything on this face reaching the body's z extreme,
@@ -1614,14 +1644,9 @@ def run(_context: str):
         # about what the edges ARE, not how many. A bare count of 2 was right
         # only while the outline happened to come in one piece, and it failed
         # the moment the block grew; a count of 3 would be just as brittle.
-        n_circ = sum(1 for e in col if e.geometry.objectType.endswith('Circle3D'))
-        n_arc = col.count - n_circ
-        assert n_circ == 1, (
-            'expected exactly one closed boss circle on the x %+.1f plate '
-            'face, found %d - the selection is picking up a counterbore'
-            % (x_pick * 10, n_circ))
-        assert n_arc >= 1, (
-            'no silhouette arc found on the x %+.1f plate face' % (x_pick * 10))
+        assert col.count >= F.SIDES, (
+            'only %d outline facets found on the plate face - the 12-gon '
+            'selection missed the outline' % col.count)
         c_inp = chf.createInput2()
         c_inp.chamferEdgeSets.addEqualDistanceChamferEdgeSet(
             col, V(PREFIX + 'facet'), False)

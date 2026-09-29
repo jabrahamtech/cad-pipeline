@@ -7,7 +7,7 @@ Reference: Jonathan's photo of a 5-DOF desktop arm — light faceted body,
 dark joints, thick chamfered volumes. The look is industrial-robot, not
 consumer-product: **cut planes, not soft radii.**
 
-## The five rules
+## The six rules
 
 **1. Facets, not fillets — `sty_facet` = 4.0 mm at 45°.**
 Every outer edge that is not a mating, sliding or bed face gets a 4 mm
@@ -72,6 +72,21 @@ second nozzle does it in one print. Cosmetic skins over a structural core
 were considered and rejected: they are truer to the photo but put 8–12 g at
 the end of the arm, and the elbow MG90S is already at 91 % of its duty
 limit (see `_assembly.md`). **The styling may not cost payload.**
+
+**6. Round forms are 12-gons — `lib/facets.py`.** (2026-09-29)
+Jonathan: *"I like arms that are more circular with poliagonal lines for
+texture."* The base platter, the turret and the grip head were already
+12-sided; every other round form you can see follows: the drums at the ends
+of `upper_arm`, the forearm's link outline and bosses (`forearm`,
+`forearm_px`, `forearm_nx`, `forearm_rail`), the upper arm's side panels.
+A vertex sits on the local +axis and every 30° from it, so it lines up with
+the hex sockets (every 60°). Pick which side of the circle the polygon sits:
+- **inside** (vertices on the circle) where a running clearance is cut round
+  it — `ua_drum_r` against `fa_elbow_clear`
+- **outside** (flats on the circle) where a wall is measured to it —
+  `fa_boss_r` against the counterbore and the 608 pocket
+The same exception as 4b: bores, journals, counterbores and anything that
+turns in something else stay round.
 
 ## Shared parameters
 

@@ -74,6 +74,7 @@ import adsk.core
 import adsk.fusion
 
 from lib.forearm_split import Silhouette, Straddle  # noqa: E402
+import lib.facets as F  # noqa: E402 - _style.md rule 6, 12-gon round forms
 from lib.palette import hints_for  # noqa: E402
 
 COMPONENT = 'robotarm_forearm_rail'
@@ -300,12 +301,18 @@ def run(_context: str):
             arcs.addByThreePoints(mpt(sk, 0, ta[0], ta[1]),
                                   mpt(sk, 0, mid_y, sz * waist),
                                   mpt(sk, 0, tb[0], tb[1]))
-        for cy, out in ((y_a, y_a + r_end if y_a > y_b else y_a - r_end),
-                        (y_b, y_b + r_end if y_b > y_a else y_b - r_end)):
+        # THE DRUMS ARE 12-GON ARCS (_style.md rule 6, lib/facets), drawn with
+        # their FLATS on the boss circle (outside=True): every wall this file
+        # measures to fa_boss_r - the counterbore, the 608 pocket - keeps its
+        # thickness, and the vertices stand 3.5 % proud of it.
+        for cy, other in ((y_a, y_b), (y_b, y_a)):
             up, dn = tangent(cy, h), tangent(cy, -h)
-            arcs.addByThreePoints(mpt(sk, 0, up[0], up[1]),
-                                  mpt(sk, 0, out, 0.0),
-                                  mpt(sk, 0, dn[0], dn[1]))
+            pts = F.arc_polyline(cy, 0.0, r_end, math.atan2(up[1], up[0] - cy),
+                                 math.atan2(dn[1], dn[0] - cy),
+                                 0.0 if cy > other else math.pi, outside=True)
+            for u, w in zip(pts, pts[1:]):
+                sk.sketchCurves.sketchLines.addByTwoPoints(mpt(sk, 0, u[0], u[1]),
+                                                           mpt(sk, 0, w[0], w[1]))
         return extrude(profiles(sk, expected=1), op, SPAN0, SPAND, name), waist
 
     # ---- phase 1: rail form -------------------------------------------------
