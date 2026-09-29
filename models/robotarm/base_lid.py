@@ -22,7 +22,11 @@ pass is read from lib/j1_drive and lib/servo, not re-measured:
                 two zip-tie bridges on the UNDERSIDE either side of it so the
                 loom is tied to the base where it enters, not to the stator.
   hall lead     a hole under the stator's home-post lead slot (az 330).
-  vents         12 x O4 at r 62 - outside the stator's r 50 footprint.
+  (no vents)    REMOVED 2026-09-28. Jonathan: the lid's openings are "just
+                for all the servos coming out the top". Twelve O4 holes in a
+                ring outside the shroud were the only VISIBLE openings with no
+                cable through them; the servo opening and loom window already
+                connect the bay to the shroud's interior.
 
 Print: PETG, TOP FACE DOWN, so the two tie bridges grow up off the bed and
 bridge 7 mm - no support.
@@ -66,13 +70,11 @@ APPEARANCE_HINTS = hints_for('base_lid')
 
 POST_AZ = (120.0, 180.0, 240.0)
 SCREW_AZ = (45.0, 135.0, 225.0, 315.0)
-VENT_N = 12
 TIE_SIDES = (-1, 1)
 TOL = 1e-9
 REL_TOL = 1e-6
 PETG_G_CM3 = 1.27
 PRINT_FILL = 0.65
-VENT_PHASE = 0.5              # vents sit half a pitch off the axes
 HALL_OFF_MM = HALL_BODY_H_MM / 2 + _FIT['locational'] / 2 + HALL_SLOT_MM / 2
 
 # THE STATOR'S OPENINGS, from the same library numbers the stator cuts them
@@ -146,8 +148,6 @@ def run(_context: str):
     param('hall_off', '%.3f mm' % HALL_OFF_MM,
           'stator lead slot centre, -Y of the post centre (pocket half + half the 2.4 slot)')
     param('hall_d', '7.0 mm', 'hole for the hall leads - 3 wires and their heat-shrink')
-    param('vent_r', '62.0 mm', 'vent circle - outside the stator plate (r 50)')
-    param('vent_d', '4.0 mm', 'vent hole')
     # --- loom tie bridges, on the underside ------------------------------------------
     param('tie_w', '4.0 mm', 'zip-tie slot width')
     param('tie_h', '3.0 mm', 'tunnel height under the bar')
@@ -276,10 +276,6 @@ def run(_context: str):
     _hx = val('home_r') * math.cos(val('home_az'))
     _hy = val('home_r') * math.sin(val('home_az')) - val('hall_off')
     circle('hall_lead_hole', _hx, _hy, val('hall_d'), z0 - t, t * 3, CUT)
-    for i in range(VENT_N):
-        a = 2 * math.pi * (i + VENT_PHASE) / VENT_N
-        circle('vent_%d' % i, val('vent_r') * math.cos(a), val('vent_r') * math.sin(a),
-               val('vent_d'), z0 - t, t * 3, CUT)
     group(t1, PH_OPEN)
 
     # ---- phase 3: fixings ---------------------------------------------------------------------
@@ -367,7 +363,6 @@ def run(_context: str):
     print('fixings: 3 x O%.1f posts at r %.1f | 4 x M3 at r %.1f, heads O%.1f x %.1f'
           % (val('post_clear_d') * 10, tval('post_r') * 10, val('screw_r') * 10,
              val('head_d') * 10, val('head_z') * 10))
-    print('vents: %d x O%.1f at r %.1f' % (VENT_N, val('vent_d') * 10, val('vent_r') * 10))
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f' % (
         bb.minPoint.x * 10, bb.maxPoint.x * 10, bb.minPoint.y * 10,
         bb.maxPoint.y * 10, bb.minPoint.z * 10, bb.maxPoint.z * 10))

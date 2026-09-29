@@ -1,7 +1,7 @@
 # base_platter — spec (Fusion rebuild, replaces the printed legacy platter)
 
 Project: `models/robotarm/base_platter.py`
-Status: MODELED — 2026-09-27, restyled 2026-09-28 (12-sided pedestal, black) · gate `_check_base.py` PASS · current exports `base_platter_v6` (eyes), `base_lid_v9`, `turntable_stator_v10`, `turret_shroud_v1`, `shoulder_bracket_v5`, `j1_hub_v5`
+Status: MODELED — 2026-09-27, restyled 2026-09-28 (12-sided pedestal, black) · gate `_check_base.py` PASS · current exports `base_platter_v6` (eyes), `base_lid_v10`, `turntable_stator_v10`, `turret_shroud_v1`, `shoulder_bracket_v5`, `j1_hub_v5`
 
 ## Why this exists
 Jonathan, 2026-09-27: J1 base yaw becomes an **MG995 360° (continuous)**; J2

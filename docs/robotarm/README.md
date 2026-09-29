@@ -17,7 +17,7 @@ Files are in `exports/robotarm/`.
 
 **2. Base + turret (black PETG, ~290 g)**
 - `base_platter_v6.3mf` ×1 — 12-sided, **LED eyes in the front**, floor down, no brim needed (3 mm foot facet) · ~154 g
-- `base_lid_v9.3mf` ×1 — top face down, brim · ~63 g
+- `base_lid_v10.3mf` ×1 — top face down, brim · ~64 g (vents removed: every hole now passes a post, the servo or cables)
 - `turntable_stator_v10.3mf` ×1 — base down, supports OFF · ~31 g
 - `turret_shroud_v1.3mf` ×1 — **new**: upright, lid end down, no support · ~26 g
 - `turntable_ring_v6.3mf` ×1 — don't sand the bore · ~13 g
@@ -37,7 +37,7 @@ Files are in `exports/robotarm/`.
 - `plates/plate_grip_white_v2.3mf` — 2 jaws + pinion
 - `grip_finger_v1.3mf` ×2 — **TPU 95A**, flat, 20–25 mm/s
 
-Superseded — don't print: `base_platter_v4` (fluted round), `base_platter_v5` (no eyes), and everything cut for the old flat-topped MG995: `shoulder_bracket_v4`, `turntable_stator_v9`, `base_lid_v8`, `j1_hub_v3`/`_v4`, `plate_armstack_*_v9`–`_v11`, `plate_wrist_*_v8`/`_v9`, `plate_grip_*_v1` (hub bores cut before the gauge). Retired: the pruner (`pruner_*`, `gripcut_finger`) and the old `gripper_shell` / `gripper_rack_jaw`.
+Superseded — don't print: `base_platter_v4` (fluted round), `base_platter_v5` (no eyes), and everything cut for the old flat-topped MG995: `shoulder_bracket_v4`, `turntable_stator_v9`, `base_lid_v8`/`_v9`, `j1_hub_v3`/`_v4`, `plate_armstack_*_v9`–`_v11`, `plate_wrist_*_v8`/`_v9`, `plate_grip_*_v1` (hub bores cut before the gauge). Retired: the pruner (`pruner_*`, `gripcut_finger`) and the old `gripper_shell` / `gripper_rack_jaw`.
 
 **Assembly note:** the shroud goes on after the rotor and BEFORE the ring — slide it down over the three turret posts. With it fitted, J2 can pitch down to **23°** below horizontal (was 25°).
 
