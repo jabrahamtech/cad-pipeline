@@ -1,0 +1,25 @@
+MESH (measured on the built teeth)
+  J2   36T gear / 22T MG995 pinion: backlash 0.35 mm at the pinion pitch circle (window 1.45 deg); through one full tooth, coupled 36:22: FREE, flank gap 0.16..0.16 mm  ok
+  J3a  36T gear / 18T idler: backlash 0.58 mm at the pinion pitch circle (window 3.67 deg); through one full tooth, coupled 36:18: FREE, flank gap 0.27..0.27 mm  ok
+  J3b  36T idler / 18T SG90 pinion: backlash 0.55 mm at the pinion pitch circle (window 3.49 deg); through one full tooth, coupled 36:18: FREE, flank gap 0.26..0.26 mm  ok
+  J4   36T gear / 18T SG90 pinion: backlash 0.35 mm at the pinion pitch circle (window 2.23 deg); through one full tooth, coupled 36:18: FREE, flank gap 0.16..0.16 mm  ok
+SERVOS (envelope = case + tabs + output boss; gaps in mm to the nearest parts)
+  fit_mg995                  j2_pinion 0.00 (touching) | j2_plate 0.00 (touching) | upper_arm_cover 0.40 | upper_arm 1.90
+    its lead stub (5 mm)     upper_arm_cover 11.20 | j2_cap 13.20 | j2_plate 15.65 | j2_gear 16.32
+  fit_sg90_j3                j3_pinion 0.00 (touching) | j3_plate 0.00 (touching) | j3_idler 0.94 | j2_plate 3.00
+    its lead stub (5 mm)     upper_arm 9.70 | j3_plate 11.90 | j2_plate 13.76 | fit_mg995 13.93
+  fit_sg90_j4                j4_pinion 0.00 (touching) | j4_plate 0.00 (touching) | forearm_plate 0.40 | j4_gear 2.13
+    its lead stub (5 mm)     forearm_plate 4.50 | forearm 6.90 | upper_arm 9.75 | j4_plate 11.90
+  fit_sg90_j5 (lead: back port) wrist 0.00 (touching) | wrist_cap 0.10 | forearm 5.15 | j4_gear 8.40
+GEARS IN THEIR HOUSINGS (nearest part that is not the mate)
+  j2_gear                    j2_hub_lo 0.00 (touching) | tower 0.00 (touching) | j2_hub_hi 0.09 | upper_arm 0.25
+  j2_pinion                  fit_mg995 0.00 (touching) | upper_arm 3.25 | tower 4.97 | j2_plate 5.25
+  j3_gear                    forearm_plate 0.00 (touching) | upper_arm 0.25 | fit_board_j3 1.00 | j3_plate 1.12
+  j3_idler                   upper_arm 0.40 | j2_plate 0.85 | fit_sg90_j3 0.94 | j3_plate 1.70
+  j3_pinion                  fit_sg90_j3 0.00 (touching) | j2_plate 0.85 | upper_arm 1.51 | j3_plate 1.70
+  j4_gear                    wrist_cap 0.00 (touching) | forearm 0.25 | fit_board_j4 1.00 | j4_plate 1.12
+  j4_pinion                  fit_sg90_j4 0.00 (touching) | j4_plate 1.70 | forearm 3.25 | wrist_cap 5.11
+  j2_hub_lo                  fit_spring 0.00 (touching) | j2_gear 0.00 (touching) | j2_cap 0.40 | upper_arm_cover 5.40
+  j2_hub_hi                  fit_spring 0.00 (touching) | j2_gear 0.09 | j2_cap_lid 0.40 | fit_board_j2 1.42
+  rotator                    grip_body 0.00 (touching) | wrist 0.17 | wrist_cap 0.40 | forearm 0.75
+VERDICT: PASS

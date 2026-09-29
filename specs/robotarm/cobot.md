@@ -60,6 +60,23 @@ J2–J4 therefore run the **360° versions of the same servos**, and the ESP32 c
 
 ## 4. Fits and tolerances
 
+**Measured on the built parts** (`_check_cobot_mesh.py`, log `_cobot_mesh_check.log`):
+
+| Pair | Backlash at the pinion pitch circle | Through one full tooth, turned together |
+|---|---|---|
+| J2 36T / 22T | 0.35 mm | free, flank gap constant 0.16 |
+| J3 stage A 36T / 18T idler | 0.58 mm (includes the +0.29 stack) | free, 0.27 |
+| J3 stage B 36T idler / 18T | 0.55 mm (includes the +0.25 stack) | free, 0.26 |
+| J4 36T / 18T | 0.35 mm | free, 0.16 |
+
+- The constant flank gap through a whole tooth shows the involutes are conjugate: no binding anywhere in the cycle.
+- J2 and J4 are set with paper on assembly, so their real backlash is whatever the paper leaves. J3's is nominal: at the tight end of its tolerance stack the extra centre distance is gone and it drops to about 0.35 (2 × 0.29 × tan 20° ≈ 0.21 less).
+- Output play from backlash alone, nominal: J2 ≈ 0.9°, J3 ≈ 2.7° (two stages), J4 ≈ 1.1°. Gravity keeps J2 and J3 on one flank most of the time; set the firmware deadband to about this.
+- Servos: each sits on its plate's tabs with its pinion seated on the output boss. Nearest other parts: MG995 0.40 to the cover (its pull-off stop), 1.9 to the arm wall; J3 SG90 0.94 to the idler; J4 SG90 0.40 to the forearm plate; J5 SG90 0.10 to the wrist cap (LOC).
+- Leads: a 5 mm straight stub out of each servo's lead face clears everything by ≥ 4.5 mm.
+- Running gaps between moving parts: gears to the link walls 0.25 (AX_GAP), idler 0.40, hubs 0.40 to the cap and lid, rotator 0.17 radial in the wrist.
+
+
 Backlash is 0.2 mm at each centre distance. Everything that moves a pinion relative to its gear is accounted for:
 
 | Source | ± mm (radial) | Where it is handled |

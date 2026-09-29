@@ -113,12 +113,95 @@ WR_BASE = ['robotarm_cobot_wrist']
 ALONG_U = {'robotarm_cobot_rotator', 'robotarm_grip_body'}      # these go in along -u of their link, not -x
 
 
+def placer(root):
+    """place(q2, q3, lift=None, q4=HOME_Q4): every part (and fit_ envelope) to a pose, in the arm frame.
+
+    Module level so _check_cobot_mesh can pose the same arm: occurrence moves are not captured in the
+    timeline, so any later recompute (the exporter adding its plates) puts every part back at its origin.
+    """
+    P3 = adsk.core.Point3D.create
+    V3 = adsk.core.Vector3D.create
+
+    def occ_named(name):
+        for o in root.occurrences:
+            if o.component.name == name:
+                return o
+        return None
+
+    def link_matrix(q_deg, origin_yz):
+        """Link frame (x, u, v) -> arm frame: u at angle q in the arm's y-z plane."""
+        q = math.radians(q_deg)
+        m = adsk.core.Matrix3D.create()
+        m.setWithCoordinateSystem(P3(0, origin_yz[0] / 10, origin_yz[1] / 10), V3(1, 0, 0),
+                                  V3(0, math.cos(q), math.sin(q)), V3(0, -math.sin(q), math.cos(q)))
+        return m
+
+    def axial_matrix(link_m, u, v, x0):
+        """A gear/pinion frame (z along the joint axis, 0 at x0) at (u, v) of a link."""
+        m = adsk.core.Matrix3D.create()
+        m.setWithCoordinateSystem(P3(x0 / 10, u / 10, v / 10), V3(0, 1, 0), V3(0, 0, 1), V3(1, 0, 0))
+        m.transformBy(link_m)
+        return m
+
+    def rot_matrix(link_m, u0=C.ROT_SEAT_Z):
+        """A J5 part: its z along J5 (the wrist's u), 0 at u0."""
+        m = adsk.core.Matrix3D.create()
+        m.setWithCoordinateSystem(P3(0, u0 / 10, 0), V3(0, 0, 1), V3(1, 0, 0), V3(0, 1, 0))
+        m.transformBy(link_m)
+        return m
+
+    def place(q2, q3, lift=None, q4=HOME_Q4):
+        lift = lift or {}
+        ident = adsk.core.Matrix3D.create()
+        mu = link_matrix(q2, (0.0, 0.0))
+        j3 = (C.L1 * math.cos(math.radians(q2)), C.L1 * math.sin(math.radians(q2)))
+        mf = link_matrix(q2 + q3, j3)
+        j4 = (j3[0] + C.L2 * math.cos(math.radians(q2 + q3)), j3[1] + C.L2 * math.sin(math.radians(q2 + q3)))
+        mw = link_matrix(q2 + q3 + q4, j4)
+        uw = (0.0, math.cos(math.radians(q2 + q3 + q4)), math.sin(math.radians(q2 + q3 + q4)))
+        where = {
+            'robotarm_cobot_tower': ident,
+            'robotarm_cobot_j2_gear': axial_matrix(ident, 0.0, 0.0, C.J2.x_spigot_end),
+        }
+        for n in UA:
+            where[n] = mu
+        m_neutral = link_matrix(HOME_Q2, (0.0, 0.0))
+        for n in HUBS + tuple(SPRING):
+            where[n] = m_neutral
+        where['robotarm_cobot_j2_pinion'] = axial_matrix(mu, C.J2_PIN[0], C.J2_PIN[1], C.J2.x_teeth0)
+        where['robotarm_cobot_j3_pinion'] = axial_matrix(mu, C.J3_PIN[0], C.J3_PIN[1], C.J3B_X0)
+        where['robotarm_cobot_j3_idler'] = axial_matrix(mu, C.J3_IDLER[0], C.J3_IDLER[1], C.IDLER_X0)
+        for n in FA:
+            where[n] = mf
+        where['robotarm_cobot_j3_gear'] = axial_matrix(mf, 0.0, 0.0, C.J3.x_spigot_end)
+        for n in WR:
+            where[n] = mw
+        where['robotarm_cobot_j4_gear'] = axial_matrix(mw, 0.0, 0.0, C.J4.x_spigot_end)
+        where['robotarm_cobot_rotator'] = rot_matrix(mw)
+        hm = adsk.core.Matrix3D.create()          # the head frame: x, y along J5, z = v; back face on the neck
+        hm.translation = V3(0, (C.ROT_FACE_C - G.SHELL_BACK_Y) / 10, 0)
+        hm.transformBy(mw)
+        where['robotarm_grip_body'] = hm
+        where['robotarm_cobot_j4_pinion'] = axial_matrix(mf, C.J4_PIN[0], C.J4_PIN[1], C.J4.x_teeth0)
+        for n, m in where.items():
+            o = occ_named(n)
+            assert o is not None, 'missing part: ' + n
+            mm_ = m.copy()
+            if n in lift:
+                t = adsk.core.Matrix3D.create()
+                d = lift[n] / 10
+                t.translation = V3(0, uw[1] * d, uw[2] * d) if n in ALONG_U else V3(d, 0, 0)
+                mm_.transformBy(t)
+            o.transform2 = mm_
+
+    return place
+
+
 def run(_context: str):
     app = adsk.core.Application.get()
     design = adsk.fusion.Design.cast(app.activeProduct)
     root = design.rootComponent
     P3 = adsk.core.Point3D.create
-    V3 = adsk.core.Vector3D.create
     V = adsk.core.ValueInput.createByString
     NEW = adsk.fusion.FeatureOperations.NewBodyFeatureOperation
     JOIN = adsk.fusion.FeatureOperations.JoinFeatureOperation
@@ -198,71 +281,7 @@ def run(_context: str):
     cyl_x(comp, 'dowel', C.J3_IDLER[0], C.J3_IDLER[1], C.IDLER_PIN_D, C.IDLER_PIN_BOTTOM, C.IDLER_PIN_TOP, NEW)
 
     # ---- 2. placement --------------------------------------------------------------
-    def link_matrix(q_deg, origin_yz):
-        """Link frame (x, u, v) -> arm frame: u at angle q in the arm's y-z plane."""
-        q = math.radians(q_deg)
-        m = adsk.core.Matrix3D.create()
-        m.setWithCoordinateSystem(P3(0, origin_yz[0] / 10, origin_yz[1] / 10), V3(1, 0, 0),
-                                  V3(0, math.cos(q), math.sin(q)), V3(0, -math.sin(q), math.cos(q)))
-        return m
-
-    def axial_matrix(link_m, u, v, x0):
-        """A gear/pinion frame (z along the joint axis, 0 at x0) at (u, v) of a link."""
-        m = adsk.core.Matrix3D.create()
-        m.setWithCoordinateSystem(P3(x0 / 10, u / 10, v / 10), V3(0, 1, 0), V3(0, 0, 1), V3(1, 0, 0))
-        m.transformBy(link_m)
-        return m
-
-    def rot_matrix(link_m, u0=C.ROT_SEAT_Z):
-        """A J5 part: its z along J5 (the wrist's u), 0 at u0."""
-        m = adsk.core.Matrix3D.create()
-        m.setWithCoordinateSystem(P3(0, u0 / 10, 0), V3(0, 0, 1), V3(1, 0, 0), V3(0, 1, 0))
-        m.transformBy(link_m)
-        return m
-
-    def place(q2, q3, lift=None, q4=HOME_Q4):
-        lift = lift or {}
-        ident = adsk.core.Matrix3D.create()
-        mu = link_matrix(q2, (0.0, 0.0))
-        j3 = (C.L1 * math.cos(math.radians(q2)), C.L1 * math.sin(math.radians(q2)))
-        mf = link_matrix(q2 + q3, j3)
-        j4 = (j3[0] + C.L2 * math.cos(math.radians(q2 + q3)), j3[1] + C.L2 * math.sin(math.radians(q2 + q3)))
-        mw = link_matrix(q2 + q3 + q4, j4)
-        uw = (0.0, math.cos(math.radians(q2 + q3 + q4)), math.sin(math.radians(q2 + q3 + q4)))
-        where = {
-            'robotarm_cobot_tower': ident,
-            'robotarm_cobot_j2_gear': axial_matrix(ident, 0.0, 0.0, C.J2.x_spigot_end),
-        }
-        for n in UA:
-            where[n] = mu
-        m_neutral = link_matrix(HOME_Q2, (0.0, 0.0))
-        for n in HUBS + tuple(SPRING):
-            where[n] = m_neutral
-        where['robotarm_cobot_j2_pinion'] = axial_matrix(mu, C.J2_PIN[0], C.J2_PIN[1], C.J2.x_teeth0)
-        where['robotarm_cobot_j3_pinion'] = axial_matrix(mu, C.J3_PIN[0], C.J3_PIN[1], C.J3B_X0)
-        where['robotarm_cobot_j3_idler'] = axial_matrix(mu, C.J3_IDLER[0], C.J3_IDLER[1], C.IDLER_X0)
-        for n in FA:
-            where[n] = mf
-        where['robotarm_cobot_j3_gear'] = axial_matrix(mf, 0.0, 0.0, C.J3.x_spigot_end)
-        for n in WR:
-            where[n] = mw
-        where['robotarm_cobot_j4_gear'] = axial_matrix(mw, 0.0, 0.0, C.J4.x_spigot_end)
-        where['robotarm_cobot_rotator'] = rot_matrix(mw)
-        hm = adsk.core.Matrix3D.create()          # the head frame: x, y along J5, z = v; back face on the neck
-        hm.translation = V3(0, (C.ROT_FACE_C - G.SHELL_BACK_Y) / 10, 0)
-        hm.transformBy(mw)
-        where['robotarm_grip_body'] = hm
-        where['robotarm_cobot_j4_pinion'] = axial_matrix(mf, C.J4_PIN[0], C.J4_PIN[1], C.J4.x_teeth0)
-        for n, m in where.items():
-            o = occ_named(n)
-            assert o is not None, 'missing part: ' + n
-            mm_ = m.copy()
-            if n in lift:
-                t = adsk.core.Matrix3D.create()
-                d = lift[n] / 10
-                t.translation = V3(0, uw[1] * d, uw[2] * d) if n in ALONG_U else V3(d, 0, 0)
-                mm_.transformBy(t)
-            o.transform2 = mm_
+    place = placer(root)
 
     def owner(ent):
         if ent.assemblyContext is not None:
