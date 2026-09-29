@@ -1,7 +1,7 @@
-# robotarm — what to print, what to buy (current as of 2026-09-28, restyle)
+# robotarm — what to print, what to buy (current as of 2026-09-29, gripper v3)
 
 J1 = MG995 360° · J2 = MG995 (sized from the drawing in `calibration/2026-09-28-mg995-drawing.png`: 40.5 tall to the top of the lip, 49 mm hole pitch, 55 mm tab span) · J3–J6 = SG90 · ESP32 carrier PCB in the base ·
-**new gripper head** (fin ray fingers, no cutter). Colours: **black** base + turret,
+**gripper head v3** (rod-guided rack & pinion, one-piece 12-gon body, fin ray fingers). Colours: **black** base + turret,
 **green** links + hand, **white** joints, **black TPU** fingers. Specs: `specs/robotarm/grip.md`,
 `base_platter.md`, `turret_shroud.md`, `_harness.md`, `_build.md`. Renders: `docs/robotarm/arm_*.png`,
 `head_close.png`, `base_close.png`.
@@ -32,12 +32,12 @@ Files are in `exports/robotarm/`.
 - `plates/plate_armstack_white_v12.3mf` — J3 gear, J3 pinion, J3 axle, shoulder hub
 - `plates/plate_wrist_white_v10.3mf` — wrist roll pair (mirrored), rotator, 2 hubs — all on one plate now, no shims
 
-**5. Gripper head (new)**
-- `plates/plate_grip_green_v2.3mf` — 2 shell halves
-- `plates/plate_grip_white_v2.3mf` — 2 jaws + pinion
+**5. Gripper head (v3 — rod-guided, one-piece 12-gon body)**
+- `plates/plate_grip_green_v3.3mf` — the body (back face down, 47 mm tall)
+- `plates/plate_grip_white_v3.3mf` — 2 jaws + pinion
 - `grip_finger_v1.3mf` ×2 — **TPU 95A**, flat, 20–25 mm/s
 
-Superseded — don't print: `base_platter_v4` (fluted round), `base_platter_v5` (no eyes), and everything cut for the old flat-topped MG995: `shoulder_bracket_v4`, `turntable_stator_v9`, `base_lid_v8`/`_v9`, `j1_hub_v3`/`_v4`, `plate_armstack_*_v9`–`_v11`, `plate_wrist_*_v8`/`_v9`, `plate_grip_*_v1` (hub bores cut before the gauge). Retired: the pruner (`pruner_*`, `gripcut_finger`) and the old `gripper_shell` / `gripper_rack_jaw`.
+Superseded — don't print: `base_platter_v4` (fluted round), `base_platter_v5` (no eyes), and everything cut for the old flat-topped MG995: `shoulder_bracket_v4`, `turntable_stator_v9`, `base_lid_v8`/`_v9`, `j1_hub_v3`/`_v4`, `plate_armstack_*_v9`–`_v11`, `plate_wrist_*_v8`/`_v9`, `plate_grip_*_v1` (hub bores cut before the gauge), `plate_grip_*_v2` (clamshell head, replaced by v3). Retired: the pruner (`pruner_*`, `gripcut_finger`) and the old `gripper_shell` / `gripper_rack_jaw`.
 
 **Assembly note:** the shroud goes on after the rotor and BEFORE the ring — slide it down over the three turret posts. With it fitted, J2 can pitch down to **23°** below horizontal (was 25°).
 
@@ -47,6 +47,7 @@ Superseded — don't print: `base_platter_v4` (fluted round), `base_platter_v5` 
 - MG995 360° ×1, MG995 ×1, SG90 ×4 (in hand)
 - 608ZZ ×4 — 3 turntable, 1 elbow
 - A3144 hall sensor ×1 (pack), 5 × 2 mm N52 disc magnets (pack)
+- **Ø3 mm ground steel rod, 4 × 59 mm** — the gripper's jaw guides (cut from a Ø3 × 250+ silver-steel / linear-shaft rod; deburr the ends)
 - **5 mm LEDs ×2 for the eyes** — any 5 mm LED fits; addressable RGB (WS2812D-F5 / PL9823-F5) runs both off one ESP32 pin. Push in from inside until the flange seats; a dab of hot glue holds them
 
 **Filament**
@@ -66,11 +67,11 @@ Superseded — don't print: `base_platter_v4` (fluted round), `base_platter_v5` 
 **Fasteners** (all socket cap unless noted)
 - M3 heat-set inserts, Ø4.0 hole: 11 (7 base, 4 rotator) + spares
 - M3 × 40 ×4 — 3 turret, 1 elbow
-- M3 × 30 ×2 — gripper clamshell
 - M3 × 16 ×6 — 2 J3 cap, 4 fingers
 - M3 × 10 ×3 — J1 hub to rotor
 - M3 × 8 ×15 — 3 roller caps, 4 lid, 4 head to rotator, 4 J2 MG995 tabs
 - M3 × 6 ×4 — J1 MG995 tabs
-- M3 nuts ×6 — 4 fingers, 2 clamshell
+- M3 nuts ×4 — fingers
+- M2 × 8 self-tapper ×2 — SG90 tabs into the head (the SG90's own bag screws)
 - M2 × 20 + nut ×3 — wrist roll clamshell
 - Long 2.5 mm hex key (≥ 60 mm reach) — the head's rotator screws go in through the front

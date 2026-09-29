@@ -63,7 +63,7 @@ BATCHES = [
     # ua_* duct it presses into, so it must follow upper_arm (batch 2).
     ['roller_cap', 'pcb_keeper', 'duct_grommet'],
     # The gripper head that replaced the pruner (specs/robotarm/grip.md).
-    ['grip_shell', 'grip_jaw', 'grip_finger'],
+    ['grip_body', 'grip_jaw', 'grip_finger'],
     # the turret shroud reads tt_/ts_ from the stator (batch 3)
     ['turret_shroud'],
 ]

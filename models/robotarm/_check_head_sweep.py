@@ -1,6 +1,6 @@
 """robotarm/_check_head_sweep - GATE: does the grip head clear the forearm?
 
-Driver, not a part. The head is 53 wide and 34 tall, and it hangs off the
+Driver, not a part. The head (grip v3) is a 65 mm 12-gon, and it hangs off the
 J5 rotator in front of the J4 wrist pitch. _check_wrist sweeps the wrist
 housing and never had a head in it; _check_grip poses the head on its own.
 Nothing had asked whether the head, pitching about J4, runs into the
@@ -58,7 +58,7 @@ def run(_context: str):
     for o in root.occurrences:
         comps.setdefault(o.component.name.replace('robotarm_', ''), o.component)
     need = ('forearm', 'wrist_hub', 'wrist_roll', 'wrist_rotator', 'j3_gear', 'j3_pinion',
-            'j3_axle', 'j3_servo_cap', 'grip_shell', 'grip_jaw', 'grip_finger', 'gripper_pinion')
+            'j3_axle', 'j3_servo_cap', 'grip_body', 'grip_jaw', 'grip_finger', 'gripper_pinion')
     missing = [n for n in need if n not in comps]
     assert not missing, 'not in this document: %r' % missing
 
@@ -117,7 +117,7 @@ def run(_context: str):
                                (0, 0, 1), (0, -1, 0), (1, 0, 0))),
              ('j3_servo_cap', frame((-(po + so_), y_pin, 0.0), (0, 1, 0), (0, 0, -1), (-1, 0, 0)))]
 
-    shell_tail = bbox('grip_shell').minPoint.y
+    shell_tail = bbox('grip_body').minPoint.y
     rot_front = bbox('wrist_rotator').maxPoint.z
     turned = rot(math.pi, VEC(0, 1, 0))
 
@@ -139,7 +139,7 @@ def run(_context: str):
         pin.transformBy(rot(-math.pi / 2, VEC(1, 0, 0)))
         out = [('wrist_roll', M_roll), ('wrist_rotator', M_rot),
                ('wrist_hub', mul(M_roll, hubs[0])), ('wrist_hub', mul(M_roll, hubs[1])),
-               ('grip_shell', M_sh), ('grip_shell', mul(M_sh, turned)),
+               ('grip_body', M_sh),
                ('gripper_pinion', mul(M_sh, mul(trans(0, G.PINION_BACK_Y / 10, 0), pin)))]
         for sgn in (1, -1):
             base = turned if sgn < 0 else M3()
@@ -160,7 +160,7 @@ def run(_context: str):
         inp = design.createInterferenceInput(col)
         inp.areCoincidentFacesIncluded = False
         res = design.analyzeInterference(inp)
-        MOVING = ('wrist_roll', 'wrist_rotator', 'wrist_hub', 'grip_shell', 'grip_jaw', 'grip_finger',
+        MOVING = ('wrist_roll', 'wrist_rotator', 'wrist_hub', 'grip_body', 'grip_jaw', 'grip_finger',
                   'gripper_pinion')
 
         def nm(e):

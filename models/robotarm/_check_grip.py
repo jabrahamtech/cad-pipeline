@@ -1,6 +1,6 @@
 """robotarm/_check_grip - GATE for the new gripper head (grip_*).
 
-Driver, not a part. Builds grip_shell, grip_jaw, grip_finger and the
+Driver, not a part. Builds grip_body (v3), grip_jaw, grip_finger and the
 UNCHANGED gripper_pinion into one fresh document, then poses the whole
 head at three strokes - s = S_TOUCH (fingers just touching), 10, 20 (full
 open) - and runs Design.analyzeInterference at each, with:
@@ -8,8 +8,10 @@ open) - and runs Design.analyzeInterference at each, with:
   * DUMMIES for what is bought: the SG90 case, tabs and output boss placed
     from lib/grip's stack (its spline is left out - it BROACHES the pinion
     bore by design), the servo lead leaving the case end face at the
-    lib/servo datum, and the rotator disc behind the back wall.
-  * a POSITIVE CONTROL buried in the shell's solid, which MUST be reported.
+    lib/servo datum, the rotator disc behind the back wall, and the four
+    O3 GUIDE RODS (bought) - they run through every jaw pose, so a rod
+    bore in the wrong place shows up as a hit.
+  * a POSITIVE CONTROL buried in the body's back wall, which MUST be reported.
 
 Poses follow _check_fit's two hard rules: every pose occurrence gets its
 transform AT CREATION (addExistingComponent), never by setting transform2
@@ -31,10 +33,11 @@ import adsk.fusion
 
 STAGE = 1
 REPO = os.path.expanduser('~/Documents/GitHub/cad-pipeline')
-PARTS = ('grip_shell', 'grip_jaw', 'grip_finger', 'gripper_pinion')
+PARTS = ('grip_body', 'grip_jaw', 'grip_finger', 'gripper_pinion')
 DUMMY = 'robotarm_dummy_'
 POSE = 'pose_'
 LIMIT_MM3 = 0.001
+STEEL_G_PER_MM3 = 7.85e-3
 
 
 def _exec(part):
@@ -104,10 +107,16 @@ def build(app, G):
            G.CASE_TOP_Y, G.CASE_TOP_Y + S.boss_h)
     # the lead, out of the near end face and away to the side (YZ normal is +X)
     _dummy(root, 'sg90_lead', circ_yz(G.LEAD_Y, 0, S.lead_bundle_dia), 'yZConstructionPlane',
-           -G.X_HALF - 5, near)
-    _dummy(root, 'rotator_disc', circ_xz(0, 0, 36.0), 'xZConstructionPlane',
+           -G.R_OUT - 5, near)
+    _dummy(root, 'rotator_disc', circ_xz(0, 0, G.ROTATOR_D), 'xZConstructionPlane',
            G.SHELL_BACK_Y - 6.0, G.SHELL_BACK_Y)
-    _dummy(root, 'positive_control', rect_xy(-23.0, -21.0, -15.0, -13.0),
+    for sz in (1, -1):
+        for sy in (1, -1):
+            _dummy(root, 'rod_%s%s' % ('a' if sz > 0 else 'b', 'f' if sy > 0 else 'r'),
+                   circ_yz(sy * G.ROD_Y, sz * G.ROD_Z, G.ROD_D), 'yZConstructionPlane',
+                   G.ROD_X0, G.ROD_X0 + G.ROD_L)
+    # in the back wall, behind the servo pocket floor
+    _dummy(root, 'positive_control', rect_xy(-2.0, 2.0, G.SHELL_BACK_Y + 2.0, G.SHELL_BACK_Y + 4.0),
            'xYConstructionPlane', 2.0, 4.0)
     print('built %d occurrences into %s - now STAGE = 0'
           % (root.occurrences.count, doc.name))
@@ -172,7 +181,7 @@ def analyse(app, G):
     ok_all, report = True, []
     for s in (G.S_TOUCH, 10.0, G.GR_STROKE):
         add = root.occurrences.addExistingComponent
-        pose = [add(comps['grip_shell'], M3()), add(comps['grip_shell'], turned),
+        pose = [add(comps['grip_body'], M3()),
                 add(comps['gripper_pinion'], pinion_at(s)),
                 add(comps['grip_jaw'], moved(M3(), dx=s)),
                 add(comps['grip_jaw'], moved(rot(), dx=-s)),
@@ -210,13 +219,14 @@ def analyse(app, G):
             for o in pose:
                 o.deleteMe()
     vols = dict((k, c.bRepBodies.item(0).volume * 1000) for k, c in comps.items())
-    g = (2 * vols['grip_shell'] + 2 * vols['grip_jaw'] + vols['gripper_pinion']) \
+    g = (vols['grip_body'] + 2 * vols['grip_jaw'] + vols['gripper_pinion']) \
         * G.PETG_PRINTED_G_PER_MM3 + 2 * vols['grip_finger'] * G.TPU_PRINTED_G_PER_MM3
+    rods_g = 4 * math.pi * (G.ROD_D / 2) ** 2 * G.ROD_L * STEEL_G_PER_MM3
     print('=== GATE grip: %d poses ===' % 3)
     for line in report:
         print(line)
-    print('printed head: %.1f g (2 shells, 2 jaws, pinion PETG; 2 fingers TPU) + SG90 9 g + screws'
-          % g)
+    print('printed head: %.1f g (body, 2 jaws, pinion PETG; 2 fingers TPU) + rods %.1f g + SG90 9 g + screws'
+          % (g, rods_g))
     print('GATE grip_interference: %s' % ('PASS' if ok_all else 'FAIL'))
 
 

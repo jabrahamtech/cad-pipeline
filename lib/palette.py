@@ -35,7 +35,7 @@ is filament - so this drives renders and the assembly diagrams only.
 # reference body renders in the right colour in the assembly.
 GREEN = ('forearm', 'forearm_px', 'forearm_nx', 'forearm_rail',
          'upper_arm', 'gripper_shell', 'gripper_rack_jaw',
-         'pruner_shell', 'grip_shell')
+         'pruner_shell', 'grip_shell', 'grip_body')
 
 # DARK, 2026-09-28: the base and the turret. A plain white O190 puck was the
 # first thing anyone saw in the renders and it read as a cake tin. Dark plinth,

@@ -87,7 +87,7 @@ def run(_context: str):
     design.timeline.moveToEnd()
     need = ['turntable_stator', 'turntable_ring', 'shoulder_bracket', 'shoulder_hub',
             'wrist_hub', 'upper_arm', 'forearm', 'wrist_roll', 'wrist_rotator',
-            'grip_shell', 'grip_jaw', 'grip_finger', 'gripper_pinion',
+            'grip_body', 'grip_jaw', 'grip_finger', 'gripper_pinion',
             'base_platter', 'base_lid', 'j1_hub', 'roller_cap', 'turret_shroud',
             # The geared elbow. Without these J3 renders as a bare pivot and
             # the picture quietly shows an arm that has no elbow drive - the
@@ -162,7 +162,7 @@ def run(_context: str):
     # rather than typed: the shell's tail face is its bbox floor in Y, the
     # rotator's front face is its bbox ceiling in Z, and R_x(90) takes one
     # normal to the other.
-    shell_tail = bbox('grip_shell').minPoint.y
+    shell_tail = bbox('grip_body').minPoint.y
     rot_front = bbox('wrist_rotator').maxPoint.z
     m = rotx(90)
     t = m.translation
@@ -266,8 +266,7 @@ def run(_context: str):
     placed.append(('wrist_roll', add(C('wrist_roll'), M_roll)))
     placed.append(('wrist_rotator', add(C('wrist_rotator'), M_rot)))
 
-    placed.append(('grip_shell_a', add(C('grip_shell'), M_shell)))
-    placed.append(('grip_shell_b', add(C('grip_shell'), mul(M_shell, turned))))
+    placed.append(('grip_body', add(C('grip_body'), M_shell)))
     placed.append(('gripper_pinion', add(C('gripper_pinion'), mul(M_shell, pinion_at(s)))))
     for sgn, tag in ((1, 'a'), (-1, 'b')):
         base = turned if sgn < 0 else M3()

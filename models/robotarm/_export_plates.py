@@ -236,7 +236,8 @@ PLATE_OF = {
     'roller_cap': 'bits', 'pcb_keeper': 'bits',
     # THE GRIPPER HEAD, 2026-09-27 (specs/robotarm/grip.md). grip_finger is
     # NOT here: it prints in TPU, so it gets its own file, never a PETG plate.
-    'grip_shell': 'grip', 'grip_jaw': 'grip',
+    # v3, 2026-09-29: the two grip_shell halves became ONE grip_body.
+    'grip_body': 'grip', 'grip_jaw': 'grip',
 }
 # WHICH PLATES TO BUILD. None is every key in PLATE_OF. Otherwise a key or a
 # sequence of keys from PLATE_OF - 'wrist', 1, (1, 2) - and only those parts
@@ -269,8 +270,8 @@ PLATE_NOTE = {
               'OFF, no brim, one profile. The two wrist_roll bodies are A '
               'MIRRORED PAIR: see specs/robotarm/_wrist_plate.md before you '
               'pick them off the bed.'),
-    'grip': ('THE GRIPPER HEAD: 2 shells, 2 jaws, the pinion. Supports OFF, no brim. '
-             'The TPU fingers are a separate file.'),
+    'grip': ('THE GRIPPER HEAD (v3): the body, 2 jaws, the pinion. Supports OFF, no brim. '
+             'The TPU fingers are a separate file; the 4 rods are bought.'),
     'bits': ('The base\'s small bits: 3 roller caps, 4 PCB keepers. Supports OFF, '
              'no brim. Tiny parts - slow the first layer.'),
     99: 'Whatever was left over - no deliberate grouping applies.',
@@ -319,8 +320,10 @@ ORIENT = [
     ('duct_grommet',     2, None,        'mouth end down, tie bar on the bed. TWO - one per duct end'),
     ('roller_cap',       3, None,        'head face down, pocket up. THREE - one per 608'),
     ('pcb_keeper',       4, ('x', 180),  'plate DOWN, sleeve and boss up. FOUR - one per board corner'),
-    ('grip_shell',       2, None,        'split face down. TWO - one design, the second turned over'),
-    ('grip_jaw',         2, ('x', 180),  'rack back down, teeth and arm growing down. TWO'),
+    # grip v3: ('x', 90) takes local +Y up, so the back (rotator) face at
+    # y = SHELL_BACK_Y lands on the bed and the open cup faces up.
+    ('grip_body',        1, ('x', 90),   'BACK face down, cup up. ONE'),
+    ('grip_jaw',         2, ('x', 180),  'bar top down, teeth, rod blocks and arm growing up. TWO'),
     # WAS ('x', 90) - 'back face down, built +Y' - and that was the MONOLITH's
     # orientation, left behind when the part became a clamshell. ('y', 90)
     # puts local +X down, and the outer side face is the +X face at
