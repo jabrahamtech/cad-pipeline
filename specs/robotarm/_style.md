@@ -78,7 +78,13 @@ Jonathan: *"I like arms that are more circular with poliagonal lines for
 texture."* The base platter, the turret and the grip head were already
 12-sided; every other round form you can see follows: the drums at the ends
 of `upper_arm`, the forearm's link outline and bosses (`forearm`,
-`forearm_px`, `forearm_nx`, `forearm_rail`), the upper arm's side panels.
+`forearm_px`, `forearm_nx`, `forearm_rail`), the upper arm's side panels,
+`shoulder_bracket`'s two pivot bosses and the `wrist_rotator` disc.
+Where a boss runs tangent into a straight column (the bracket cheeks) or a
+notch has to land mid-flat (the rotator's scallops), turn the grid 15° so a
+FLAT sits on the axis (`FLAT_ON_AXIS_DEG`).
+Servo housings stay boxy (`wrist_roll`, the forearm lobes, `j3_servo_cap`):
+they are shaped by a rectangular servo and every wall is already at MIN_WALL.
 A vertex sits on the local +axis and every 30° from it, so it lines up with
 the hex sockets (every 60°). Pick which side of the circle the polygon sits:
 - **inside** (vertices on the circle) where a running clearance is cut round

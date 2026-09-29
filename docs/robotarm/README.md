@@ -30,19 +30,19 @@ Files are in `exports/robotarm/`.
 - `plates/plate_bits_white_v1.3mf` — 3 roller caps + 4 PCB keepers, **print in black** (filename predates the colour split; tiny: slow first layer)
 
 **3. Shoulder (white)**
-- `shoulder_bracket_v5.3mf` ×1 — −X face down · ~53 g
+- `shoulder_bracket_v6.3mf` ×1 — −X face down, 12-gon pivot bosses · ~47 g (76 mm tall — add a brim if it wobbles)
 
 **4. Arm**
 - `plates/plate_armstack_green_v13.3mf` — upper arm and forearm halves with **12-gon faceted drums and bosses** (2026-09-29), 2 rails (brim), J3 servo cap, 2 duct grommets
 - `plates/plate_armstack_white_v13.3mf` — J3 gear, J3 pinion, J3 axle, shoulder hub (unchanged parts, re-packed for the X2D)
-- `plates/plate_wrist_white_v10.3mf` — wrist roll pair (mirrored), rotator, 2 hubs — all on one plate now, no shims
+- `plates/plate_wrist_white_v11.3mf` — wrist roll pair (mirrored), 12-gon rotator, 2 hubs — all on one plate, no shims
 
 **5. Gripper head (v3 — rod-guided, one-piece 12-gon body)**
 - `plates/plate_grip_green_v3.3mf` — the body (back face down, 47 mm tall)
 - `plates/plate_grip_white_v3.3mf` — 2 jaws + pinion
 - `grip_finger_v1.3mf` ×2 — **TPU 95A**, flat, 20–25 mm/s
 
-Superseded — don't print: `base_platter_v4` (fluted round), `base_platter_v5` (no eyes), and everything cut for the old flat-topped MG995: `shoulder_bracket_v4`, `turntable_stator_v9`, `base_lid_v8`/`_v9`, `j1_hub_v3`/`_v4`, `plate_armstack_*_v9`–`_v12`, `plate_wrist_*_v8`/`_v9`, `plate_grip_*_v1` (hub bores cut before the gauge), `plate_grip_*_v2` (clamshell head, replaced by v3). Retired: the pruner (`pruner_*`, `gripcut_finger`) and the old `gripper_shell` / `gripper_rack_jaw`.
+Superseded — don't print: `base_platter_v4` (fluted round), `base_platter_v5` (no eyes), and everything cut for the old flat-topped MG995: `shoulder_bracket_v4`/`_v5`, `turntable_stator_v9`, `base_lid_v8`/`_v9`, `j1_hub_v3`/`_v4`, `plate_armstack_*_v9`–`_v12`, `plate_wrist_*_v8`–`_v10`, `plate_grip_*_v1` (hub bores cut before the gauge), `plate_grip_*_v2` (clamshell head, replaced by v3). Retired: the pruner (`pruner_*`, `gripcut_finger`) and the old `gripper_shell` / `gripper_rack_jaw`.
 
 **Assembly note:** the shroud goes on after the rotor and BEFORE the ring — slide it down over the three turret posts. With it fitted, J2 can pitch down to **23°** below horizontal (was 25°).
 

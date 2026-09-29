@@ -177,6 +177,7 @@ MATERIAL_NAME = 'PET Plastic'
 # file and sixteen others, so a re-theme meant editing seventeen files
 # and hoping you found them all.
 from lib.palette import hints_for  # noqa: E402
+import lib.facets as F  # noqa: E402 - _style.md rule 6
 from lib.servo import SERVO_CASE_CLEARANCE_MM  # noqa: E402
 from lib.servo import CATALOG as _SERVOS  # noqa: E402
 from lib.servo import MG995_TAB_HOLE_PITCH_Y as _MG995_PITCH_Y  # noqa: E402
@@ -761,6 +762,19 @@ def run(_context: str):
         sk.sketchCurves.sketchCircles.addByCenterRadius(mpt(sk, 0, y_c, z_c), d_cm / 2)
         return extrude(profiles(sk, expected=1), op, x0_expr, dx_expr, name)
 
+    def yz_polygon(name, y_c, z_c, d_cm, x0_expr, dx_expr, op):
+        """A 12-gon pivot boss (_style.md rule 6): FLATS on the d_cm circle, so
+        the counterbore wall measured to boss_r holds, and a flat centred on
+        +/-Y and +/-Z, so the column sides (col_y == boss_r) run straight into
+        it with no step."""
+        sk = sketch(comp.yZConstructionPlane, 'sk_' + name)
+        ring = F.polygon(y_c, z_c, d_cm / 2, az0_deg=F.FLAT_ON_AXIS_DEG, outside=True)
+        for k in range(len(ring)):
+            u, w = ring[k], ring[(k + 1) % len(ring)]
+            sk.sketchCurves.sketchLines.addByTwoPoints(mpt(sk, 0, u[0], u[1]),
+                                                       mpt(sk, 0, w[0], w[1]))
+        return extrude(profiles(sk, expected=1), op, x0_expr, dx_expr, name)
+
     def yz_rect(name, y0, y1, z0, z1, x0_expr, dx_expr, op):
         sk = sketch(comp.yZConstructionPlane, 'sk_' + name)
         sk.sketchCurves.sketchLines.addTwoPointRectangle(
@@ -1080,7 +1094,7 @@ def run(_context: str):
         # Column from the race face to the axis, then the boss on top of it.
         # col_y == boss_r, so the sides run in tangent and there is no corner.
         yz_rect('col_' + tag, -col_y, col_y, race_z, 0.0, x0, dx, JOIN)
-        yz_circle('boss_' + tag, 0.0, 0.0, 2 * boss_r, x0, dx, JOIN)
+        yz_polygon('boss_' + tag, 0.0, 0.0, 2 * boss_r, x0, dx, JOIN)
     yz_rect('servo_pad', -val('lobe_y'), val('lobe_y'), lobe_lo, lobe_hi,
             PREFIX + 'plate_out - ' + PREFIX + 'lobe_over',
             PREFIX + 'lobe_t + ' + PREFIX + 'lobe_over', JOIN)

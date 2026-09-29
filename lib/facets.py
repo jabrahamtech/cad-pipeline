@@ -17,6 +17,9 @@ import math
 
 SIDES = 12
 AZ0_DEG = 0.0
+# the other alignment: a FLAT centred on the local +axis (and on +90, 180,
+# 270), for a boss whose sides run tangent into straight columns
+FLAT_ON_AXIS_DEG = 180.0 / SIDES
 # a vertex closer than this fraction of a facet to an arc's end is dropped:
 # a sliver facet is a sliver chamfer, and Fusion refuses those
 MIN_FACET_FRAC = 0.25

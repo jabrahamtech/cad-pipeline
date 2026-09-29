@@ -189,6 +189,7 @@ ENGAGE_MIN_MM = 2.0
 # file and sixteen others, so a re-theme meant editing seventeen files
 # and hoping you found them all.
 from lib.palette import hints_for  # noqa: E402
+import lib.facets as F  # noqa: E402 - _style.md rule 6
 APPEARANCE_HINTS = hints_for('wrist_rotator')
 
 
@@ -370,6 +371,18 @@ def run(_context: str):
         sk.sketchCurves.sketchCircles.addByCenterRadius(mpt(sk, x_cm, y_cm, 0), d_cm / 2)
         return extrude(profiles(sk, expected=1), op, z0_expr, dz_expr, name)
 
+    def polydisc(name, d_cm, z0_expr, dz_expr, op):
+        """The rotator disc as a 12-gon (_style.md rule 6), FLATS on the d_cm
+        circle so every wall this file measures to the rim holds, and a flat
+        centred on each scallop azimuth (0/90/180/270) so the notches land
+        mid-flat. The hub stays round: it turns in wrist_roll's bore."""
+        sk = sketch(comp.xYConstructionPlane, 'sk_' + name)
+        ring = F.polygon(0.0, 0.0, d_cm / 2, az0_deg=F.FLAT_ON_AXIS_DEG, outside=True)
+        for k in range(len(ring)):
+            u, w = ring[k], ring[(k + 1) % len(ring)]
+            sk.sketchCurves.sketchLines.addByTwoPoints(mpt(sk, u[0], u[1], 0), mpt(sk, w[0], w[1], 0))
+        return extrude(profiles(sk, expected=1), op, z0_expr, dz_expr, name)
+
     # ---- values in cm -----------------------------------------------------------
     corner = math.hypot(val('bolt_x'), val('bolt_z'))
     s_cr = val('scallop_cr')
@@ -434,7 +447,7 @@ def run(_context: str):
 
     # ---- phase 1: the disc --------------------------------------------------------
     t0 = design.timeline.count
-    disc('rotator_disc', 0, 0, val('disc_d'), '0.0 mm', PREFIX + 'disc_t', NEW)
+    polydisc('rotator_disc', val('disc_d'), '0.0 mm', PREFIX + 'disc_t', NEW)
     disc('spline_boss', 0, 0, val('hub_d'), SEAT, PREFIX + 'hub_h', JOIN)
     group(t0, PH_FORM)
 
