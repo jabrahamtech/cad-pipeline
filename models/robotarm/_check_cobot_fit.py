@@ -47,6 +47,8 @@ HOME_Q2 = 90.0           # the upper arm straight up
 HOME_Q3 = 0.0            # the forearm straight on
 Q3_SWEEP = (-150.0, -120.0, -90.0, -60.0, -30.0, 30.0, 60.0, 90.0, 120.0, 150.0)
 Q2_SWEEP = (0.0, 30.0, 150.0, 180.0)
+Q4_SWEEP = (-150.0, -120.0, -90.0, -60.0, -30.0, 30.0, 60.0, 90.0, 120.0, 150.0)
+HOME_Q4 = 0.0
 
 # what moves with what: link groups
 TOWER = ['robotarm_cobot_tower', 'robotarm_cobot_j2_gear']
@@ -54,9 +56,12 @@ UA = ['robotarm_cobot_upper_arm', 'robotarm_cobot_upper_arm_cover', 'robotarm_co
       'robotarm_cobot_j3_plate', 'robotarm_cobot_j2_pinion', 'robotarm_cobot_j3_pinion', 'robotarm_cobot_j3_idler',
       'fit_mg995', 'fit_sg90_j3', 'fit_board_j2', 'fit_board_j3', 'fit_dowel']
 FA = ['robotarm_cobot_forearm', 'robotarm_cobot_forearm_plate', 'robotarm_cobot_j3_gear', 'robotarm_cobot_j4_plate',
-      'robotarm_cobot_j4_pinion', 'robotarm_cobot_j4_gear', 'fit_sg90_j4', 'fit_board_j4']
+      'robotarm_cobot_j4_pinion', 'fit_sg90_j4', 'fit_board_j4']
+WR = ['robotarm_cobot_wrist', 'robotarm_cobot_wrist_cap', 'robotarm_cobot_rotator', 'robotarm_cobot_head_adapter',
+      'robotarm_cobot_j4_gear', 'fit_sg90_j5']
 # designed contacts
 ALLOWED = {frozenset(p) for p in (
+    ('fit_sg90_j5', 'robotarm_cobot_rotator'),          # the output boss runs inside the rotator's bore
     ('robotarm_cobot_j2_gear', 'robotarm_cobot_j2_pinion'),
     ('robotarm_cobot_j3_gear', 'robotarm_cobot_j3_idler'),
     ('robotarm_cobot_j3_idler', 'robotarm_cobot_j3_pinion'),
@@ -76,13 +81,22 @@ BUILD = [
                                                'fit_board_j2']),
     ('upper arm cover', ['robotarm_cobot_upper_arm_cover']),
 ]
+WR_BUILD = [
+    ('J5 SG90 laid into the wrist body', ['fit_sg90_j5']),
+    ('wrist cap', ['robotarm_cobot_wrist_cap']),
+    ('rotator onto the J5 spline (along -u)', ['robotarm_cobot_rotator']),
+    ('head adapter onto the neck (along -u)', ['robotarm_cobot_head_adapter']),
+]
 FA_BUILD = [
+    ('forearm over the wrist spigot', ['robotarm_cobot_forearm']),
     ('J4 gear onto the wrist spigot', ['robotarm_cobot_j4_gear']),
     ('J4 plate unit (SG90 + pinion + board)', ['robotarm_cobot_j4_plate', 'fit_sg90_j4', 'robotarm_cobot_j4_pinion',
                                                'fit_board_j4']),
     ('forearm plate', ['robotarm_cobot_forearm_plate']),
 ]
-FA_BASE = ['robotarm_cobot_forearm']
+FA_BASE = ['robotarm_cobot_wrist', 'robotarm_cobot_wrist_cap', 'robotarm_cobot_rotator', 'fit_sg90_j5']
+WR_BASE = ['robotarm_cobot_wrist']
+ALONG_U = {'robotarm_cobot_rotator', 'robotarm_cobot_head_adapter'}      # these go in along -u of their link, not -x
 
 
 def run(_context: str):
@@ -154,6 +168,10 @@ def run(_context: str):
     board_env('fit_board_j2', 0.0, C.UA_J2_TAB_TOP)
     board_env('fit_board_j3', C.L1, C.UA_J3_TAB_TOP)
     board_env('fit_board_j4', C.L2, C.FA_J4_TAB_TOP)
+    j5 = fresh_comp('fit_sg90_j5').component
+    w5 = C.SG90.case_w / 2
+    box_x(j5, 'case', C.J5_CASE[0], C.J5_CASE[1], C.J5_CASE[2], C.J5_CASE[3], -w5, w5, NEW)
+    box_x(j5, 'tabs', C.J5_TABS[0], C.J5_TABS[1], C.J5_TABS[2], C.J5_TABS[3], -w5, w5, JOIN)
     comp = fresh_comp('fit_dowel').component
     cyl_x(comp, 'dowel', C.J3_IDLER[0], C.J3_IDLER[1], C.IDLER_PIN_D, C.IDLER_PIN_BOTTOM, C.IDLER_PIN_TOP, NEW)
 
@@ -173,12 +191,22 @@ def run(_context: str):
         m.transformBy(link_m)
         return m
 
-    def place(q2, q3, lift=None):
+    def rot_matrix(link_m, u0=C.ROT_SEAT_Z):
+        """A J5 part: its z along J5 (the wrist's u), 0 at u0."""
+        m = adsk.core.Matrix3D.create()
+        m.setWithCoordinateSystem(P3(0, u0 / 10, 0), V3(0, 0, 1), V3(1, 0, 0), V3(0, 1, 0))
+        m.transformBy(link_m)
+        return m
+
+    def place(q2, q3, lift=None, q4=HOME_Q4):
         lift = lift or {}
         ident = adsk.core.Matrix3D.create()
         mu = link_matrix(q2, (0.0, 0.0))
         j3 = (C.L1 * math.cos(math.radians(q2)), C.L1 * math.sin(math.radians(q2)))
         mf = link_matrix(q2 + q3, j3)
+        j4 = (j3[0] + C.L2 * math.cos(math.radians(q2 + q3)), j3[1] + C.L2 * math.sin(math.radians(q2 + q3)))
+        mw = link_matrix(q2 + q3 + q4, j4)
+        uw = (0.0, math.cos(math.radians(q2 + q3 + q4)), math.sin(math.radians(q2 + q3 + q4)))
         where = {
             'robotarm_cobot_tower': ident,
             'robotarm_cobot_j2_gear': axial_matrix(ident, 0.0, 0.0, C.J2.x_spigot_end),
@@ -191,7 +219,11 @@ def run(_context: str):
         for n in FA:
             where[n] = mf
         where['robotarm_cobot_j3_gear'] = axial_matrix(mf, 0.0, 0.0, C.J3.x_spigot_end)
-        where['robotarm_cobot_j4_gear'] = axial_matrix(mf, C.L2, 0.0, C.J4.x_spigot_end)
+        for n in WR:
+            where[n] = mw
+        where['robotarm_cobot_j4_gear'] = axial_matrix(mw, 0.0, 0.0, C.J4.x_spigot_end)
+        where['robotarm_cobot_rotator'] = rot_matrix(mw)
+        where['robotarm_cobot_head_adapter'] = rot_matrix(mw, C.ROT_FACE_C)
         where['robotarm_cobot_j4_pinion'] = axial_matrix(mf, C.J4_PIN[0], C.J4_PIN[1], C.J4.x_teeth0)
         for n, m in where.items():
             o = occ_named(n)
@@ -199,7 +231,8 @@ def run(_context: str):
             mm_ = m.copy()
             if n in lift:
                 t = adsk.core.Matrix3D.create()
-                t.translation = V3(lift[n] / 10, 0, 0)
+                d = lift[n] / 10
+                t.translation = V3(0, uw[1] * d, uw[2] * d) if n in ALONG_U else V3(d, 0, 0)
                 mm_.transformBy(t)
             o.transform2 = mm_
 
@@ -235,7 +268,7 @@ def run(_context: str):
                 out.append((a, b, vol))
         return out
 
-    everything = TOWER + UA + FA
+    everything = TOWER + UA + FA + WR
     ok = True
 
     # ---- 3. static ----------------------------------------------------------------
@@ -265,10 +298,11 @@ def run(_context: str):
                     step, worst[0], '; '.join('%s x %s %.1f mm3' % x for x in worst[1][:3])))
                 good = False
             else:
-                print('INSERT %-44s clear along -x (%d mm)' % (step, OUT_MM))
+                print('INSERT %-44s clear along -%s (%d mm)' % (step, 'u' if set(parts) & ALONG_U else 'x', OUT_MM))
             fitted += parts
         return good
     ok = replay(BUILD, ['robotarm_cobot_tower', 'robotarm_cobot_forearm', 'robotarm_cobot_forearm_plate']) and ok
+    ok = replay(WR_BUILD, WR_BASE) and ok
     ok = replay(FA_BUILD, FA_BASE) and ok
     place(HOME_Q2, HOME_Q3)
 
@@ -279,6 +313,11 @@ def run(_context: str):
         c = clashes(UA, FA)
         fold.append((q3, c))
         print('POSE J3 %+5.0f: %s' % (q3, 'clean' if not c else 'CLASH ' + '; '.join(
+            '%s x %s %.0f mm3' % x for x in c[:3])))
+    for q4 in Q4_SWEEP:
+        place(HOME_Q2, HOME_Q3, None, q4)
+        c = clashes(WR, FA)
+        print('POSE J4 %+5.0f: %s' % (q4, 'clean' if not c else 'CLASH ' + '; '.join(
             '%s x %s %.0f mm3' % x for x in c[:3])))
     for q2 in Q2_SWEEP:
         place(q2, HOME_Q3)

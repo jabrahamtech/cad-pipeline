@@ -511,11 +511,46 @@ J4_POSTS = ((4.0, 17.0), (4.0, -17.0), (30.0, 17.5), (30.0, -17.5))
 # the forearm plate: J3's 3 through-bolts at the J3 end, 2 standoffs on the J4 plate at the J4 end
 FA_PLATE_SCREW_L = 12.0                  # M3 x 12, counterbored
 
-# WRIST
-HEAD_BACK_MIN_U = FA_A / math.cos(math.pi / SIDES) + FREE    # the head clears the forearm's J4 end
+# WRIST - a BODY (x -WR_HALF..WR_SPLIT) holding the whole J5 bay, and a CAP
+# (WR_SPLIT..WR_HALF) carrying the J4 spigot. Split at the bay's own wall so
+# the body prints outer face down with every pocket open at the top, and the
+# cap prints split face down with the spigot on top: no support, no bridge.
+HEAD_BACK_MIN_U = FA_A / math.cos(math.pi / SIDES) + FREE    # anything wider than the wrist clears the forearm's J4 end
 J5_CASE_TOP = ROT_SEAT - SG90.boss_h - LOC                 # 11.3 in front of J4
 J5_TAB_TOP = J5_CASE_TOP - SG90.tab_below_top
 J5_TAB_V = SG90.tab_span / 2 + (SG90.case_l / 2 - SG90.shaft_from_end)
+WR_SPLIT = SG90.case_w / 2 + LOC / 2                         # the J5 bay's half width
+WR_CAP_T = WR_HALF - WR_SPLIT
+WRIST_SCREWS = ((-17.5, 9.0), (-18.0, -9.0), (8.0, -17.0))  # M3 x 12 from the cap (counterbored) into the body
+WR_PORT = (-WR_A, 0.0)                                       # the back flat, out along -u
+WR_PORT_X = -2.5
+# the J5 SG90: shaft on the J5 axis (x 0, v 0) pointing +u, case along +v
+J5_CASE = (J5_CASE_TOP - SG90.case_h, J5_CASE_TOP, -SG90.shaft_from_end, SG90.case_l - SG90.shaft_from_end)
+J5_TAB_EXT = (SG90.tab_span - SG90.case_l) / 2
+J5_TABS = (J5_TAB_TOP - SG90.tab_thk, J5_TAB_TOP, J5_CASE[2] - J5_TAB_EXT, J5_CASE[3] + J5_TAB_EXT)
+# THE ROTATOR (J5 output): a O21 NECK, not the old O36 disc - the forearm
+# (offset, x >= 11.25) passes beside the wrist, and its J4 end reaches r 23.8:
+# a disc wider than the wrist would sweep into it. The neck stays inside the
+# wrist's own x layer, and the head's face is out at ROT_FACE_C >= r 24.2.
+ROT_SEAT_Z = J5_CASE_TOP + FREE          # the neck's back (servo) face
+ROT_HUB_D = 10.5                         # runs in the wrist's front bore
+ROT_BORE = ROT_HUB_D + ROT
+ROT_NECK_D = 21.0
+ROT_NECK_X0 = ROT_SEAT + FREE            # the neck starts FREE in front of the wrist's face
+ROT_FACE_C = math.ceil(HEAD_BACK_MIN_U * 2) / 2   # 24.5 - the head bolts here (was 21.7)
+ROT_HUB = spline_hub(SG90, face=ROT_FACE_C - ROT_SEAT_Z)
+ROT_BOLT_R = 7.0
+ROT_BOLT_AZ = (45.0, 135.0, 225.0, 315.0)   # M3 self-tap pilots: the head's 4 x M3
+# THE HEAD ADAPTER: until the head is shrunk (grip v4), the existing v3
+# gripper bolts on UNCHANGED - this disc carries the old rotator's front
+# face (O36, 4 x M3 heat-set inserts on +-11 x +-9, lib/grip EFF_BOLT_X/Z)
+# and screws to the neck. Its back face is at ROT_FACE_C, so it clears the
+# forearm's J4 end like any head (asserted).
+ADAPTER_D = 36.0
+ADAPTER_T = 6.0
+EFF_PATTERN = (11.0, 9.0)
+M3_INSERT_DEPTH = 5.5
+ADAPTER_SCREW_L = 8.0        # M3 x 8, counterbored, into the neck's 6 mm pilots
 
 
 def check():
@@ -708,6 +743,31 @@ def check():
         assert st - gear_back >= 0.0, 'the stalk would be negative'
         assert st - MAGNET_POCKET[1] >= gear_back - FLANGE_T, 'the magnet pocket runs out of the gear'
     # ---- wrist -------------------------------------------------------------------
+    assert ROT_NECK_D / 2 <= WR_HALF - LOC, 'the rotator neck is wider than the wrist'
+    assert ROT_FACE_C >= HEAD_BACK_MIN_U, 'the head would hit the forearm end'
+    assert ROT_BOLT_R + M3['pilot'] / 2 + MIN_WALL <= ROT_NECK_D / 2
+    assert ROT_BOLT_R - M3['pilot'] / 2 - MIN_WALL >= (ROT_HUB.washer_d + FREE) / 2, 'rotator pilots into the screw access'
+    assert ROT_HUB.min_height <= ROT_FACE_C - ROT_SEAT_Z
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            q = (sx * EFF_PATTERN[0], sz * EFF_PATTERN[1])
+            assert math.hypot(*q) + M3['insert'] / 2 + MIN_WALL <= ADAPTER_D / 2
+            for az in ROT_BOLT_AZ:
+                b_ = (ROT_BOLT_R * math.cos(math.radians(az)), ROT_BOLT_R * math.sin(math.radians(az)))
+                assert math.hypot(q[0] - b_[0], q[1] - b_[1]) >= M3['insert'] / 2 + CBORE_D / 2 + 0.8
+    assert ADAPTER_T - CBORE_H >= 2 * MIN_WALL - 0.4 - EPS and ADAPTER_T >= M3_INSERT_DEPTH
+    assert ADAPTER_SCREW_L - (ADAPTER_T - CBORE_H) <= 6.0 - 0.5, 'the adapter screw bottoms in the neck'
+    assert WR_CAP_T - CBORE_H >= MIN_WALL - 0.1, 'no cap under a wrist screw head'
+    for p in WRIST_SCREWS:
+        assert rect_dist(p, (J5_CASE[0] - LOC, J5_CASE[1], J5_CASE[2] - LOC, J5_CASE[3] + LOC)) >= CBORE_D / 2 + MIN_WALL
+        assert rect_dist(p, (J5_TABS[0] - LOC, J5_TABS[1] + LOC, J5_TABS[2] - LOC, J5_TABS[3] + LOC)) >= \
+            CBORE_D / 2 + MIN_WALL, 'wrist screw %r in the tab slot' % (p,)
+        assert math.hypot(*p) + CBORE_D / 2 + MIN_WALL <= WR_A, 'wrist screw %r out of the drum' % (p,)
+        for b_ in J4.bolts():
+            assert math.hypot(p[0] - b_[0], p[1] - b_[1]) >= CBORE_D / 2 + M3['pilot'] / 2 + MIN_WALL
+        assert abs(p[1] - WR_PORT[1]) >= CBORE_D / 2 + PORT_D / 2 + MIN_WALL - 0.1 or p[0] > -WR_A + 3 * PORT_D, \
+            'wrist screw %r in the port' % (p,)
+    assert J4.x_spigot_end - (J4.bolt_engaged(J4_BOLT_L, 0.0) + 0.5) >= WR_SPLIT + MIN_WALL, 'J4 pilots into the bay'
     assert math.hypot(J5_TAB_TOP, J5_TAB_V) <= WR_A - SHELL - LOC + EPS
     assert math.hypot(J5_CASE_TOP - SG90.case_h, SG90.case_l - SG90.shaft_from_end) <= WR_A - SHELL - LOC + EPS
     return True
