@@ -1,4 +1,4 @@
-# robotarm — what to print, what to buy (current as of 2026-09-29, gripper v3)
+# robotarm — what to print, what to buy (current as of 2026-09-29: cobot arm + gripper v3)
 
 J1 = MG995 360° · J2 = MG995 (sized from the drawing in `calibration/2026-09-28-mg995-drawing.png`: 40.5 tall to the top of the lip, 49 mm hole pitch, 55 mm tab span) · J3–J6 = SG90 · ESP32 carrier PCB in the base ·
 **gripper head v3** (rod-guided rack & pinion, one-piece 12-gon body, fin ray fingers). Colours: **black** base + turret,
@@ -29,24 +29,28 @@ Files are in `exports/robotarm/`.
 - `j1_hub_v5.3mf` ×1 — top face down, 5 walls, 40 % infill
 - `plates/plate_bits_white_v1.3mf` — 3 roller caps + 4 PCB keepers, **print in black** (filename predates the colour split; tiny: slow first layer)
 
-**3. Shoulder (white)**
-- `shoulder_bracket_v6.3mf` ×1 — −X face down, 12-gon pivot bosses · ~47 g (76 mm tall — add a brim if it wobbles)
-
-**4. Arm**
-- `plates/plate_armstack_green_v13.3mf` — upper arm and forearm halves with **12-gon faceted drums and bosses** (2026-09-29), 2 rails (brim), J3 servo cap, 2 duct grommets
-- `plates/plate_armstack_white_v13.3mf` — J3 gear, J3 pinion, J3 axle, shoulder hub (unchanged parts, re-packed for the X2D)
-- `plates/plate_wrist_white_v11.3mf` — wrist roll pair (mirrored), 12-gon rotator, 2 hubs — all on one plate, no shims
+**3 + 4. Shoulder, arm and wrist — THE COBOT ARM (2026-09-29)** · full sequence, tolerances, cables and buy list: **`specs/robotarm/cobot.md`**
+Geared J2 1.64:1 / J3 4:1 / J4 2:1 on the 360° versions of the same servos, with an AS5600 on each joint. The assembly gate (`_cobot_fit_gate.log`) passes: static fit, all 16 insertion steps, fold sweeps.
+- `cobot/cobot_plate_1.3mf` — tower (replaces shoulder_bracket), upper arm, upper-arm cover · ~316 g
+- `cobot/cobot_plate_2.3mf` — forearm + plate, 3 servo plates, wrist + cap, 3 output gears, 3 pinions, idler, rotator, head adapter · ~171 g
+- Pinions + rotator in the **same filament as the spline gauge**. The v3 head bolts to the head adapter unchanged.
 
 **5. Gripper head (v3 — rod-guided, one-piece 12-gon body)**
 - `plates/plate_grip_green_v3.3mf` — the body (back face down, 47 mm tall)
 - `plates/plate_grip_white_v3.3mf` — 2 jaws + pinion
 - `grip_finger_v1.3mf` ×2 — **TPU 95A**, flat, 20–25 mm/s
 
-Superseded — don't print: `base_platter_v4` (fluted round), `base_platter_v5` (no eyes), and everything cut for the old flat-topped MG995: `shoulder_bracket_v4`/`_v5`, `turntable_stator_v9`, `base_lid_v8`/`_v9`, `j1_hub_v3`/`_v4`, `plate_armstack_*_v9`–`_v12`, `plate_wrist_*_v8`–`_v10`, `plate_grip_*_v1` (hub bores cut before the gauge), `plate_grip_*_v2` (clamshell head, replaced by v3). Retired: the pruner (`pruner_*`, `gripcut_finger`) and the old `gripper_shell` / `gripper_rack_jaw`.
+Superseded — don't print: **the whole pre-cobot arm** — `shoulder_bracket_v6`, `plate_armstack_*_v13`, `plate_wrist_*_v11` (and older); `base_platter_v4` (fluted round), `base_platter_v5` (no eyes), and everything cut for the old flat-topped MG995: `shoulder_bracket_v4`/`_v5`, `turntable_stator_v9`, `base_lid_v8`/`_v9`, `j1_hub_v3`/`_v4`, `plate_armstack_*_v9`–`_v12`, `plate_wrist_*_v8`–`_v10`, `plate_grip_*_v1` (hub bores cut before the gauge), `plate_grip_*_v2` (clamshell head, replaced by v3). Retired: the pruner (`pruner_*`, `gripcut_finger`) and the old `gripper_shell` / `gripper_rack_jaw`.
 
 **Assembly note:** the shroud goes on after the rotor and BEFORE the ring — slide it down over the three turret posts. With it fitted, J2 can pitch down to **23°** below horizontal (was 25°).
 
 ## Buy
+
+**Cobot arm** (details and screw list: `specs/robotarm/cobot.md` §8)
+- **MG995 360° ×1 (J2), SG90 360° ×2 (J3, J4)** — same cases as the ones in hand
+- **AS5600 magnetic encoder module 23 × 23 ×3** (magnet included) · Ø3 × 35 dowel ×1 · Ø8 grommets ×6
+- M3 × 30 ×7, M3 × 18 ×4, M3 × 12 ×5, M3 × 10 ×6, M3 × 8 ×19, M2 × 6 ×4, M2 × 5 + washers ×6, M2.5 × 6 ×3, M3 heat-set ×4
+- optional TCA9548A if the encoders run on I2C (default: analog out → ESP32 ADC)
 
 **Motion + sensing**
 - MG995 360° ×1, MG995 ×1, SG90 ×4 (in hand)

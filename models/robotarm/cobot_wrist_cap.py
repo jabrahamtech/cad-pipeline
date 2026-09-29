@@ -44,6 +44,7 @@ PETG_G_PER_MM3 = 1.27 * 0.65 / 1000.0
 PLANE_EPS_CM = 1e-6
 PRINT_NOTE = 'PRINT 1, split face down, spigot up'
 EPS_CM = 1e-5
+PILOT_RUNOUT = 0.5        # mm - a pilot runs this far past the screw's tip
 
 
 def run(_context: str):
@@ -80,7 +81,7 @@ def run(_context: str):
     param('reg_d', '%.4f mm' % C.REG_D, 'lib/cobot REG_D - the J4 gear centres on this')
     param('reg_h', '%.4f mm' % C.REG_H, 'lib/cobot REG_H')
     param('bolt_r', '%.4f mm' % j4.bolt_r, 'lib/cobot J4')
-    param('pilot_deep', '%.4f mm' % (j4.bolt_engaged(C.J4_BOLT_L, 0.0) + 0.5), 'M3 x 18 through the gear')
+    param('pilot_deep', '%.4f mm' % (j4.bolt_engaged(C.J4_BOLT_L, 0.0) + PILOT_RUNOUT), 'M3 x 18 through the gear')
     param('m3_pilot', '%.4f mm' % C.M3['pilot'], 'design_rules')
     param('clear', '%.4f mm' % C.M3['clearance'], 'M3 clearance')
     param('cbore_d', '%.4f mm' % C.CBORE_D, 'lib/cobot CBORE_D')
