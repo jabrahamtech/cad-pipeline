@@ -9,18 +9,20 @@ RETAINER and the carrier of its ENCODER MAGNET:
     from inside the upper arm, heads SUNK in counterbores in the tooth face (the servo
     plate passes over this face)
   * its FLANGE traps the upper arm's joint wall: the axial bearing on this side
-  * the STALK on its axis rises into the servo plate's O12 hole; the O6 x 2.5
-    diametric magnet is glued into its top, AIR_GAP under the AS5600 chip
-    on the plate (lib/cobot stalk_top). Magnetise direction is irrelevant;
-    CENTRE is what counts - the stalk is on the gear's own axis
+  * the J2 COUNTERBALANCE SHAFT on its axis (lib/cobot J2 spring): O10 up
+    through the J2 plate's hole, the cover and the spring cap's floor, with a
+    D-flat from the cap floor up carrying the two hub discs that wind the
+    centring spring. The J2 magnet sits flush in the shaft's top end, under
+    the AS5600 in the cap's lid. MOUNT THE GEAR WITH THE FLAT FACING FORWARD
+    (the tower's +y) WITH THE ARM VERTICAL: that is the spring's neutral
   * CENTRED by a register: a LOC recess in the flange's bed face over the
     O12 boss on the spigot end. The bolts only clamp (clearance holes would
     let it float 0.2 - the mesh's whole backlash)
   * a 45 deg LEAD-IN on its tooth tips at the back face: the pinion enters
     the mesh from that side, axially, with its plate
 
-Print: FLANGE DOWN, no support: the teeth are vertical prisms and the stalk
-stands on the tooth face.
+Print: FLANGE DOWN, no support: the teeth are vertical prisms and the shaft
+stands on the tooth face (~95 mm tall - a brim helps).
 Frame: z along the joint axis, 0 on the spigot-end face, +z into the upper arm.
 """
 
@@ -50,7 +52,7 @@ BOLT_L = C.J2_BOLT_L
 MATERIAL_NAME = 'PET Plastic'
 APPEARANCE_HINTS = hints_for('cobot_j2_gear')
 PH_TEETH = 'flange + teeth'
-PH_STALK = 'stalk + magnet'
+PH_STALK = 'counterbalance shaft'
 PH_BOLTS = 'register + lead-in + bolts'
 PHASES = [PH_TEETH, PH_STALK, PH_BOLTS]
 PETG_G_PER_MM3 = 1.27 * 0.65 / 1000.0
@@ -82,7 +84,6 @@ def run(_context: str):
     def mm(v_cm):
         return '%.5f mm' % (v_cm * 10)
 
-    stalk_h = C.stalk_top(PLATE_TOP) - JOINT.x_gear_back
     param('face', '%.4f mm' % PAIR.face, 'lib/cobot ' + PAIR.name)
     param('flange_t', '%.4f mm' % C.FLANGE_T, 'lib/cobot FLANGE_T - the retainer')
     param('flange_d', '%.4f mm' % JOINT.flange_od, 'lib/cobot - laps the joint wall')
@@ -91,8 +92,10 @@ def run(_context: str):
     param('cbore_d', '%.4f mm' % C.CBORE_D, 'M3 cap head + FREE')
     param('cbore_h', '%.4f mm' % C.CBORE_H, 'the head sunk below the tooth face')
     param('stalk_d', '%.4f mm' % C.STALK_D, 'lib/cobot STALK_D - runs in the plate\'s hole')
-    param('stalk_h', '%.4f mm' % stalk_h, 'tooth face -> magnet face (lib/cobot stalk_top)')
-    param('mag_d', '%.4f mm' % C.MAGNET_POCKET[0], 'the O6 magnet, glued')
+    param('shoulder', '%.4f mm' % (C.SHOULDER_X - JOINT.x_spigot_end), 'lib/cobot SHOULDER_X - O10 -> O8 D')
+    param('shaft_top', '%.4f mm' % (C.SHAFT_TOP - JOINT.x_spigot_end), 'lib/cobot SHAFT_TOP - under the lid')
+    param('shaft_flat', '%.4f mm' % C.SHAFT_FLAT, 'lib/cobot SHAFT_FLAT - the D\'s flat depth')
+    param('mag_d', '%.4f mm' % C.MAGNET_POCKET[0], 'the O6 J2 magnet, glued flush in the shaft end')
     param('mag_h', '%.4f mm' % C.MAGNET_POCKET[1], 'its depth')
     param('tooth_sink', '0.5 mm', 'how far a tooth profile reaches inside the root circle')
     param('reg_d', '%.4f mm' % C.REG_RECESS[0], 'lib/cobot - LOC over the spigot\'s register boss: CENTRES the gear')
@@ -193,11 +196,21 @@ def run(_context: str):
     comp.features.circularPatternFeatures.add(cp).name = 'tooth_ring'
     group(t0, PH_TEETH)
 
+    # J2 ONLY: the stalk is the COUNTERBALANCE SHAFT (lib/cobot J2 spring): O10
+    # up through the J2 plate, the cover and the cap floor to the shoulder, then
+    # a O8 D-flat that drives both hub discs. The magnet is in the top hub now.
     t1 = design.timeline.count
-    if val('stalk_h') > 0:
-        disc('stalk', 0.0, 0.0, val('stalk_d'), top, val('stalk_h'), JOIN)
-    s_top = top + val('stalk_h')
-    disc('magnet', 0.0, 0.0, val('mag_d'), s_top - val('mag_h'), val('mag_h'), CUT)
+    st = val('shaft_top')
+    disc('shaft', 0.0, 0.0, val('stalk_d'), top, st - top, JOIN)
+    # the D: a flat on +x (gear frame) from the shoulder up; mount the gear so it faces FORWARD with the arm vertical
+    r2 = val('stalk_d') / 2
+    fl = r2 - val('shaft_flat')
+    sk = comp.sketches.add(comp.xYConstructionPlane)
+    sk.name = 'sk_shaft_flat'
+    sk.sketchCurves.sketchLines.addTwoPointRectangle(mpt(sk, fl, -r2 - val('shaft_flat')), mpt(sk, r2 + val('shaft_flat'),
+                                                                                              r2 + val('shaft_flat')))
+    extrude(sk.profiles.item(0), CUT, val('shoulder'), st - val('shoulder'), 'shaft_flat')
+    disc('magnet', 0.0, 0.0, val('mag_d'), st - val('mag_h'), val('mag_h'), CUT)
     group(t1, PH_STALK)
 
     t2 = design.timeline.count
@@ -234,11 +247,10 @@ def run(_context: str):
     bb = body.boundingBox
     v = body.volume * 1000
     print("body: '%s' | appearance: %s | PRINT 1, flange down" % (body.name, used))
-    print('%s: %dT m%.2f face %.0f on a O%.0f x %.0f flange; stalk O%.0f x %.2f, magnet pocket O%.1f x %.1f; '
+    print('%s: %dT m%.2f face %.0f on a O%.0f x %.0f flange; shaft O%.0f, D-flat from x %.2f, top (magnet) x %.2f; '
           '%d x M3 x %.0f at r %.1f sunk %.1f' % (JOINT.name, PAIR.z_gear, PAIR.module, PAIR.face, JOINT.flange_od,
-                                                   C.FLANGE_T, C.STALK_D, val('stalk_h') * 10, C.MAGNET_POCKET[0],
-                                                   C.MAGNET_POCKET[1], len(JOINT.bolt_az), BOLT_L, JOINT.bolt_r,
-                                                   C.CBORE_H))
+                                                   C.FLANGE_T, C.STALK_D, C.SHOULDER_X, C.SHAFT_TOP,
+                                                   len(JOINT.bolt_az), BOLT_L, JOINT.bolt_r, C.CBORE_H))
     print('tip r %.3f root r %.3f; centre distance %.2f' % (T['r_tip'], PAIR.r_root(PAIR.z_gear), PAIR.centre_distance))
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f'
           % (bb.minPoint.x * 10, bb.maxPoint.x * 10, bb.minPoint.y * 10, bb.maxPoint.y * 10,

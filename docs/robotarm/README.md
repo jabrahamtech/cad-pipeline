@@ -1,7 +1,7 @@
-# robotarm — what to print, what to buy (current as of 2026-09-29: cobot arm + gripper v3)
+# robotarm — what to print, what to buy (current as of 2026-09-29: cobot arm + J2 spring + gripper v4)
 
 J1 = MG995 360° · J2 = MG995 (sized from the drawing in `calibration/2026-09-28-mg995-drawing.png`: 40.5 tall to the top of the lip, 49 mm hole pitch, 55 mm tab span) · J3–J6 = SG90 · ESP32 carrier PCB in the base ·
-**gripper head v3** (rod-guided rack & pinion, one-piece 12-gon body, fin ray fingers). Colours: **black** base + turret,
+**gripper head v4** (v3 shrunk to the wrist: rod-guided rack & pinion, one-piece 12-gon body, fin ray fingers; ≈ 67 g). Colours: **black** base + turret,
 **green** links + hand, **white** joints, **black TPU** fingers. Specs: `specs/robotarm/grip.md`,
 `base_platter.md`, `turret_shroud.md`, `_harness.md`, `_build.md`. Renders: `docs/robotarm/arm_*.png`,
 `head_close.png`, `base_close.png`.
@@ -30,33 +30,31 @@ Files are in `exports/robotarm/`.
 - `plates/plate_bits_white_v1.3mf` — 3 roller caps + 4 PCB keepers, **print in black** (filename predates the colour split; tiny: slow first layer)
 
 **3 + 4. Shoulder, arm and wrist — THE COBOT ARM (2026-09-29)** · full sequence, tolerances, cables and buy list: **`specs/robotarm/cobot.md`**
-Geared J2 1.64:1 / J3 4:1 / J4 2:1 on the 360° versions of the same servos, with an AS5600 on each joint. The assembly gate (`_cobot_fit_gate.log`) passes: static fit, all 16 insertion steps, fold sweeps.
-- `cobot/cobot_plate_1.3mf` — tower (replaces shoulder_bracket), upper arm, upper-arm cover · ~316 g
-- `cobot/cobot_plate_2.3mf` — forearm + plate, 3 servo plates, wrist + cap, 3 output gears, 3 pinions, idler, rotator, head adapter · ~171 g
-- Pinions + rotator in the **same filament as the spline gauge**. The v3 head bolts to the head adapter unchanged.
+Geared J2 1.64:1 / J3 4:1 / J4 2:1 on the 360° versions of the same servos, with an AS5600 on each joint, and a **torsion-spring counterbalance on J2** (J2 margin 1.11 → 3.5). The assembly gate (`_cobot_fit_gate.log`) passes: static fit, all 22 insertion steps, fold sweeps. The gripper head (v4) is on these plates too.
+- `cobot/cobot_plate_1_petg.3mf` — tower (replaces shoulder_bracket), upper arm, J2 spring cap + lid · ~325 g
+- `cobot/cobot_plate_2_petg.3mf` — upper-arm cover, grip v4 body, forearm + plate, 3 servo plates, J2 gear (96 tall), wrist cap · ~154 g
+- `cobot/cobot_plate_3_petg.3mf` — wrist, J3/J4 gears, idler, 2 spring hubs, 3 pinions, rotator, 2 jaws, gripper pinion · ~80 g
+- `cobot/cobot_plate_4_tpu.3mf` — 2 fin ray fingers, **TPU 95A**, 20–25 mm/s · ~4 g
+- Pinions, rotator and gripper pinion in the **same filament as the spline gauge**.
 
-**5. Gripper head (v3 — rod-guided, one-piece 12-gon body)**
-- `plates/plate_grip_green_v3.3mf` — the body (back face down, 47 mm tall)
-- `plates/plate_grip_white_v3.3mf` — 2 jaws + pinion
-- `grip_finger_v1.3mf` ×2 — **TPU 95A**, flat, 20–25 mm/s
-
-Superseded — don't print: **the whole pre-cobot arm** — `shoulder_bracket_v6`, `plate_armstack_*_v13`, `plate_wrist_*_v11` (and older); `base_platter_v4` (fluted round), `base_platter_v5` (no eyes), and everything cut for the old flat-topped MG995: `shoulder_bracket_v4`/`_v5`, `turntable_stator_v9`, `base_lid_v8`/`_v9`, `j1_hub_v3`/`_v4`, `plate_armstack_*_v9`–`_v12`, `plate_wrist_*_v8`–`_v10`, `plate_grip_*_v1` (hub bores cut before the gauge), `plate_grip_*_v2` (clamshell head, replaced by v3). Retired: the pruner (`pruner_*`, `gripcut_finger`) and the old `gripper_shell` / `gripper_rack_jaw`.
+Superseded — don't print: **the whole pre-cobot arm** — `shoulder_bracket_v6`, `plate_armstack_*_v13`, `plate_wrist_*_v11` (and older); `base_platter_v4` (fluted round), `base_platter_v5` (no eyes), and everything cut for the old flat-topped MG995: `shoulder_bracket_v4`/`_v5`, `turntable_stator_v9`, `base_lid_v8`/`_v9`, `j1_hub_v3`/`_v4`, `plate_armstack_*_v9`–`_v12`, `plate_wrist_*_v8`–`_v10`, `plate_grip_*_v1` (hub bores cut before the gauge), `plate_grip_*_v2` (clamshell head), `plate_grip_*_v3` + `grip_finger_v1` (v3 head, replaced by v4 on the cobot plates). Retired: the pruner (`pruner_*`, `gripcut_finger`) and the old `gripper_shell` / `gripper_rack_jaw`.
 
 **Assembly note:** the shroud goes on after the rotor and BEFORE the ring — slide it down over the three turret posts. With it fitted, J2 can pitch down to **23°** below horizontal (was 25°).
 
 ## Buy
 
-**Cobot arm** (details and screw list: `specs/robotarm/cobot.md` §8)
+**Cobot arm** (details and screw list: `specs/robotarm/cobot.md` §9)
 - **MG995 360° ×1 (J2), SG90 360° ×2 (J3, J4)** — same cases as the ones in hand
 - **AS5600 magnetic encoder module 23 × 23 ×3** (magnet included) · Ø3 × 35 dowel ×1 · Ø8 grommets ×6
-- M3 × 30 ×7, M3 × 18 ×4, M3 × 12 ×5, M3 × 10 ×6, M3 × 8 ×19, M2 × 6 ×4, M2 × 5 + washers ×6, M2.5 × 6 ×3, M3 heat-set ×4
+- **Century Spring TO-5201RCS torsion spring ×1** (music wire, 7.34 N·mm/°) — cut both legs to 22 mm
+- M3 × 30 ×7, M3 × 18 ×4, M3 × 12 ×5, M3 × 10 ×9, M3 × 8 ×23, M2 × 6 ×4, M2 × 5 + washers ×6, M2.5 × 6 ×3, M3 heat-set ×3
 - optional TCA9548A if the encoders run on I2C (default: analog out → ESP32 ADC)
 
 **Motion + sensing**
 - MG995 360° ×1, MG995 ×1, SG90 ×4 (in hand)
 - 608ZZ ×4 — 3 turntable, 1 elbow
 - A3144 hall sensor ×1 (pack), 5 × 2 mm N52 disc magnets (pack)
-- **Ø3 mm ground steel rod, 4 × 59 mm** — the gripper's jaw guides (cut from a Ø3 × 250+ silver-steel / linear-shaft rod; deburr the ends)
+- **Ø3 mm ground steel rod, 4 × 59 mm** (or Ø3 carbon-fibre rod, −8 g) — the gripper's jaw guides (cut from a Ø3 × 250+ silver-steel / linear-shaft rod; deburr the ends)
 - **5 mm LEDs ×2 for the eyes** — any 5 mm LED fits; addressable RGB (WS2812D-F5 / PL9823-F5) runs both off one ESP32 pin. Push in from inside until the flange seats; a dab of hot glue holds them
 
 **Filament**

@@ -10,6 +10,10 @@ on the shell's open +x edge.
     the spline's engagement, so the servo cannot walk off its hub
   * a LOCATING LIP runs inside the shell (LOC fit), notched round the six
     cover corbels, so the lid lands square before a screw goes in
+  * the J2 SPRING CAP (cobot_j2_cap) screws onto this face over J2: the
+    counterbalance shaft passes a O10.6 hole, 3 x M3 heat-set inserts sit in
+    bosses under the cover (press them in from the outer face), and the J2
+    encoder's wires come in through a O3.5 hole under the cap
   * 6 x M3 x 8 button heads into the upper arm's cover corbels. This is the
     arm's outside face (nothing sweeps over it), so heads may stand proud
 
@@ -39,7 +43,8 @@ MATERIAL_NAME = 'PET Plastic'
 APPEARANCE_HINTS = hints_for('cobot_upper_arm_cover')
 PH_FORM = 'lid + lip'
 PH_HOLES = 'screws'
-PHASES = [PH_FORM, PH_HOLES]
+PH_CAP = 'spring cap mount'
+PHASES = [PH_FORM, PH_HOLES, PH_CAP]
 PETG_G_PER_MM3 = 1.27 * 0.65 / 1000.0
 LIP_T = 1.2             # CHOSEN - lip wall
 LIP_H = 1.5             # CHOSEN - lip depth into the shell
@@ -80,6 +85,12 @@ def run(_context: str):
     param('lip_h', '%.4f mm' % LIP_H, 'lip depth into the shell')
     param('notch_r', '%.4f mm' % (C.BOSS_R + C.FREE), 'lip notch round a cover corbel')
     param('clear', '%.4f mm' % C.M3['clearance'], 'M3 clearance')
+    param('insert_boss_d', '%.4f mm' % C.COVER_INSERT_BOSS[0], 'lib/cobot - under the cover, for the spring cap')
+    param('insert_boss_l', '%.4f mm' % C.COVER_INSERT_BOSS[1], 'lib/cobot')
+    param('insert_d', '%.4f mm' % C.M3['insert'], 'design_rules - M3 heat-set')
+    param('insert_h', '%.4f mm' % C.M3_INSERT_DEPTH, 'insert length + 1')
+    param('shaft_bore', '%.4f mm' % C.SHAFT_BORE, 'lib/cobot - the J2 counterbalance shaft turns here')
+    param('wire_d', '%.4f mm' % C.CAP_WIRE_D, 'lib/cobot - the J2 encoder wires')
 
     post = ups.itemByName('cua_post_r')
     if post is not None:
@@ -153,6 +164,18 @@ def run(_context: str):
     for k, (u, v) in enumerate(C.UA_COVER_SCREWS):
         along_x('screw_%d' % k, [], [(u, v, val('clear') * 10)], xi, xo, CUT)
     group(t1, PH_HOLES)
+
+    # the J2 SPRING CAP stands on this face (lib/cobot J2 spring): the
+    # counterbalance shaft passes, the cap screws into 3 heat-set inserts in
+    # bosses under the cover, and the J2 encoder's wires come in beside it
+    t2 = design.timeline.count
+    bd, bl = val('insert_boss_d'), val('insert_boss_l')
+    for k, (u, v) in enumerate(C.CAP_SCREWS):
+        along_x('insert_boss_%d' % k, [], [(u, v, bd * 10)], xi - bl, xi, JOIN)
+        along_x('insert_%d' % k, [], [(u, v, val('insert_d') * 10)], xo - val('insert_h'), xo, CUT)
+    along_x('shaft_hole', [], [(0.0, 0.0, val('shaft_bore') * 10)], xi - bl, xo, CUT)
+    along_x('wire_hole', [], [(C.CAP_WIRE_IN[0], C.CAP_WIRE_IN[1], val('wire_d') * 10)], xi - bl, xo, CUT)
+    group(t2, PH_CAP)
 
     assert comp.bRepBodies.count == 1, 'the lid came out in %d pieces' % comp.bRepBodies.count
     body = comp.bRepBodies.item(0)

@@ -467,7 +467,7 @@ J2_PLATE = [(-15.5, -15.5), (-15.5, 15.5), (15.5, 15.5), (15.5, 5.5), (_W2[0], 5
             (_W2[1], _W2[2]), (_W2[1], 5.5), (76.0, 5.5), (76.0, -9.5), (83.5, -9.5), (83.5, -20.5),
             (60.0, -25.5), (44.0 + NOTCH, -25.5), (44.0 + NOTCH, -24.0 + NOTCH), (44.0 - NOTCH, -24.0 + NOTCH),
             (44.0 - NOTCH, -25.5), (13.0, -25.5)]
-J2_CLAMPS = ((0.0, CLAMP_OFF), (0.0, -CLAMP_OFF))
+J2_CLAMPS = ()                                    # the J2 board moved to the spring cap's lid
 _J3_END = L1 + 13.0
 J3_PLATE = [(42.5, 6.5), (86.0, 6.5), (86.0, -25.8), (100.0 - NOTCH, -25.8), (100.0 - NOTCH, -24.0 + NOTCH),
             (100.0 + NOTCH, -24.0 + NOTCH), (100.0 + NOTCH, -25.8), (L1 + 6.9, -25.8), (_J3_END, -14.0),
@@ -510,6 +510,81 @@ J4_HOLES = servo_holes(SG90, J4_PIN[0], J4_PIN[1], (0.0, 1.0))
 J4_POSTS = ((4.0, 17.0), (4.0, -17.0), (30.0, 17.5), (30.0, -17.5))
 # the forearm plate: J3's 3 through-bolts at the J3 end, 2 standoffs on the J4 plate at the J4 end
 FA_PLATE_SCREW_L = 12.0                  # M3 x 12, counterbored
+
+# THE J2 COUNTERBALANCE (2026-09-29): a CENTRING TORSION SPRING on the J2
+# axis, in a 12-gon CAP on the upper arm's cover. Gravity about J2 goes as
+# sin(angle from vertical); a centring spring pushes back toward vertical
+# with k x angle. With k ~ 0.7 of the gravity peak per radian the J2 motor
+# is left ~15-20 % of that peak (specs/robotarm/cobot.md). The spring is a
+# stock part: Century Spring TO-5201RCS (MW Components) - music wire
+# 2.16, OD 22.63, body 17.27, 7 coils, 180 deg IN-LINE legs 63.5 (cut to
+# SPR_LEG_CUT), 7.34 N.mm/deg, 205 deg max.
+#  * the J2 OUTPUT GEAR's stalk becomes a SHAFT (tower-fixed) up through the
+#    J2 plate, the cover and the cap floor; O10, then a O8 D-flat on a shoulder
+#  * two HUB DISCS on the D (tower-fixed) straddle the coil; the cap (floor +
+#    wall) and its LID are upper-arm-fixed. Each carries ONE short pin: all
+#    four pins sit on the same side of the legs' line, so rotating either way
+#    from vertical WINDS the spring (the hub pushes one leg, the cap holds the
+#    other - each leg only ever loaded in its winding sense)
+#  * the J2 AS5600 moves to the LID, reading a magnet in the top hub disc;
+#    the J2 plate no longer carries a board
+SPR_WIRE, SPR_OD, SPR_BODY = 2.16, 22.63, 17.27
+SPR_RATE_NMM_DEG = 7.34
+SPR_MAX_DEG = 205.0
+SPR_RC = (SPR_OD - SPR_WIRE) / 2                   # the coil's mean radius; the legs run tangent at v = -SPR_RC
+SPR_ID = SPR_OD - 2 * SPR_WIRE
+SPR_PIN_D = 5.0                                   # printed pins, short (bending is small)
+SPR_PIN_V = -(SPR_RC + SPR_WIRE / 2 + SPR_PIN_D / 2)   # every pin's centre, just under the legs' line
+SPR_HUB_S = 6.0                                   # hub pins at u = +-this along the leg
+SPR_CUP_S = 18.0                                  # cap pins at u = +-this
+SPR_LEG_CUT = 22.0                                # cut both legs to this from the tangent point
+SPR_R_HUB = math.hypot(SPR_HUB_S, SPR_PIN_V)
+SPR_R_CUP = math.hypot(SPR_CUP_S, SPR_PIN_V)
+SPR_R_LEG = math.hypot(SPR_LEG_CUT, SPR_RC)       # the leg ends' radius
+CAP_A = 27.5                                      # the cap's 12-gon apothem (the arm is 28)
+CAP_WALL = 2.0
+CAP_FLOOR_T = 5.0                                 # counterbored screws to the cover's inserts
+CAP_LID_T = PLATE_T
+HUB_T = 3.0
+HUB_R = SPR_R_HUB + SPR_PIN_D / 2 + 1.2
+SHAFT_D = 10.0                                    # = the old stalk
+SHAFT_D2 = SHAFT_D                                # one diameter: the hubs' D-bores stop where the flat starts
+SHAFT_FLAT = 1.0                                  # the D's flat depth; the J2 magnet sits in the shaft's top end
+SHAFT_BORE = SHAFT_D + FREE + LOC                 # through the cover and the cap floor (it turns there)
+SPR_PIN_H = 3.5                                   # each pin reaches this past its leg's near face
+# the x stack, from the cover's outer face
+CAP_X0 = UA_X1
+CAP_FLOOR_TOP = CAP_X0 + CAP_FLOOR_T
+SHOULDER_X = CAP_FLOOR_TOP + FREE                 # the flat starts here: the bottom hub's D-bore stops on it
+HUB_LO = (SHOULDER_X, SHOULDER_X + HUB_T)
+COIL = (HUB_LO[1] + FREE, HUB_LO[1] + FREE + SPR_BODY)
+LEG_LO_X = COIL[0] + SPR_WIRE / 2                 # the bottom leg's wire centre
+LEG_HI_X = COIL[1] - SPR_WIRE / 2
+HUB_HI = (COIL[1] + FREE, COIL[1] + FREE + HUB_T)
+LID = (HUB_HI[1] + FREE, HUB_HI[1] + FREE + CAP_LID_T)
+SHAFT_TOP = LID[1] - BOARD_POCKET_H - CHIP_H - AIR_GAP   # = stalk_top(the lid): the magnet flush in the shaft's end
+CAP_SCREWS = ((10.0, 17.32), (-20.0, 0.0), (10.0, -17.32))   # M3 x 8 into heat-set inserts in the cover
+LID_SCREWS_R = CAP_A / math.cos(math.pi / SIDES) + 1.0   # LUGS outside three wall vertices (clear of the legs' sweep)
+LID_LUG_R = 2.8
+LID_SCREWS_AZ = (15.0, 135.0, 255.0)
+# the J2 encoder's wires: from the lid, down a channel in a BUMP on the cap's
+# outside (clear of the legs' sweep), along a groove under the cap floor, and
+# into the upper arm through the cover
+CAP_WIRE_AZ = 153.0
+CAP_WIRE_D = 3.5
+CAP_BUMP_R = CAP_A / math.cos(math.pi / SIDES) + 0.6          # the channel's radius, in the bump
+CAP_BUMP_D = CAP_WIRE_D + 2 * MIN_WALL
+CAP_WIRE_IN_R = 22.0                                          # where it drops through the cover
+CAP_WIRE = (CAP_BUMP_R * math.cos(math.radians(CAP_WIRE_AZ)), CAP_BUMP_R * math.sin(math.radians(CAP_WIRE_AZ)))
+CAP_WIRE_IN = (CAP_WIRE_IN_R * math.cos(math.radians(CAP_WIRE_AZ)), CAP_WIRE_IN_R * math.sin(math.radians(CAP_WIRE_AZ)))
+COVER_INSERT_BOSS = (M3['insert'] + 2 * MIN_WALL, 6.0)   # (dia, length) under the cover
+J2_BOARD_TOP = LID[1]                             # the J2 AS5600 sits on the LID now
+SPR_GRAVITY_PEAK_NMM = 611.0                      # J2's gravity torque, arm horizontal, 50 g, v3-weight head
+
+
+def spr_torque_nmm(deg):
+    return SPR_RATE_NMM_DEG * abs(deg)
+
 
 # WRIST - a BODY (x -WR_HALF..WR_SPLIT) holding the whole J5 bay, and a CAP
 # (WR_SPLIT..WR_HALF) carrying the J4 spigot. Split at the bay's own wall so
@@ -738,11 +813,48 @@ def check():
         J4_BOLT_L, e4)
     assert FA_PLATE_T - CBORE_H >= MIN_WALL
     # ---- encoders -----------------------------------------------------------------
-    for top, gear_back in ((UA_J2_TAB_TOP, J2.x_gear_back), (UA_J3_TAB_TOP, J3.x_gear_back),
-                           (FA_J4_TAB_TOP, J4.x_gear_back)):
+    for top, gear_back in ((UA_J3_TAB_TOP, J3.x_gear_back), (FA_J4_TAB_TOP, J4.x_gear_back)):
         st = stalk_top(top)
         assert st - gear_back >= 0.0, 'the stalk would be negative'
         assert st - MAGNET_POCKET[1] >= gear_back - FLANGE_T, 'the magnet pocket runs out of the gear'
+    # ---- the J2 spring ------------------------------------------------------------
+    assert SPR_ID / 2 - SHAFT_D2 / 2 >= FREE, 'the coil does not clear the shaft'
+    assert SPR_R_HUB - SPR_PIN_D / 2 >= SPR_OD / 2 + FREE, 'a hub pin in the coil'
+    assert SPR_R_CUP - SPR_PIN_D / 2 >= HUB_R + FREE, 'a cap pin in the hub discs\' sweep'
+    assert SPR_LEG_CUT >= SPR_CUP_S + SPR_PIN_D / 2 + 1.0, 'the legs are cut short of the cap pins'
+    assert SPR_R_LEG + FREE <= CAP_A - CAP_WALL, 'the leg ends hit the cap wall'
+    # the hub pins turn inside the cap wall; the cap's own pins may merge into it
+    assert SPR_R_HUB + SPR_PIN_D / 2 <= CAP_A - CAP_WALL - FREE
+    # +-90 deg of J2 either side of vertical is within the spring's range
+    assert 90.0 < SPR_MAX_DEG / 2 + 90.0 and spr_torque_nmm(90.0) <= 1517.0
+    k_rel = SPR_RATE_NMM_DEG * 180.0 / math.pi / SPR_GRAVITY_PEAK_NMM
+    assert 0.5 <= k_rel <= 0.9, 'the spring is %.2f x the gravity peak per rad' % k_rel
+    # the shaft: D-flat torque in PETG, and it passes every hole
+    assert (UA_J2_TAB_TOP - UA_J2_PLATE_X0) > 0 and (STALK_HOLE_D - SHAFT_D) / 2 >= PLATE_SLOT + FREE / 2
+    assert SHAFT_BORE > SHAFT_D and SHAFT_D2 <= SHAFT_D
+    assert SHAFT_D2 / 2 - SHAFT_FLAT - MAGNET_POCKET[0] / 2 >= 0.8, 'the magnet pocket breaks the flat'
+    # the top hub grips >= 2.5 of the D and hoops the magnet pocket; the shaft ends under the lid
+    assert min(SHAFT_TOP, HUB_HI[1]) - HUB_HI[0] >= 2.5, 'the top hub barely grips the D'
+    assert SHAFT_TOP - MAGNET_POCKET[1] >= COIL[1], 'the magnet pocket reaches down into the coil'
+    assert SHAFT_TOP <= HUB_HI[1] + EPS and SHAFT_TOP + AX_GAP <= LID[0] + EPS
+    tau = 16 * spr_torque_nmm(90.0) / (math.pi * (SHAFT_D2 - SHAFT_FLAT) ** 3)
+    assert tau <= 12.0, 'the D-flat shaft sees %.1f MPa in torsion' % tau
+    # the cap's screws: clear of the pins, inside the floor, and the cover's bosses clear of the UA's insides
+    for p in CAP_SCREWS:
+        for q in ((-SPR_CUP_S, SPR_PIN_V),):
+            assert math.hypot(p[0] - q[0], p[1] - q[1]) >= CBORE_D / 2 + SPR_PIN_D / 2 + MIN_WALL
+        assert math.hypot(*p) + CBORE_D / 2 + MIN_WALL <= CAP_A - CAP_WALL + CAP_WALL
+        assert rect_dist(p, J2_TABS) >= COVER_INSERT_BOSS[0] / 2 + FREE, 'a cover insert boss on the MG995'
+        assert math.hypot(*p) >= SHAFT_BORE / 2 + COVER_INSERT_BOSS[0] / 2 + MIN_WALL
+    # the wire path clears the legs' sweep, the lid bosses, the inserts and the cover's lip
+    assert CAP_BUMP_R - CAP_BUMP_D / 2 >= SPR_R_LEG + FREE, 'the wire bump in the legs\' sweep'
+    assert CAP_WIRE_IN_R + CAP_WIRE_D / 2 <= UA_A - (SHELL + LOC + 1.2) - FREE, 'the wire hole in the cover lip'
+    for p in CAP_SCREWS:
+        assert math.hypot(p[0] - CAP_WIRE_IN[0], p[1] - CAP_WIRE_IN[1]) >= COVER_INSERT_BOSS[0] / 2 + CAP_WIRE_D / 2 + 0.8
+    for az in LID_SCREWS_AZ:
+        q = (LID_SCREWS_R * math.cos(math.radians(az)), LID_SCREWS_R * math.sin(math.radians(az)))
+        assert math.hypot(q[0] - CAP_WIRE[0], q[1] - CAP_WIRE[1]) >= CAP_BUMP_D / 2 + 3.0
+        assert math.hypot(*q) - LID_LUG_R >= SPR_R_LEG + FREE, 'a lid lug in the legs\' sweep'
     # ---- wrist -------------------------------------------------------------------
     assert ROT_NECK_D / 2 <= WR_HALF - LOC, 'the rotator neck is wider than the wrist'
     assert ROT_FACE_C >= HEAD_BACK_MIN_U, 'the head would hit the forearm end'

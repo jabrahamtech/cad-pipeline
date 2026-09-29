@@ -43,6 +43,7 @@ TAB_HOLES = C.J4_HOLES
 TAB_PILOT = C.M2['pilot']
 POSTS = C.J4_POSTS
 BOARD_AT = (C.L2, 0.0)
+SHAFT_AT = None                # when there is no board: the gear shaft's hole
 CLAMPS = C.J4_CLAMPS
 PIN_AT = None                    # the idler pin's hole, or None
 SLOT_DIR = (C.J4_PIN[0] - C.L2, C.J4_PIN[1])                # unit (du, dv) along the mesh line, or None: the posts' slots run along it
@@ -189,13 +190,17 @@ def run(_context: str):
     group(t1, PH_HOLES)
 
     t2 = design.timeline.count
-    bu, bv = BOARD_AT
-    hp = val('pocket') * 10 / 2
-    poly('board_pocket', [(bu - hp, bv - hp), (bu + hp, bv - hp), (bu + hp, bv + hp), (bu - hp, bv + hp)], CUT,
-         x0 + t - val('pocket_h'), val('pocket_h'))
-    hole('stalk_hole', bu, bv, val('stalk_hole'), x0, t)
-    for k, (u, v) in enumerate(CLAMPS):
-        hole('clamp_%d' % k, u, v, val('clamp_pilot'), x0, t)
+    if BOARD_AT is not None:
+        bu, bv = BOARD_AT
+        hp = val('pocket') * 10 / 2
+        poly('board_pocket', [(bu - hp, bv - hp), (bu + hp, bv - hp), (bu + hp, bv + hp), (bu - hp, bv + hp)], CUT,
+             x0 + t - val('pocket_h'), val('pocket_h'))
+        hole('stalk_hole', bu, bv, val('stalk_hole'), x0, t)
+        for k, (u, v) in enumerate(CLAMPS):
+            hole('clamp_%d' % k, u, v, val('clamp_pilot'), x0, t)
+    else:
+        # no board here: the output gear's shaft passes through (J2: the counterbalance shaft)
+        hole('shaft_hole', SHAFT_AT[0], SHAFT_AT[1], val('stalk_hole'), x0, t)
     group(t2, PH_BOARD)
 
     t3 = design.timeline.count
@@ -232,10 +237,12 @@ def run(_context: str):
     bb = body.boundingBox
     v_ = body.volume * 1000
     print("body: '%s' | appearance: %s | PRINT 1, flat" % (body.name, used))
-    print('plate x %.2f..%.2f; window %.1f x %.1f (LOC); %d tab pilots O%.1f; %d posts %s; board pocket %.1f sq at %r%s'
+    enc = ('board pocket %.1f sq at %r' % (val('pocket') * 10, BOARD_AT) if BOARD_AT
+           else 'shaft hole at %r (the encoder is on the J2 cap lid)' % (SHAFT_AT,))
+    print('plate x %.2f..%.2f; window %.1f x %.1f (LOC); %d tab pilots O%.1f; %d posts %s; %s%s'
           % (x0 * 10, (x0 + t) * 10, CASE[1] - CASE[0] + 2 * lc, CASE[3] - CASE[2] + 2 * lc, len(TAB_HOLES),
              TAB_PILOT, len(POSTS), 'slotted +-%.1f along the mesh' % (val('slot') * 10) if SLOT_DIR else 'round',
-             val('pocket') * 10, BOARD_AT, '; idler pin hole O%.1f' % (val('pin_hole') * 10) if PIN_AT else ''))
+             enc, '; idler pin hole O%.1f' % (val('pin_hole') * 10) if PIN_AT else ''))
     print('bbox mm: X %.2f..%.2f  Y %.2f..%.2f  Z %.2f..%.2f'
           % (bb.minPoint.x * 10, bb.maxPoint.x * 10, bb.minPoint.y * 10, bb.maxPoint.y * 10,
              bb.minPoint.z * 10, bb.maxPoint.z * 10))
