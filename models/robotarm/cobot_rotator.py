@@ -88,7 +88,7 @@ def run(_context: str):
     param('cbore_h', '%.4f mm' % cb_h, 'lib/cobot pinion_cbore - a standard screw reaches')
     param('bolt_r', '%.4f mm' % C.ROT_BOLT_R, 'lib/cobot ROT_BOLT_R - the head\'s 4 x M3')
     param('m3_pilot', '%.4f mm' % C.M3['pilot'], 'design_rules')
-    param('m3_deep', '6.0 mm', 'M3 x 8 through the head\'s 2 mm flange')
+    param('m3_deep', '%.4f mm' % C.ROT_PILOT_DEEP, 'lib/cobot ROT_PILOT_DEEP - the head\'s M3 x 8')
 
     STALE = COMPONENT + '_stale_'
     for i in range(design.allComponents.count):

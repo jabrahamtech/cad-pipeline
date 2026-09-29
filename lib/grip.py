@@ -1,5 +1,11 @@
 """The gripper head (J6) - every number the grip_* parts share, in ONE place.
 
+v4, 2026-09-29 (the cobot arm): the v3 mechanism, SHRUNK to the wrist -
+stroke 20 -> 12.5 per jaw (25 at the jaw faces), 6 -> 5 rack teeth, and
+the back bolts straight to the cobot rotator's O21 neck (lib/cobot ROT_*)
+instead of the old O36 disc. Jonathan chose "Shrink head to match"; the
+load table (specs/robotarm/cobot.md) wants it <= 40 g for J2's margin.
+
 v3, 2026-09-29. Jonathan: "the gripper mechanism just seems so poorly
 designed - could you go out and research what the best designs are", then
 "I like arms that are more circular with polygonal lines for texture", and
@@ -53,6 +59,7 @@ from lib.joints import servo_for
 # IMPORT ORDER IS LOAD-BEARING: lib.gears <-> lib.servo_hub cycle.
 import lib.gears  # noqa: F401,E402
 from lib.servo_hub import spline_hub  # noqa: E402
+import lib.cobot as _C  # noqa: E402
 
 SERVO = servo_for('J6')                  # SG90
 
@@ -63,7 +70,7 @@ GR_PA_DEG = 20.0
 GR_DED_F = 1.25
 GR_FACE = 8.0
 GR_BACKLASH = 0.2
-GR_STROKE = 20.0                         # per rack: opening 0..40 at the jaw faces
+GR_STROKE = 12.5                         # per rack: opening 0..25 at the jaw faces (v4; v3 was 20)
 GR_RACK_WEB = 3.5
 R_PITCH = GR_MODULE * GR_TEETH / 2.0     # 9.0
 OFFSET = R_PITCH + GR_BACKLASH           # 9.2 - pinion axis to rack pitch line
@@ -88,7 +95,7 @@ M3 = _FASTENER['M3']
 # --- the rack: only as long as the stroke needs ---
 # Mesh margin: one pitch of teeth beyond the contact point at BOTH ends of
 # travel. Closed (s = 0) the contact is at rack x = 0, open (s = 20) at -20.
-RACK_TEETH = 6
+RACK_TEETH = 5
 X_A = -(GR_STROKE + PITCH)               # -24.71  toothed run starts
 X_B = X_A + RACK_TEETH * PITCH           # +3.56   toothed run ends
 END_LEAD = 0.5
@@ -126,6 +133,7 @@ ROD_Z = EXT_Z0 + WALL + ROD_BORE / 2.0               # 10.05 rod centre height
 BAR_TOP = max(ROOT_Z + GR_RACK_WEB / 2.0, ROD_Z + ROD_BORE / 2.0 + WALL)  # 13.4
 
 # --- the body: an open-fronted 12-sided cup round the roll axis ---
+SERVO_SLOT_X1 = CASE_FAR + TAB_OVER + LOC / 2.0          # 21.5 - the servo's way in, v4
 CORE_Y0 = PINION_BACK_Y - FREE                       # -4.4  full-width cavity floor
 CAV_Y0 = -BAR_Y - FREE                               # -11.6 floor of the two SLABS the
                                                      #       bars' rear rod blocks run in
@@ -142,17 +150,18 @@ _normals = [math.radians(VERTEX_AZ0 + 180.0 / SIDES + 360.0 / SIDES * k) for k i
 A_OUT = math.ceil(2 * (max(W_IN * abs(math.cos(a)) + Z_IN * abs(math.sin(a)) for a in _normals)
                        + BODY_WALL)) / 2.0       # outer apothem, rounded up to 0.5
 R_OUT = A_OUT / math.cos(math.pi / SIDES)            # outer vertex radius
-BACK_CHAMFER = 8.0   # CHOSEN - the back tapers toward the O36 rotator
+BACK_CHAMFER = 13.0  # CHOSEN - the back tapers down to a O25 face on the O21 neck
 FRONT_FACET = 1.5    # CHOSEN - the rim's outer edge
-EFF_BOLT_X = 11.0    # wrist_rotator.py wro_bolt_x / wro_bolt_z
-EFF_BOLT_Z = 9.0
-EFF_SCREW_L = 8.0    # M3 x 8 into the rotator's 5.5 deep insert holes
+# the back bolts to the cobot rotator's NECK: 4 x M3 self-tap pilots on r 7
+EFF_BOLT_R = _C.ROT_BOLT_R
+EFF_BOLT_AZ = _C.ROT_BOLT_AZ
+EFF_SCREW_L = 8.0    # M3 x 8 into the neck's pilots
 EFF_CBORE_D = 6.2    # passes the O5.5 head the whole way from the front
 EFF_CBORE_H = 3.2
 BACK_WALL_T = EFF_CBORE_H + 3.6                      # 6.8
-ROTATOR_INSERT_DEEP = 5.5
+ROTATOR_INSERT_DEEP = _C.ROT_PILOT_DEEP
 SHELL_BACK_Y = CASE_BOT_Y - LOC / 2.0 - BACK_WALL_T  # -35.0 = the rotator face
-ROTATOR_D = 36.0
+ROTATOR_D = _C.ROT_NECK_D
 
 
 def x_outer(z):
@@ -272,11 +281,26 @@ def check():
     assert x_outer(ROD_Z) - W_IN >= 2 * WALL, 'the side wall is too thin to hold a rod'
     # the servo case reaches up into the cavity, under the bars' rod blocks
     assert SERVO.case_w / 2.0 + LOC / 2.0 <= EXT_Z0 - FREE + 1e-9
-    assert CASE_FAR + TAB_OVER + LOC / 2 + WALL <= W_IN
+    # v4: the cup is sized by the racks, not the servo. The SG90 (tabs to
+    # x 21.4) goes in through a SERVO SLOT in the cup at |z| <= its half
+    # height, out past W_IN - the racks run above and below that band
+    assert SERVO_SLOT_X1 + BODY_WALL <= x_outer(SERVO.case_w / 2.0 + LOC / 2.0), 'the servo slot breaks the wall'
+    assert SERVO.case_w / 2.0 + LOC / 2.0 <= TIP_Z - FREE, 'the servo slot reaches the racks'
+    assert ROD_Z - ROD_BORE / 2.0 - WALL >= SERVO.case_w / 2.0 + LOC / 2.0, 'the slot cuts a rod hole'
     # the rotator screws: counterbores inside the back face after the chamfer,
     # clear of the pinion, and they bite without bottoming
-    assert math.hypot(EFF_BOLT_X, EFF_BOLT_Z) + EFF_CBORE_D / 2 + WALL <= A_OUT - BACK_CHAMFER
-    assert math.hypot(EFF_BOLT_X, EFF_BOLT_Z) - EFF_CBORE_D / 2 >= R_TIP + FREE
+    assert EFF_BOLT_R + EFF_CBORE_D / 2 + WALL <= A_OUT - BACK_CHAMFER
+    # the neck screws lie UNDER the servo: they are driven through the EMPTY
+    # pocket, before the servo goes in (their access bores run up beside it,
+    # through the pocket walls into the slabs)
+    for az in EFF_BOLT_AZ:
+        bx, bz = EFF_BOLT_R * math.cos(math.radians(az)), EFF_BOLT_R * math.sin(math.radians(az))
+        for hx in TAB_HOLE_X:
+            assert math.hypot(bx - hx, bz) >= EFF_CBORE_D / 2 + M2['pilot'] / 2 + WALL, 'neck screw on a tab pilot'
+        # the rods are held only in the side walls (|x| > W_IN); inside, they run in the slab void
+        assert abs(bx) + EFF_CBORE_D / 2 + WALL <= W_IN, 'a neck screw bore reaches a side wall'
+    # the head clears the forearm's J4 end: nothing wider than the wrist nearer J4 than r 24.2
+    assert A_OUT - BACK_CHAMFER <= _C.ROT_NECK_D / 2 + 2.0, 'the back face is much wider than the neck'
     bite = EFF_SCREW_L - (BACK_WALL_T - EFF_CBORE_H)
     assert 3.0 <= bite <= ROTATOR_INSERT_DEEP - FREE, bite
     # the hollows keep their walls: to the back taper, the rim facet, the cup

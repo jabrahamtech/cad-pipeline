@@ -3,14 +3,16 @@
 Rebuilds `robotarm_grip_body` (idempotent). PRINT ONE. Spec:
 specs/robotarm/grip.md - all numbers from lib/grip.py.
 
-THE HEAD, IN ONE PIECE (grip v3, 2026-09-29). Replaces the two grip_shell
+THE HEAD, IN ONE PIECE (grip v4, 2026-09-29: v3 shrunk to the cobot wrist -
+lib/grip docstring). Replaces the two grip_shell
 halves. A 12-sided prism round the J5 roll axis - the base's dodecagon
 again (Jonathan: "more circular with polygonal lines for texture") - with
 an OPEN FRONT CUP. Everything goes in from the front, in this order:
 
-  1. bolt the empty body to the rotator: 4 x M3 x 8, heads down the four
-     access bores with a long 2.5 key
-  2. SG90 down its pocket, plug first out through the side slot; the lead
+  1. bolt the EMPTY body to the rotator's neck: 4 x M3 x 8 on r 7, heads
+     down the four access bores (inside the servo pocket) with a long 2.5 key
+  2. SG90 down its pocket - through the SERVO SLOT, the cup is narrower
+     than the servo in v4 - plug first out through the side slot; the lead
      lies in the groove in the pocket's end wall; 2 x M2 x 8 through the tabs
      into the ledge
   3. gripper_pinion onto the spline (servo centred), screw + washer
@@ -84,7 +86,7 @@ def run(_context: str):
     param('r_out', '%.4f mm' % G.R_OUT, 'lib/grip - outer vertex radius of the 12-gon')
     param('back_y', '%.4f mm' % G.SHELL_BACK_Y, 'lib/grip - the rotator face')
     param('rim_y', '%.4f mm' % G.RIM_Y, 'lib/grip - the cup rim, in front of the jaws\' rod blocks')
-    param('back_chamfer', '%.4f mm' % G.BACK_CHAMFER, 'lib/grip - taper toward the O36 rotator')
+    param('back_chamfer', '%.4f mm' % G.BACK_CHAMFER, 'lib/grip - taper down to the O21 neck')
     param('front_facet', '%.4f mm' % G.FRONT_FACET, 'lib/grip - the rim\'s outer edge')
     param('w_in', '%.4f mm' % G.W_IN, 'lib/grip - cavity half width: the racks\' full travel + free')
     param('z_in', '%.4f mm' % G.Z_IN, 'lib/grip - cavity half height: rack back + free')
@@ -104,8 +106,7 @@ def run(_context: str):
     param('lead_r', '%.4f mm' % G.LEAD_R, 'lead groove / bundle + loc')
     param('plug_w', '%.4f mm' % PLUG_W, 'side slot for the plug, square')
     param('wall', '%.4f mm' % G.WALL, 'MIN_WALL')
-    param('eff_x', '%.4f mm' % G.EFF_BOLT_X, 'rotator bolt pattern - wro_bolt_x')
-    param('eff_z', '%.4f mm' % G.EFF_BOLT_Z, 'rotator bolt pattern - wro_bolt_z')
+    param('eff_r', '%.4f mm' % G.EFF_BOLT_R, 'lib/cobot ROT_BOLT_R - the neck\'s 4 x M3')
     param('eff_cbore_d', '%.4f mm' % G.EFF_CBORE_D, 'passes the O5.5 head from the front')
     param('eff_cbore_h', '%.4f mm' % G.EFF_CBORE_H, 'head recess in the back wall')
     param('bolt_d', '%.4f mm' % G.M3['clearance'], 'M3 clearance')
@@ -215,6 +216,9 @@ def run(_context: str):
     box_y('servo_pocket', val('pocket_x0'), val('pocket_x1'), -pz, pz, val('case_bot'),
           val('core_y0') + tol)
     box_y('tab_relief', val('tab_x0'), val('tab_x1'), -pz, pz, val('tab_y'), val('core_y0') + tol)
+    # v4: the cup is narrower than the servo - its way in is a slot at the
+    # servo's own height, clear of both racks (lib/grip SERVO_SLOT_X1)
+    box_y('servo_slot', -wi, val('tab_x1'), -pz, pz, val('core_y0'), ry + val('wall'))
     for k, hx in enumerate(G.TAB_HOLE_X):
         hole_y('tab_pilot_%d' % k, hx / 10, 0.0, val('pilot_d'), val('tab_y') - val('pilot_deep'),
                val('tab_y') + tol)
@@ -230,13 +234,12 @@ def run(_context: str):
 
     # ---- phase 3: rotator screws, and the four rods ------------------------------
     t2 = design.timeline.count
-    for sx in (-1, 1):
-        for sz in (-1, 1):
-            x, z = sx * val('eff_x'), sz * val('eff_z')
-            tag = '%d%d' % (sx + 1, sz + 1)
-            hole_y('eff_screw_' + tag, x, z, val('bolt_d'), by - val('wall'), val('case_bot'))
-            hole_y('eff_access_' + tag, x, z, val('eff_cbore_d'),
-                   val('case_bot') - val('eff_cbore_h'), val('core_y0') + tol)
+    for k, az in enumerate(G.EFF_BOLT_AZ):
+        x, z = val('eff_r') * math.cos(math.radians(az)), val('eff_r') * math.sin(math.radians(az))
+        tag = '%d' % k
+        hole_y('eff_screw_' + tag, x, z, val('bolt_d'), by - val('wall'), val('case_bot'))
+        hole_y('eff_access_' + tag, x, z, val('eff_cbore_d'),
+               val('case_bot') - val('eff_cbore_h'), val('core_y0') + tol)
     # rod A (upper, z > 0) slips in from +x and presses at -x; rod B mirrored
     far = ro + val('wall')
     for sz in (1, -1):
@@ -271,7 +274,7 @@ def run(_context: str):
         bb = e.boundingBox
         if abs(bb.minPoint.y - ry) < tol and abs(bb.maxPoint.y - ry) < tol:
             mid_r = math.hypot((bb.minPoint.x + bb.maxPoint.x) / 2, (bb.minPoint.z + bb.maxPoint.z) / 2)
-            if mid_r > max(wi, zi) + tol:          # outer flats only, not the cup mouth
+            if mid_r > (G.A_OUT - G.BODY_WALL / 2) / 10:   # outer flats only, not the cup mouth or servo slot
                 rim.add(e)
     assert rim.count == G.SIDES, 'found %d rim edges' % rim.count
     ci = chf.createInput2()
@@ -311,8 +314,8 @@ def run(_context: str):
           % (G.W_IN, G.Z_IN, G.CORE_Y0, G.EXT_Z0 - G.FREE, G.CAV_Y0))
     print('SG90: tab ledge y %.2f, pilots O%.1f at x %s, lead groove + %.0f mm plug slot at y %.1f'
           % (G.TAB_Y, G.M2['pilot'], ['%.2f' % v for v in G.TAB_HOLE_X], PLUG_W, G.LEAD_Y))
-    print('rotator: 4 x M3 x %.0f at (+-%.0f, +-%.0f), heads %.1f deep, access O%.1f from the cup'
-          % (G.EFF_SCREW_L, G.EFF_BOLT_X, G.EFF_BOLT_Z, G.EFF_CBORE_H, G.EFF_CBORE_D))
+    print('neck: %d x M3 x %.0f on r %.0f, heads %.1f deep, access O%.1f down the empty servo pocket'
+          % (len(G.EFF_BOLT_AZ), G.EFF_SCREW_L, G.EFF_BOLT_R, G.EFF_CBORE_H, G.EFF_CBORE_D))
     print('rods: 4 x O%.0f x %.1f at y +-%.2f z +-%.2f - slip O%.1f one side, press O%.1f the other'
           % (G.ROD_D, G.ROD_L, G.ROD_Y, G.ROD_Z, G.ROD_BORE, G.ROD_PRESS))
     print('lightening: lunes |z| >= %.1f inside apothem %.1f, y %.1f..%.1f; slabs deepened |z| >= %.1f; side pocket x <= %.1f'

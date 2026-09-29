@@ -39,6 +39,7 @@ import adsk.core  # noqa: E402
 import adsk.fusion  # noqa: E402
 
 import lib.cobot as C  # noqa: E402
+import lib.grip as G  # noqa: E402
 
 VOL_TOL_MM3 = 0.05
 STEP_MM = 4.0
@@ -57,7 +58,7 @@ UA = ['robotarm_cobot_upper_arm', 'robotarm_cobot_upper_arm_cover', 'robotarm_co
       'fit_mg995', 'fit_sg90_j3', 'fit_board_j2', 'fit_board_j3', 'fit_dowel']
 FA = ['robotarm_cobot_forearm', 'robotarm_cobot_forearm_plate', 'robotarm_cobot_j3_gear', 'robotarm_cobot_j4_plate',
       'robotarm_cobot_j4_pinion', 'fit_sg90_j4', 'fit_board_j4']
-WR = ['robotarm_cobot_wrist', 'robotarm_cobot_wrist_cap', 'robotarm_cobot_rotator', 'robotarm_cobot_head_adapter',
+WR = ['robotarm_cobot_wrist', 'robotarm_cobot_wrist_cap', 'robotarm_cobot_rotator', 'robotarm_grip_body',
       'robotarm_cobot_j4_gear', 'fit_sg90_j5']
 # designed contacts
 ALLOWED = {frozenset(p) for p in (
@@ -85,7 +86,7 @@ WR_BUILD = [
     ('J5 SG90 laid into the wrist body', ['fit_sg90_j5']),
     ('wrist cap', ['robotarm_cobot_wrist_cap']),
     ('rotator onto the J5 spline (along -u)', ['robotarm_cobot_rotator']),
-    ('head adapter onto the neck (along -u)', ['robotarm_cobot_head_adapter']),
+    ('grip v4 head onto the neck (along -u)', ['robotarm_grip_body']),
 ]
 FA_BUILD = [
     ('forearm over the wrist spigot', ['robotarm_cobot_forearm']),
@@ -96,7 +97,7 @@ FA_BUILD = [
 ]
 FA_BASE = ['robotarm_cobot_wrist', 'robotarm_cobot_wrist_cap', 'robotarm_cobot_rotator', 'fit_sg90_j5']
 WR_BASE = ['robotarm_cobot_wrist']
-ALONG_U = {'robotarm_cobot_rotator', 'robotarm_cobot_head_adapter'}      # these go in along -u of their link, not -x
+ALONG_U = {'robotarm_cobot_rotator', 'robotarm_grip_body'}      # these go in along -u of their link, not -x
 
 
 def run(_context: str):
@@ -223,7 +224,10 @@ def run(_context: str):
             where[n] = mw
         where['robotarm_cobot_j4_gear'] = axial_matrix(mw, 0.0, 0.0, C.J4.x_spigot_end)
         where['robotarm_cobot_rotator'] = rot_matrix(mw)
-        where['robotarm_cobot_head_adapter'] = rot_matrix(mw, C.ROT_FACE_C)
+        hm = adsk.core.Matrix3D.create()          # the head frame: x, y along J5, z = v; back face on the neck
+        hm.translation = V3(0, (C.ROT_FACE_C - G.SHELL_BACK_Y) / 10, 0)
+        hm.transformBy(mw)
+        where['robotarm_grip_body'] = hm
         where['robotarm_cobot_j4_pinion'] = axial_matrix(mf, C.J4_PIN[0], C.J4_PIN[1], C.J4.x_teeth0)
         for n, m in where.items():
             o = occ_named(n)

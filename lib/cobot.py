@@ -541,6 +541,7 @@ ROT_FACE_C = math.ceil(HEAD_BACK_MIN_U * 2) / 2   # 24.5 - the head bolts here (
 ROT_HUB = spline_hub(SG90, face=ROT_FACE_C - ROT_SEAT_Z)
 ROT_BOLT_R = 7.0
 ROT_BOLT_AZ = (45.0, 135.0, 225.0, 315.0)   # M3 self-tap pilots: the head's 4 x M3
+ROT_PILOT_DEEP = 6.0                     # those pilots' depth (the head's M3 x 8 bite 4.4)
 # THE HEAD ADAPTER: until the head is shrunk (grip v4), the existing v3
 # gripper bolts on UNCHANGED - this disc carries the old rotator's front
 # face (O36, 4 x M3 heat-set inserts on +-11 x +-9, lib/grip EFF_BOLT_X/Z)
@@ -756,7 +757,7 @@ def check():
                 b_ = (ROT_BOLT_R * math.cos(math.radians(az)), ROT_BOLT_R * math.sin(math.radians(az)))
                 assert math.hypot(q[0] - b_[0], q[1] - b_[1]) >= M3['insert'] / 2 + CBORE_D / 2 + 0.8
     assert ADAPTER_T - CBORE_H >= 2 * MIN_WALL - 0.4 - EPS and ADAPTER_T >= M3_INSERT_DEPTH
-    assert ADAPTER_SCREW_L - (ADAPTER_T - CBORE_H) <= 6.0 - 0.5, 'the adapter screw bottoms in the neck'
+    assert ADAPTER_SCREW_L - (ADAPTER_T - CBORE_H) <= ROT_PILOT_DEEP - 0.5, 'the adapter screw bottoms in the neck'
     assert WR_CAP_T - CBORE_H >= MIN_WALL - 0.1, 'no cap under a wrist screw head'
     for p in WRIST_SCREWS:
         assert rect_dist(p, (J5_CASE[0] - LOC, J5_CASE[1], J5_CASE[2] - LOC, J5_CASE[3] + LOC)) >= CBORE_D / 2 + MIN_WALL

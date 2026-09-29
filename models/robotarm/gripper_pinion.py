@@ -188,7 +188,7 @@ def run(_context: str):
     shared('r_root', SHARED + 'r_pitch - ' + SHARED + 'module * ' + SHARED + 'ded_f', 'derived root radius')
     shared('r_base', SHARED + 'r_pitch * cos(' + SHARED + 'pa)', 'derived base radius')
     shared('offset', SHARED + 'r_pitch + ' + SHARED + 'backlash', 'pinion axis to rack PITCH LINE - the centre distance')
-    shared('stroke', '20.0 mm', 'travel of ONE rack; jaw opening is twice this')
+    shared('stroke', '12.5 mm', 'travel of ONE rack (grip v4, lib/grip GR_STROKE); jaw opening is twice this')
     param('tooth_sink', '0.5 mm', 'how far a tooth profile reaches inside the root circle')
     param('case_gap', '%.4f mm' % JOINT_FIT_MM['free'],
           'running gap between the back face and the SG90 case top. The pinion\n'

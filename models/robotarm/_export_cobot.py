@@ -49,8 +49,12 @@ ORIENT = [
     ('robotarm_cobot_j4_pinion', 1, None, 'front face down, broach up'),
     ('robotarm_cobot_j3_idler', 1, ('x', 180), '36T face down'),
     ('robotarm_cobot_rotator', 1, ('x', 180), 'front face down, broach up'),
-    ('robotarm_cobot_head_adapter', 1, ('x', 180), 'front face down'),
+    ('robotarm_grip_body', 1, ('x', 90), 'back face down, cup up (grip v4)'),
+    ('robotarm_grip_jaw', 2, ('x', 180), 'bar top down (grip v4)'),
+    ('robotarm_gripper_pinion', 1, None, 'flat (grip v4)'),
+    ('robotarm_grip_finger', 2, None, 'TPU 95A, flat, 20-25 mm/s'),
 ]
+TPU = {'robotarm_grip_finger'}     # its own plate: another material
 
 
 def rot3(axis, deg):
@@ -98,22 +102,26 @@ def run(_context: str):
             items.append({'name': name, 'comp': comp, 'lin': lin, 'lo': lo, 'w': w, 'd': d, 'h': h, 'why': why,
                           'vol': comp.bRepBodies.item(0).volume * 1000})
 
-    # ---- shelf packing, largest first ------------------------------------------------
-    items.sort(key=lambda it: (-it['d'], -it['w']))
-    plates = [[]]
-    x = y = MARGIN
-    shelf = 0.0
-    for it in items:
-        if x + it['w'] > BED_X - MARGIN:
-            x, y, shelf = MARGIN, y + shelf + GAP, 0.0
-        if y + it['d'] > BED_Y - MARGIN:
-            plates.append([])
-            x = y = MARGIN
-            shelf = 0.0
-        it['at'] = (x, y)
-        plates[-1].append(it)
-        x += it['w'] + GAP
-        shelf = max(shelf, it['d'])
+    # ---- shelf packing, largest first, one material per plate ------------------------
+    plates = []
+    for group in ([it for it in items if it['name'] not in TPU], [it for it in items if it['name'] in TPU]):
+        if not group:
+            continue
+        group.sort(key=lambda it: (-it['d'], -it['w']))
+        plates.append([])
+        x = y = MARGIN
+        shelf = 0.0
+        for it in group:
+            if x + it['w'] > BED_X - MARGIN:
+                x, y, shelf = MARGIN, y + shelf + GAP, 0.0
+            if y + it['d'] > BED_Y - MARGIN:
+                plates.append([])
+                x = y = MARGIN
+                shelf = 0.0
+            it['at'] = (x, y)
+            plates[-1].append(it)
+            x += it['w'] + GAP
+            shelf = max(shelf, it['d'])
 
     # ---- check the packing -----------------------------------------------------------
     for pl in plates:
@@ -149,7 +157,8 @@ def run(_context: str):
             assert bb.minPoint.x * 10 >= MARGIN - EPS_MM * 10 and bb.maxPoint.x * 10 <= BED_X - MARGIN + EPS_MM * 10
             assert bb.minPoint.y * 10 >= MARGIN - EPS_MM * 10 and bb.maxPoint.y * 10 <= BED_Y - MARGIN + EPS_MM * 10
             grams += it['vol'] * PETG_G_PER_MM3
-        path = os.path.join(OUT_DIR, 'cobot_plate_%d.3mf' % (k + 1))
+        mat = 'tpu' if pl[0]['name'] in TPU else 'petg'
+        path = os.path.join(OUT_DIR, 'cobot_plate_%d_%s.3mf' % (k + 1, mat))
         em = design.exportManager
         em.execute(em.createC3MFExportOptions(pc, path))
         print('PLATE %d  ~%.0f g  %s' % (k + 1, grams, path))

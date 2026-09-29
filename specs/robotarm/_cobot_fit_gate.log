@@ -10,7 +10,7 @@ INSERT upper arm cover                              clear along -x (40 mm)
 INSERT J5 SG90 laid into the wrist body             clear along -x (40 mm)
 INSERT wrist cap                                    clear along -x (40 mm)
 INSERT rotator onto the J5 spline (along -u)        clear along -u (40 mm)
-INSERT head adapter onto the neck (along -u)        clear along -u (40 mm)
+INSERT grip v4 head onto the neck (along -u)        clear along -u (40 mm)
 INSERT forearm over the wrist spigot                clear along -x (40 mm)
 INSERT J4 gear onto the wrist spigot                clear along -x (40 mm)
 INSERT J4 plate unit (SG90 + pinion + board)        clear along -x (40 mm)
@@ -25,16 +25,16 @@ POSE J3   +60: clean
 POSE J3   +90: clean
 POSE J3  +120: clean
 POSE J3  +150: clean
-POSE J4  -150: CLASH robotarm_cobot_head_adapter x robotarm_cobot_forearm 437 mm3; robotarm_cobot_head_adapter x robotarm_cobot_j4_pinion 2 mm3
-POSE J4  -120: CLASH robotarm_cobot_head_adapter x robotarm_cobot_forearm 294 mm3
+POSE J4  -150: CLASH robotarm_grip_body x robotarm_cobot_forearm 2120 mm3; robotarm_grip_body x robotarm_cobot_j4_pinion 19 mm3
+POSE J4  -120: CLASH robotarm_grip_body x robotarm_cobot_forearm 324 mm3
 POSE J4   -90: clean
 POSE J4   -60: clean
 POSE J4   -30: clean
 POSE J4   +30: clean
 POSE J4   +60: clean
 POSE J4   +90: clean
-POSE J4  +120: CLASH robotarm_cobot_head_adapter x robotarm_cobot_forearm 294 mm3
-POSE J4  +150: CLASH robotarm_cobot_head_adapter x robotarm_cobot_forearm 437 mm3
+POSE J4  +120: CLASH robotarm_grip_body x robotarm_cobot_forearm 324 mm3
+POSE J4  +150: CLASH robotarm_grip_body x robotarm_cobot_forearm 2120 mm3
 POSE J2    +0: clean
 POSE J2   +30: clean
 POSE J2  +150: clean
