@@ -31,9 +31,11 @@ Files are in `exports/robotarm/`.
 
 **3 + 4. Shoulder, arm and wrist — THE COBOT ARM (2026-09-29)** · full sequence, tolerances, cables and buy list: **`specs/robotarm/cobot.md`**
 Geared J2 1.64:1 / J3 4:1 / J4 2:1 on the 360° versions of the same servos, with an AS5600 on each joint, and a **torsion-spring counterbalance on J2** (J2 margin 1.11 → 3.5). The assembly gate (`_cobot_fit_gate.log`) passes: static fit, all 22 insertion steps, fold sweeps. The gripper head (v4) is on these plates too.
-- `cobot/cobot_plate_1_petg.3mf` — tower (replaces shoulder_bracket), upper arm, J2 spring cap + lid · ~325 g
-- `cobot/cobot_plate_2_petg.3mf` — upper-arm cover, grip v4 body, forearm + plate, 3 servo plates, J2 gear (96 tall), wrist cap · ~154 g
-- `cobot/cobot_plate_3_petg.3mf` — wrist, J3/J4 gears, idler, 2 spring hubs, 3 pinions, rotator, 2 jaws, gripper pinion · ~80 g
+- `cobot/cobot_plate_1_petg.3mf` — tower (replaces shoulder_bracket), upper arm, J2 spring cap + lid · ~238 g sliced (printed yellow, 2026-09-30)
+- `cobot/cobot_plate_2a_links_petg.3mf` — upper-arm cover, forearm + forearm plate (print in the upper arm's colour)
+- `cobot/cobot_plate_2b_gear_hand_petg.3mf` — J2 gear (96 tall: brim, and supports under its teeth), wrist cap, grip v4 body
+- `cobot/cobot_plate_2c_servo_plates_petg.3mf` — the 3 servo plates: print AFTER calipering a 360° servo and an AS5600 board
+- `cobot/cobot_plate_3_petg.3mf` — wrist, J3/J4 gears, idler, 2 spring hubs, 3 pinions, rotator, 2 jaws, gripper pinion · ~89 g sliced (printed white, 2026-09-29). The output gears' teeth overhang their flange by 2–3 mm: slice gears with supports on the build plate
 - `cobot/cobot_plate_4_tpu.3mf` — 2 fin ray fingers, **TPU 95A**, 20–25 mm/s · ~4 g
 - Pinions, rotator and gripper pinion in the **same filament as the spline gauge**.
 
