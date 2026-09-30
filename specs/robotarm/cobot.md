@@ -114,7 +114,7 @@ Every step inserts along the joint axis (x), or along J5 for the rotator and hea
 5. Press 3 × M3 heat-set inserts into the upper arm cover's cap bosses, from the outer face.
 
 **Wrist.**
-1. The J5 SG90 goes into the body bay, lead out through the back port.
+1. The J5 SG90 goes into the body bay. Its lead leaves the **shaft-end face near the bottom**: lay it into the keyway in that end wall as the servo goes in, along the channel under the bay floor, and out through the back port.
 2. The cap: 3 × M3 × 12.
 3. The rotator onto the spline through the front bore: M2.5 × 6 from the front.
 4. The grip v4 head, EMPTY, onto the rotator's neck: 4 × M3 × 8 on r 7, driven down the access bores with a long 2.5 key. Then its SG90 (2 × M2 × 8), pinion, jaws, and 4 × Ø3 × 59 rods (`specs/robotarm/grip.md`).
