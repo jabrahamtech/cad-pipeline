@@ -117,7 +117,7 @@ Every step inserts along the joint axis (x), or along J5 for the rotator and hea
 1. The J5 SG90 goes into the body bay. Its lead leaves the **shaft-end face near the bottom**: lay it into the keyway in that end wall as the servo goes in, along the channel under the bay floor, and out through the back port.
 2. The cap: 3 × M3 × 12.
 3. The rotator onto the spline through the front bore: M2.5 × 6 from the front.
-4. The grip v4 head, EMPTY, onto the rotator's neck: 4 × M3 × 8 on r 7, driven down the access bores with a long 2.5 key. Then its SG90 (2 × M2 × 8), pinion, jaws, and 4 × Ø3 × 59 rods (`specs/robotarm/grip.md`).
+4. The grip v4 head, EMPTY, onto the rotator's neck: 4 × M3 × 8 on r 7, driven down the access bores with a long 2.5 key. Then its SG90 (2 × M2 × 8), pinion, jaws, and 4 × Ø3 × 47 rods (`specs/robotarm/grip.md`).
 
 **Forearm.**
 1. The forearm over the wrist's J4 spigot.
@@ -191,7 +191,7 @@ No loom passes through a joint, because every joint axis carries a magnet. Each 
 | 23 | M3 × 8 (MG995 tabs ×4, J4 plate ×4, cover ×6 button, spring cap ×3, head ×4, MG995 pinion ×1, spare) |
 | 1 | Century Spring **TO-5201RCS** torsion spring (legs cut to 22 mm) |
 | 3 | M3 heat-set inserts (cover → spring cap) |
-| 4 | Ø3 × 59 rods: ground steel, or carbon fibre (−8 g) |
+| 4 | Ø3 × 47 rods: ground steel, or carbon fibre (−8 g) |
 | 4 | M2 × 6 (SG90 tabs), 2 × M2 × 8 (head SG90); 6 × M2 × 5 + M2 washers (board clamps) |
 | 3 | M2.5 × 6 pan head (J3 pinion, J4 pinion, rotator) |
 | 6 | Ø8 rubber grommets (ID ~5) |

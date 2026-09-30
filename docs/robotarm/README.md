@@ -57,7 +57,7 @@ Superseded — don't print: **the whole pre-cobot arm** — `shoulder_bracket_v6
 - MG995 360° ×1, MG995 ×1, SG90 ×4 (in hand)
 - 608ZZ ×4 — 3 turntable, 1 elbow
 - A3144 hall sensor ×1 (pack), 5 × 2 mm N52 disc magnets (pack)
-- **Ø3 mm ground steel rod, 4 × 59 mm** (or Ø3 carbon-fibre rod, −8 g) — the gripper's jaw guides (cut from a Ø3 × 250+ silver-steel / linear-shaft rod; deburr the ends)
+- **Ø3 mm ground steel rod, 4 × 47 mm (grip v4, lib/grip ROD_L)** (or Ø3 carbon-fibre rod, −8 g) — the gripper's jaw guides (cut from a Ø3 × 250+ silver-steel / linear-shaft rod; deburr the ends)
 - **5 mm LEDs ×2 for the eyes** — any 5 mm LED fits; addressable RGB (WS2812D-F5 / PL9823-F5) runs both off one ESP32 pin. Push in from inside until the flange seats; a dab of hot glue holds them
 
 **Filament**

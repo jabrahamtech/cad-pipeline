@@ -17,7 +17,7 @@ an OPEN FRONT CUP. Everything goes in from the front, in this order:
      into the ledge
   3. gripper_pinion onto the spline (servo centred), screw + washer
   4. the two jaws (fingers already on), both at the same opening
-  5. four O3 x 59 steel rods through the side walls and the jaws: slip hole
+  5. four O3 x 47 steel rods (lib/grip ROD_L) through the side walls and the jaws: slip hole
      on one side, press hole on the other, pressed flush
 
 Print: BACK FACE DOWN, no support. The cup, the servo pocket and the access
