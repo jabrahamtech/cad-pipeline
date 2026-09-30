@@ -97,6 +97,7 @@ COVER_T = 2.0
 PLATE_T = 3.0        # CHOSEN - a micro servo plate (M2 pilots)
 PLATE2_T = 5.0       # CHOSEN - the MG995 plate (M3 pilots, 4.5 engaged)
 PORT_D = 8.0         # CHOSEN - a grommeted cable port
+LEAD_STUB = 3.0      # ASSUMED - a servo lead's strain relief + first bend, straight out of its end face
 LOOM_D = 6.0         # ASSUMED - 5 servo leads + 3 encoder signals + shared 3V3/GND, bundled
 BOSS_R = 3.5         # CHOSEN - an M3 screw boss / post
 SIDES = 12
@@ -596,13 +597,26 @@ J5_TAB_TOP = J5_CASE_TOP - SG90.tab_below_top
 J5_TAB_V = SG90.tab_span / 2 + (SG90.case_l / 2 - SG90.shaft_from_end)
 WR_SPLIT = SG90.case_w / 2 + LOC / 2                         # the J5 bay's half width
 WR_CAP_T = WR_HALF - WR_SPLIT
-WRIST_SCREWS = ((-17.5, 9.0), (-18.0, -9.0), (8.0, -17.0))  # M3 x 12 from the cap (counterbored) into the body
+WRIST_SCREWS = ((-17.5, 9.0), (-13.5, -15.0), (8.0, -17.0))  # M3 x 12 from the cap (counterbored) into the body
+#                                  (the second moved from (-18, -9) 2026-09-30: it sat on the J5 lead's path)
 WR_PORT = (-WR_A, 0.0)                                       # the back flat, out along -u
 WR_PORT_X = -2.5
 # the J5 SG90: shaft on the J5 axis (x 0, v 0) pointing +u, case along +v
 J5_CASE = (J5_CASE_TOP - SG90.case_h, J5_CASE_TOP, -SG90.shaft_from_end, SG90.case_l - SG90.shaft_from_end)
 J5_TAB_EXT = (SG90.tab_span - SG90.case_l) / 2
 J5_TABS = (J5_TAB_TOP - SG90.tab_thk, J5_TAB_TOP, J5_CASE[2] - J5_TAB_EXT, J5_CASE[3] + J5_TAB_EXT)
+# THE J5 LEAD. lib/servo: the bundle leaves the SHAFT-END face (here -v, J5_CASE[2]), centred across the
+# width (x = 0), near the case bottom. The bay is a LOC pocket, so without a way out the lead jams the servo
+# against the end wall as it is laid in (Jonathan, at the bench, 2026-09-30). The end wall gets a KEYWAY,
+# open to the split face, that the bundle drops into; it runs down past the case bottom into a CHANNEL under
+# the bay floor that meets the back port. Both open at the split face, so both print with no roof.
+J5_LEAD_U = J5_TAB_TOP + SG90.lead_z                            # where the bundle leaves the end face (-6.6)
+J5_LEAD_W = SG90.lead_bundle_dia + FREE                           # keyway / channel width and depth
+J5_LEAD_KEY = (J5_CASE[0] - LOC - J5_LEAD_W, J5_LEAD_U + J5_LEAD_W / 2,
+               J5_CASE[2] - LOC - J5_LEAD_W, J5_CASE[2] - LOC)      # (u0, u1, v0, v1)
+J5_LEAD_KEY_X0 = SG90.lead_y - J5_LEAD_W / 2                      # ... from here up to the split face
+J5_LEAD_CHAN = (J5_CASE[0] - LOC - J5_LEAD_W, J5_CASE[0] - LOC, J5_LEAD_KEY[2], 0.0)   # to the port's centre line
+J5_LEAD_CHAN_X0 = min(J5_LEAD_KEY_X0, WR_PORT_X - J5_LEAD_W / 2)
 # THE ROTATOR (J5 output): a O21 NECK, not the old O36 disc - the forearm
 # (offset, x >= 11.25) passes beside the wrist, and its J4 end reaches r 23.8:
 # a disc wider than the wrist would sweep into it. The neck stays inside the
@@ -880,6 +894,20 @@ def check():
             assert math.hypot(p[0] - b_[0], p[1] - b_[1]) >= CBORE_D / 2 + M3['pilot'] / 2 + MIN_WALL
         assert abs(p[1] - WR_PORT[1]) >= CBORE_D / 2 + PORT_D / 2 + MIN_WALL - 0.1 or p[0] > -WR_A + 3 * PORT_D, \
             'wrist screw %r in the port' % (p,)
+    # the J5 lead path: the bundle leaves inside its keyway, the keyway holds the stub, the channel meets the port
+    assert J5_LEAD_KEY[0] <= J5_LEAD_U - SG90.lead_bundle_dia / 2 and \
+        J5_LEAD_U + SG90.lead_bundle_dia / 2 <= J5_LEAD_KEY[1], 'the J5 lead leaves outside its keyway'
+    assert J5_LEAD_KEY[3] - J5_LEAD_KEY[2] >= LEAD_STUB + FREE - EPS, 'the keyway is shallower than the lead stub'
+    assert J5_LEAD_KEY_X0 <= SG90.lead_y - SG90.lead_bundle_dia / 2 - FREE / 2 + EPS
+    assert J5_LEAD_CHAN[3] >= WR_PORT[1] - EPS and J5_LEAD_CHAN_X0 <= WR_PORT_X, 'the lead channel misses the port'
+    assert J5_LEAD_CHAN[0] >= WR_PORT[0] + SHELL, 'the lead channel breaks the back flat'
+    for bx in (J5_LEAD_KEY, J5_LEAD_CHAN):
+        for cu in bx[:2]:
+            for cv in bx[2:]:
+                assert math.hypot(cu, cv) <= WR_A - SHELL + EPS, 'the J5 lead path breaks the drum'
+        for p in WRIST_SCREWS:
+            assert rect_dist(p, bx) >= CBORE_D / 2 + MIN_WALL, 'wrist screw %r on the J5 lead path' % (p,)
+        assert bx[1] <= J5_TABS[0] - LOC - MIN_WALL, 'the lead path runs into the tab slot'
     assert J4.x_spigot_end - (J4.bolt_engaged(J4_BOLT_L, 0.0) + 0.5) >= WR_SPLIT + MIN_WALL, 'J4 pilots into the bay'
     assert math.hypot(J5_TAB_TOP, J5_TAB_V) <= WR_A - SHELL - LOC + EPS
     assert math.hypot(J5_CASE_TOP - SG90.case_h, SG90.case_l - SG90.shaft_from_end) <= WR_A - SHELL - LOC + EPS

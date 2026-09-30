@@ -8,8 +8,8 @@ gears fit correctly in housing and instalations and tolerances are taken
 into account".
 
 Run AFTER every cobot_* part script has built into the active document. It:
-  1. adds ENVELOPE bodies for what is bought: MG995 / SG90 cases, tabs and
-     output bosses, the AS5600 boards and their chips, the idler's dowel,
+  1. adds ENVELOPE bodies for what is bought: MG995 / SG90 cases, tabs,
+     output bosses and LEAD STUBS (lib/servo: out of the shaft-end face), the AS5600 boards and their chips, the idler's dowel,
      the J2 counterbalance spring (coil tube + legs, at neutral)
   2. places every occurrence in the arm frame at a pose (lib/cobot numbers)
   3. STATIC: Fusion interference over everything; the only pairs allowed to
@@ -247,15 +247,25 @@ def run(_context: str):
         comp.features.extrudeFeatures.add(inp).name = name
 
     # ---- 1. envelopes ------------------------------------------------------------
-    def servo_env(name, servo, case, tabs, case_top, pin):
+    def servo_env(name, servo, case, tabs, case_top, pin, lead):
         comp = fresh_comp(name).component
         box_x(comp, 'case', case[0], case[1], case[2], case[3], case_top, case_top + servo.case_h, NEW)
         box_x(comp, 'tabs', tabs[0], tabs[1], tabs[2], tabs[3], case_top + servo.tab_below_top,
               case_top + servo.tab_below_top + servo.tab_thk, JOIN)
         cyl_x(comp, 'boss', pin[0], pin[1], servo.boss_dia, case_top - servo.boss_h, case_top, JOIN)
-    servo_env('fit_mg995', C.MG995, C.J2_CASE, C.J2_TABS, C.UA_J2_CASE_TOP, C.J2_PIN)
-    servo_env('fit_sg90_j3', C.SG90, C.J3_CASE, C.J3_TABS, C.UA_J3_CASE_TOP, C.J3_PIN)
-    servo_env('fit_sg90_j4', C.SG90, C.J4_CASE, C.J4_TABS, C.FA_J4_CASE_TOP, C.J4_PIN)
+        # the LEAD STUB (lib/servo): out of the shaft-end face, centred across the width, near the bottom
+        axis, face, sense, lat = lead
+        h = servo.lead_bundle_dia / 2
+        a0, a1 = sorted((face, face + sense * C.LEAD_STUB))
+        uv = (a0, a1, lat - h, lat + h) if axis == 'u' else (lat - h, lat + h, a0, a1)
+        xl = case_top + servo.tab_below_top - servo.lead_z
+        box_x(comp, 'lead', uv[0], uv[1], uv[2], uv[3], xl - h, xl + h, JOIN)
+    servo_env('fit_mg995', C.MG995, C.J2_CASE, C.J2_TABS, C.UA_J2_CASE_TOP, C.J2_PIN,
+              ('u', C.J2_CASE[0], -1, C.J2_PIN[1]))
+    servo_env('fit_sg90_j3', C.SG90, C.J3_CASE, C.J3_TABS, C.UA_J3_CASE_TOP, C.J3_PIN,
+              ('u', C.J3_CASE[1], 1, C.J3_PIN[1]))
+    servo_env('fit_sg90_j4', C.SG90, C.J4_CASE, C.J4_TABS, C.FA_J4_CASE_TOP, C.J4_PIN,
+              ('v', C.J4_CASE[2], -1, C.J4_PIN[0]))
 
     def board_env(name, cu, top):
         comp = fresh_comp(name).component
@@ -270,6 +280,9 @@ def run(_context: str):
     w5 = C.SG90.case_w / 2
     box_x(j5, 'case', C.J5_CASE[0], C.J5_CASE[1], C.J5_CASE[2], C.J5_CASE[3], -w5, w5, NEW)
     box_x(j5, 'tabs', C.J5_TABS[0], C.J5_TABS[1], C.J5_TABS[2], C.J5_TABS[3], -w5, w5, JOIN)
+    h5 = C.SG90.lead_bundle_dia / 2      # its lead stub: out of the -v (shaft-end) face, x centred
+    box_x(j5, 'lead', C.J5_LEAD_U - h5, C.J5_LEAD_U + h5, C.J5_CASE[2] - C.LEAD_STUB, C.J5_CASE[2],
+          C.SG90.lead_y - h5, C.SG90.lead_y + h5, JOIN)
     # the spring at neutral: the coil as a tube, each leg a wire-square bar tangent-off at v = -RC to its cut length
     comp = fresh_comp('fit_spring').component
     cyl_x(comp, 'coil', 0.0, 0.0, C.SPR_OD, C.COIL[0], C.COIL[1], NEW)

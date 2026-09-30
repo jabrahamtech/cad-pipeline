@@ -13,11 +13,17 @@ direct): shaft forward on the J5 axis, case lying along +v.
     holds it, no tab screws. The case top bears on the front wall
   * the FRONT BORE (O10.85) takes the rotator's hub; it is a teardrop that
     opens into the split face, so it prints without a roof
+  * the LEAD KEYWAY: the SG90's lead leaves its SHAFT-END face (lib/servo), so
+    that end wall has a slot, open to the split face, the bundle drops into
+    as the servo is laid in; it runs down past the case bottom into a
+    CHANNEL under the bay floor that meets the back port (2026-09-30: the
+    first print had none, and the servo would not seat)
   * the BACK PORT (O8, grommeted) takes the J5 lead and the gripper's lead
     out to the J4 service loop
   * 3 x M3 pilots for the cap's screws
 
-ASSEMBLY: the J5 SG90 into the bay (lead out through the port) -> the cap
+ASSEMBLY: the J5 SG90 into the bay, its lead laid into the keyway, along the
+channel under the floor and out through the port -> the cap
 over it (3 x M3 x 12) -> the wrist's J4 spigot into the forearm's bore ->
 the rotator onto the spline through the front bore (M2.5 x 6 from the
 front) -> the head (4 x M3 into the rotator).
@@ -207,6 +213,11 @@ def run(_context: str):
             [], -x1, x1, CUT)
     along_x('tab_slot', [[(ta[0] - lc / 2, ta[2] - lc), (ta[1] + lc / 2, ta[2] - lc), (ta[1] + lc / 2, ta[3] + lc),
                           (ta[0] - lc / 2, ta[3] + lc)]], [], -x1, x1, CUT)
+    lk, lch = C.J5_LEAD_KEY, C.J5_LEAD_CHAN
+    along_x('lead_keyway', [[(lk[0], lk[2]), (lk[1], lk[2]), (lk[1], lk[3]), (lk[0], lk[3])]], [],
+            C.J5_LEAD_KEY_X0 / 10, x1, CUT)
+    along_x('lead_channel', [[(lch[0], lch[2]), (lch[1], lch[2]), (lch[1], lch[3]), (lch[0], lch[3])]], [],
+            C.J5_LEAD_CHAN_X0 / 10, x1, CUT)
     r = val('bore') * 10 / 2
     tear = [(r / math.sqrt(2), -r / math.sqrt(2)), (r * math.sqrt(2), 0.0), (r / math.sqrt(2), r / math.sqrt(2))]
     fu, bu = val('front'), C.J5_CASE_TOP / 10
@@ -220,6 +231,8 @@ def run(_context: str):
     for k, (u, v) in enumerate(C.WRIST_SCREWS):
         along_x('screw_pilot_%d' % k, [], [(u, v, val('m3_pilot') * 10)], x1 - val('m3_deep'), x1, CUT)
     group(t2, PH_MISC)
+    print('lead keyway u %.1f..%.1f v %.1f..%.1f x %.1f..; channel u %.1f..%.1f v %.1f..%.1f x %.1f..'
+          % (lk[0], lk[1], lk[2], lk[3], C.J5_LEAD_KEY_X0, lch[0], lch[1], lch[2], lch[3], C.J5_LEAD_CHAN_X0))
     print('drum a %.0f, x %.2f..%.2f, front u %.2f; bay u %.2f..%.2f v %.2f..%.2f; tab slot u %.2f..%.2f; '
           'front bore O%.2f; port O%.0f; %d cap screws'
           % (C.WR_A, x0 * 10, x1 * 10, C.ROT_SEAT, ca[0], ca[1], ca[2], ca[3], ta[0], ta[1], C.ROT_BORE, C.PORT_D,
