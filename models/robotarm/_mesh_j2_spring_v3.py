@@ -65,6 +65,11 @@ HUB_R = R_HUB_PIN + PIN_D / 2 + 1.2
 CAP_PIN_U = 13.5
 R_CAP_PIN = np.hypot(CAP_PIN_U, PIN_V)
 RIB_W = 5.0                               # v2: 3.0
+# v3 COLLAR (Jonathan, 2026-10-16: 'make that ridge all the way around'): a solid ring all round the inside of
+# the cup, from the floor up to the top of the upper pin, starting just outside the swinging legs' reach.
+# The two pins stand out of it as short stubs. (A ring at the pins' own radius would block the legs.)
+R_COLLAR = np.hypot(LEG, RC) + WIRE / 2 + FREE          # 19.32
+SCREW_ACCESS_D = C.CBORE_D + 1.1                        # 7.0: a hex key and the screw head pass the collar
 WALL_IN = C.CAP_A - C.CAP_WALL            # 25.5 apothem
 # cap v1 mesh <-> arm frame: mesh = (CX - u, CY - v, x - CAP_X0) (measured off the floor holes)
 CX, CY, CAP_X0 = 142.27, 33.5, C.CAP_X0
@@ -164,6 +169,14 @@ def cap_v2(cap1):
                cyl(0, 0, RING[0], FLOOR_TOP - 1, FLOOR_TOP + 1, n=180)))
     m = U(m, bracket(-1, LEG_LO[0], LEG_LO[1] + PIN_H))      # holds the LOWER leg (along -u)
     m = U(m, bracket(+1, LEG_HI[0] - PIN_H, LEG_HI[1]))      # holds the UPPER leg (along +u)
+    collar_top = LEG_HI[1]
+    # a disc that reaches 1 into the 12-gon wall everywhere (inner corners r 26.4, outer apothem 27.5)
+    collar = cyl(0, 0, WALL_IN / np.cos(np.pi / 12) + 0.1, FLOOR_TOP - 0.5, collar_top, n=240)
+    assert WALL_IN / np.cos(np.pi / 12) + 0.1 < C.CAP_A, 'collar would poke through the wall'
+    collar = D(collar, cyl(0, 0, R_COLLAR, FLOOR_TOP - 2, collar_top + 2, n=240))
+    for (u, v) in C.CAP_SCREWS:
+        collar = D(collar, cyl(u, v, SCREW_ACCESS_D / 2, FLOOR_TOP - 1, collar_top + 1))
+    m = U(m, collar)
     return m, inner, top
 
 
