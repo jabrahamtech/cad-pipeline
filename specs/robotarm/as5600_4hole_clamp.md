@@ -1,7 +1,7 @@
 # as5600_4hole_clamp — spec
 
 Project: `models/robotarm/_mesh_as5600_4hole_clamp.py` (mesh stopgap — Fusion MCP down 2026-10-14; a Fusion script is owed)
-Status: MODELED
+Status: SUPERSEDED 2026-10-17 by the glue pins (below) - the clamp webs got in the way of the board's ports
 
 ## Function
 Converts the three existing AS5600 mounts (J3 plate, J4 plate, J2 cap lid) to hold the new 4-hole AS5600 board
@@ -39,3 +39,10 @@ PETG, top face on the bed (pegs and foot up), no supports, 100 % infill (0.2 g e
 - [x] mesh watertight, one body; plan reach r 15.4 inside the forearm shell (FA_IN − LOC); lug clears the J4 standoffs by 0.93
 - [ ] board thickness and hole Ø calipered: if thickness < 1.5 the foot gives no preload, so regenerate with the real BOARD_T
 - [ ] printed and fitted on one mount: date, result
+
+## v2 — glue pins (2026-10-17)
+Jonathan: the clamp halves "get in the way of some of the ports". Replaced by `models/robotarm/_mesh_as5600_glue_pins.py`:
+one pin per board hole (4 per board). Shaft Ø1.8 × 1.5 through the hole, head Ø3.0 × 0.8 on the board's top face, reaching
+r 9.25 from the board centre (≥ 2.2 off every edge, the same pad-row rule). Fit: CA on the shaft tip, push through
+onto the pocket floor. The board is still located by the existing pocket; the M2 clamp screws are not used.
+Same ASSUMED board thickness (1.6) and hole Ø (≥ 2.0). 16 printed (3 boards + 4 spares) on plate 8.

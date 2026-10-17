@@ -35,8 +35,6 @@ X = 0.35                                      # profile shift: the most this pai
 V5 = 'exports/robotarm/cobot/parts/cobot_j4_pinion_v5.stl'
 LEAD = 0.5                                    # v5's 45 deg front lead-in on the tips
 RING_IN = 3.5                                 # the new tooth ring's inner radius (inside the old root, outside the bore)
-ROTATOR = 'exports/robotarm/cobot/parts/cobot_rotator_v5.stl'
-PLATE = 'cobot_plate_8_rotator_pinion_petg.3mf'
 FLANGE_R = C.J4.flange_od / 2                 # the J4 gear's flange: lib/cobot wants FREE 0.4 to the pinion tip
 MIN_GAP = 0.3                                 # x 0.35 leaves 0.35 (accepted 2026-10-17, below lib's FREE)
 TIP_MIN = 0.1                                 # tip -> the mate's root, both ways
@@ -166,15 +164,8 @@ def main(out_dir):
           % (cd, depth, P.r_tip(Z) + P.r_tip(P.z_gear) - cd, tip_clear, root_clear, flange))
     print('backlash ~%.2f (v5 ~%.2f) at the pitch circle; volume %.1f (v5 %.1f) mm3'
           % (bl, bl_v5, m.volume, v5.volume))
-    # plate 8 (Jonathan 2026-10-17: "add the J4 pinion to the same plate" as the J5 rotator v5)
-    rot = trimesh.load(os.path.join(REPO, ROTATOR))
-    sc = trimesh.Scene()
-    for name, g, x in (('cobot_rotator_v5', rot, 128 - 13.0), ('cobot_j4_pinion_v6', m, 128 + 13.0)):
-        g = g.copy(); c = g.bounds.mean(0)
-        g.apply_translation([x - c[0], 128 - c[1], -g.bounds[0, 2]])
-        sc.add_geometry(g, geom_name=name, node_name=name)
-    plate = os.path.join(out_dir, PLATE); sc.export(plate)
-    print('wrote', p, plate)
+    # plate 8 (with the J5 rotator v5 and the AS5600 glue pins): models/robotarm/_mesh_plate_8.py
+    print('wrote', p)
     return m
 
 
