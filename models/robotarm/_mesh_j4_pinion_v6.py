@@ -5,10 +5,11 @@ STOPGAP: Fusion MCP is down. Owed: cobot_j4_pinion.py with a profile shift (lib/
 WHY (Jonathan, 2026-10-17): the J4 pinion "is not always catching on the gear" - make it slightly bigger.
 Bigger the right way = a POSITIVE PROFILE SHIFT on the pinion (x * m), not a scale (a scaled gear has the
 wrong pitch and will not mesh at all). The pair (lib/cobot J4_PAIR: m 1, 18T : 36T) runs at the standard
-27.0 + GEAR_BACKLASH 0.2 = 27.2 centre distance, so the teeth only engage 1.8 deep (of 2.0). Shifting the
-pinion by x = +0.2 spends exactly that 0.2: its tip goes to r 10.2, its root to r 7.95, its teeth get
-thicker by 2 x m tan20 at the pitch circle, and the working depth goes back to 2.0. The 0.2 tooth thinning
-the pair already carries (backlash/2 per member) is kept, so it still has play for printed teeth.
+27.0 + GEAR_BACKLASH 0.2 = 27.2 centre distance, so the teeth only engage 1.8 deep (of 2.0). x = +0.2 (spends the 0.2: depth 2.0) printed as
+"too small" (Jonathan); he chose the MOST this pair takes, x = +0.35: tip r 10.35, root r 8.10, depth 2.15,
+0.10 tip/root clearance both ways (the limit: more and the tips bottom in the mate's roots), backlash ~0.09,
+0.35 to the J4 gear's flange (lib wants FREE 0.4 - accepted). Teeth thicker by 2 x m tan20 at the pitch
+circle. The pair's backlash/2 tooth thinning is kept.
 v6 = v5 (the 4.8 tall trimmed pinion, its spline bore, boss clearance and chamfers untouched) UNION the
 shifted tooth ring (a superset of the old teeth at every radius), with v5's 45 deg front lead-in re-made
 on the new tip. The tooth phase is taken from v5's own teeth.
@@ -30,13 +31,15 @@ P = C.J4_PAIR
 Z = P.z_pinion                                # 18
 M = P.module                                  # 1.0
 ALPHA = math.radians(20.0)
-X = 0.20                                      # profile shift coefficient
+X = 0.35                                      # profile shift: the most this pair takes (Jonathan: 0.20 'too small')
 V5 = 'exports/robotarm/cobot/parts/cobot_j4_pinion_v5.stl'
 LEAD = 0.5                                    # v5's 45 deg front lead-in on the tips
 RING_IN = 3.5                                 # the new tooth ring's inner radius (inside the old root, outside the bore)
 ROTATOR = 'exports/robotarm/cobot/parts/cobot_rotator_v5.stl'
 PLATE = 'cobot_plate_8_rotator_pinion_petg.3mf'
-FLANGE_CLEAR = C.J4.flange_od / 2 + C.FREE    # lib/cobot: the pinion tip clears the J4 gear's flange by FREE
+FLANGE_R = C.J4.flange_od / 2                 # the J4 gear's flange: lib/cobot wants FREE 0.4 to the pinion tip
+MIN_GAP = 0.3                                 # x 0.35 leaves 0.35 (accepted 2026-10-17, below lib's FREE)
+TIP_MIN = 0.1                                 # tip -> the mate's root, both ways
 
 
 def inv(a):
@@ -143,8 +146,8 @@ def main(out_dir):
     depth = r_t + P.r_tip(P.z_gear) - cd
     tip_clear = cd - r_t - P.r_root(P.z_gear)
     root_clear = cd - P.r_tip(P.z_gear) - r_r
-    flange = cd - r_t - FLANGE_CLEAR
-    assert tip_clear >= 0.2 and root_clear >= 0.2 and flange >= 0.0, (tip_clear, root_clear, flange)
+    flange = cd - r_t - FLANGE_R
+    assert min(tip_clear, root_clear) >= TIP_MIN - 1e-9 and flange >= MIN_GAP, (tip_clear, root_clear, flange)
     # zero-backlash centre distance of the shifted pair with standard-thickness teeth -> radial play left
     aw = cd
     inv_aw = 2 * math.tan(ALPHA) * X / (Z + P.z_gear) + inv(ALPHA)
@@ -159,7 +162,7 @@ def main(out_dir):
     assert trimesh.load(p).is_watertight
     print('x %+.2f: tip O%.2f (v5 O%.2f), root O%.2f (v5 O%.2f); x=0 outline vs v5: %.3f mm2 off'
           % (X, 2 * r_t, 2 * r_t0, 2 * r_r, 2 * P.r_root(Z), mismatch))
-    print('at CD %.2f: working depth %.2f (v5 %.2f); tip->gear root %.2f; gear tip->root %.2f; flange margin %.2f'
+    print('at CD %.2f: working depth %.2f (v5 %.2f); tip->gear root %.2f; gear tip->root %.2f; gap to the gear flange %.2f'
           % (cd, depth, P.r_tip(Z) + P.r_tip(P.z_gear) - cd, tip_clear, root_clear, flange))
     print('backlash ~%.2f (v5 ~%.2f) at the pitch circle; volume %.1f (v5 %.1f) mm3'
           % (bl, bl_v5, m.volume, v5.volume))
