@@ -128,7 +128,7 @@ def main(out_dir):
     sc = trimesh.Scene()
     g = m.copy(); g.apply_translation([128, 128, 0])
     sc.add_geometry(g, geom_name='cobot_rotator_v5', node_name='cobot_rotator_v5')
-    plate = os.path.join(out_dir, 'cobot_plate_8_rotator_v5_petg.3mf'); sc.export(plate)
+    plate = os.path.join(out_dir, 'cobot_plate_8_rotator_v5_petg.3mf'); sc.export(plate)   # superseded by plate 8 rotator+pinion (_mesh_j4_pinion_v6)
     v4_thread = SHANK - (BROACH_TOP - V4_CBORE[1])
     print('screw path from the front face: O%.2f to %.2f, 45 deg cone to %.2f, head pocket O%.2f to %.2f, '
           'hole O%.2f to the spline at %.2f' % (DRIVER_D, CONE_D0, POCKET_TOP, HEAD_POCKET_D, FLOOR, HOLE_D, BROACH_TOP))
