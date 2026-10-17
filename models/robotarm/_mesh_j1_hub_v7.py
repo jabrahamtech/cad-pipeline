@@ -128,7 +128,7 @@ def main(out_dir):
     assert trimesh.load(p).is_watertight
     sc = trimesh.Scene(); g = out.copy(); g.apply_translation([128 - g.centroid[0], 128 - g.centroid[1], 0])
     sc.add_geometry(g, geom_name='cobot_j1_hub_v7', node_name='cobot_j1_hub_v7')
-    plate = os.path.join(out_dir, 'cobot_plate_9_j1_hub_petg.3mf'); sc.export(plate)
+    plate = os.path.join(out_dir, 'cobot_plate_9_j1_hub_petg.3mf'); sc.export(plate)   # folded into plate 8 (_mesh_plate_8.py)
     print('lip z %.2f..%.2f (%.2f thick, %.2f over the drawn shaft end), M3 hole O%.2f: cap head O%.1f seats %.2f/side'
           % (LIP_Z0, FACE, lip, LIP_GAP, HOLE_D, HEAD_D, seat))
     print('tower centre pocket O%.2f x %.2f deep: the O%.1f x %.1f head clears it by %.2f/side, %.1f above'
