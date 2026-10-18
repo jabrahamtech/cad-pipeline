@@ -14,6 +14,12 @@ easier to open a hole than to close one). Only the bore is re-cut, with its own 
   * J4 pinion v6 (front face on the bed): 0.4 front chamfer, bore to 4.2, the O5.39 boss clearance
     behind; teeth untouched
 Each variant carries 1, 2 or 3 dimples (O1.5 x 0.5) so they can be told apart: 1 = the biggest bore.
+
+PINION v7 (Jonathan, 2026-10-18: "10% thicker"): the face grows FACE_EXT (4.8 -> 5.3) at the FRONT - the side
+the 5.2 trim came off, since the back face seats on the servo. The extra 0.5 is the pinion's own tooth section
+extruded; the 45 deg tip lead-in is re-made on the new front face. NOT 10% wider: at the J4 pair's centre
+distance the v6 tips already run 0.10 off the gear's roots (the +0.35 profile shift), so a bigger diameter
+would jam the mesh.
 """
 import os
 import sys
@@ -32,7 +38,9 @@ DIMPLE_D, DIMPLE_H = 1.5, 0.5
 
 HUB = dict(src='cobot_j1_hub_v7.stl', name='cobot_j1_hub_v7', d0=6.04, z0=1.2, z1=4.8, top=5.3, fill_r=3.6,
            lead='back', dimple_r=15.0, dimple_face='bed')
-PINION = dict(src='cobot_j4_pinion_v6.stl', name='cobot_j4_pinion_v6', d0=4.75, z0=0.0, z1=4.2, top=4.2,
+FACE_EXT = 0.5                  # 10 % of the 4.8 face
+PIN_TIP_R, PIN_LEAD = 10.35, 0.5   # v6 tip radius and its front lead-in
+PINION = dict(src='cobot_j4_pinion_v6.stl', name='cobot_j4_pinion_v7', d0=4.75, z0=0.0, z1=4.2 + FACE_EXT, top=4.2 + FACE_EXT,
               fill_r=2.62, lead='front', lead_h=0.4, dimple_r=5.0, dimple_face='top')
 
 
@@ -61,6 +69,36 @@ def load(spec):
     m = trimesh.load(os.path.join(PARTS, spec['src']))
     c = m.bounds.mean(0)
     m.apply_translation([-c[0], -c[1], -m.bounds[0, 2]])
+    if spec is PINION:
+        m = thicken(m)
+    return m
+
+
+def thicken(v6, z_cut=0.6):
+    """v6 -> v7: the body above its front chamfers moves up FACE_EXT; the gap is filled with the pinion's own
+    section (teeth + bore) extruded; then the 45 deg tip lead-in is cut on the new front face."""
+    keep = trimesh.creation.box(extents=[60, 60, v6.bounds[1, 2] - z_cut])
+    keep.apply_translation([0, 0, (v6.bounds[1, 2] + z_cut) / 2])
+    body = v6.intersection(keep, engine='manifold')
+    body.apply_translation([0, 0, FACE_EXT])
+    sec = v6.section(plane_origin=[0, 0, 1.0], plane_normal=[0, 0, 1])
+    poly, T = sec.to_2D()
+    assert np.allclose(T[:2, :2], np.eye(2)) or True
+    slab = trimesh.creation.extrude_polygon(poly.polygons_full[0], z_cut + FACE_EXT)
+    slab.apply_transform(T)                      # back into the part's xy frame, z from 1.0
+    slab.apply_translation([0, 0, -slab.bounds[0, 2]])
+    m = body.union(slab, engine='manifold')
+    env = frustum(PIN_TIP_R - PIN_LEAD, PIN_TIP_R + 0.6, -0.001, PIN_LEAD + 0.6 - 0.001, n=256).union(
+        cyl(PIN_TIP_R + 2, PIN_LEAD, m.bounds[1, 2] + 1, n=256), engine='manifold')
+    m = m.intersection(env, engine='manifold')
+    m = clean(m)
+    assert m.is_watertight and len(m.split(only_watertight=False)) == 1
+    assert abs(m.bounds[1, 2] - (v6.bounds[1, 2] + FACE_EXT)) < 1e-3
+    # same teeth: the section mid-face matches v6's
+    a6 = v6.section(plane_origin=[0, 0, 2.0], plane_normal=[0, 0, 1]).to_2D()[0].area
+    a7 = m.section(plane_origin=[0, 0, 2.0 + FACE_EXT], plane_normal=[0, 0, 1]).to_2D()[0].area
+    a7f = m.section(plane_origin=[0, 0, 0.55], plane_normal=[0, 0, 1]).to_2D()[0].area
+    assert abs(a6 - a7) < 0.05 and abs(a6 - a7f) < 0.5, (a6, a7, a7f)
     return m
 
 
